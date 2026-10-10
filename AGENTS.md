@@ -35,21 +35,31 @@ Package manager: **pnpm** workspaces. Once tooling exists, list the real command
 - **One entry per day:** tapping a number saves right away (no save button) and overwrites that day's value. Tapping the selected number does nothing. **A value can never be cleared.** Notes and recordings can be edited or removed.
 - **Dates:** default to today. Future dates are never allowed. There is no lower limit.
 - **Offline-first:** every feature, including History, works with no network. All reads come from local SQLite. The network is used only for sync.
-- **No accounts:** access is a device-generated **10-character Crockford Base32 ID**. There's no email, no password, and no auth library. The web login is just that ID.
+- **No accounts:** access is a device-generated **12-character Crockford Base32 ID**. There's no email, no password, and no auth library. The web login is just that ID.
+- **Sync consent:** a one-time notice on first launch. Sync is on by default, and "keep on this phone only" must always work: no network calls with user data while sync is off.
 
 ## Technical invariants
 
 - **Store days as `YYYY-MM-DD` local calendar strings**, never timestamps. Don't convert them through UTC.
 - **Merge per field with last-write-wins.** Value, note, and audio each carry their own `*_updated_at`. Never merge whole rows. The server must reject a `null` value replacing an existing one.
-- **Clear `dirty` only for rows unchanged since the push.** Compare timestamps so edits made during a sync aren't lost. Sync pushes must stay idempotent.
-- **Audio uploads before its fields sync.** A row's audio fields are pushed only after its file has uploaded through a presigned URL, so the server never references a missing file.
+- **Assign `server_seq` under a per-profile lock.** It is never a `bigserial`. Each sync transaction locks the `profiles` row (`FOR UPDATE`) and assigns `server_seq = ++profiles.seq` on every insert **and** update. Otherwise cursors can skip rows.
+- **Pulls are paginated** (`hasMore`). Pushes are chunked. Both are capped at 500 rows.
+- **Adopt the server's version of acknowledged rows.** After a push, rows unchanged since the push take the server's stored version, timestamps included, and are marked clean. Rows edited mid-sync stay dirty. Pushes must stay idempotent.
+- **Switching IDs resets sync state.** "Use an existing ID" with Merge marks every row dirty, re-queues every recording, and resets the cursor. Discard deletes local data and resets the cursor. Never silently generate a new ID when the database has synced history but the ID is missing; prompt instead (`PLAN.md` §5.2).
+- **Audio uploads before its fields sync.**
+  - A row's audio fields are pushed only after its file has uploaded through a presigned URL with `Content-Length` and `Content-Type` signed.
+  - The server checks (`HEAD`) that the object exists before accepting audio fields. If it doesn't, the server returns the ID in `missingAudio`.
+  - Object deletion only goes through the `audio_deletions` queue and cron jobs, never as fire-and-forget work after a response.
 - **Treat the ID like a secret.**
   - Normalize it with the shared `normalizeId()` (uppercase; drop spaces and dashes; `O`→`0`, `I`/`L`→`1`).
-  - Send it only in the `Authorization: Bearer` header or the web session cookie.
-  - **Never** put it in URLs, page titles, analytics, or logs. Log a hash instead.
-  - Rate-limit every endpoint that looks up an ID.
-- **Keep shared logic shared.** Validation (zod), date math, ID utilities, and chart/stats calculations live in `packages/shared`. Mobile and web must use these rather than reimplementing them, so both show identical numbers.
-- **Validation limits** (enforce on client and server): value is an integer 1–10; note ≤ 2,000 characters; audio ≤ 5 minutes and ≤ 5 MB, one recording per day; dates from `1900-01-01` to UTC today + 1 day.
+  - Send it only in the `Authorization: Bearer` header.
+  - Web sessions are server-side rows. The cookie holds a signed session ID, never the ID itself.
+  - **Never** put it in URLs, cookies, page titles, analytics, or logs. Log a hash instead.
+  - Rate-limit every endpoint that looks up an ID, per IP and globally, through Upstash Redis. In-memory counters don't work on serverless.
+- **Keep the identity record together.** `{ id, secret, registered }` is one secure-storage record, never split between secure storage and SQLite. Registration is idempotent: the same secret means `200`, a different secret means `409`.
+- **Keep shared logic shared.** Validation (zod), date math, ID utilities, and chart/stats calculations live in `packages/shared`. Mobile and web must use these rather than reimplementing them, so both show identical numbers. Stats follow the definitions in `PLAN.md` §4.5 exactly (logged day, bucketing thresholds, rolling average, streak).
+- **Validation limits** (enforce on client and server): value is an integer 1–10; note ≤ 2,000 characters; audio ≤ 5 minutes and ≤ 5 MB, one recording per day; dates from `1900-01-01` to UTC today + 1 day; client timestamps more than 5 minutes in the future are clamped.
+- **Privacy:** no third-party analytics, ad, or tracking SDKs. Don't store IP addresses with entries. Android Auto Backup stays disabled. Cookie-authenticated mutations check the `Origin` header.
 
 ## Conventions
 

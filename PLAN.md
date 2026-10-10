@@ -8,7 +8,7 @@
   - Each day can also have an optional **text note** and an optional **audio recording**.
   - A History view shows past values as a list and a chart.
   - Everything is stored on the device, so the app works offline. It syncs to the server on its own when a connection is available.
-- **No accounts, no sign-in.** On first launch the app generates a short **unique ID** (letters and numbers only). That ID is what links the phone's data to the server.
+- **No accounts, no sign-in.** On first launch the app generates a short **unique ID** (letters and numbers only). That ID is what links the phone's data to the server. A one-time notice explains that entries sync to the server. Syncing is on by default, and the user can choose to keep data on the phone only.
 - **Web app:** enter your ID to see your numbers, notes, and recordings over time, with simple charts and an adjustable date range.
 
 **At most one entry per calendar day.** Selecting a number updates that day's value. A value can be changed but never cleared. The note and recording for a day can be edited or removed.
@@ -26,15 +26,17 @@
 | Local storage | **expo-sqlite** | Durable and queryable, and it holds the sync metadata. |
 | Audio | **expo-audio** (record + playback) + **expo-file-system** | Records AAC `.m4a` files and stores them in the app's documents directory. |
 | Connectivity | `@react-native-community/netinfo` | Starts a sync when the device comes back online. |
-| ID storage | `expo-secure-store` | Keeps the unique ID in the Keychain on iOS and the Keystore on Android. |
+| ID storage | `expo-secure-store` | Keeps the unique ID, its registration secret, and its registered flag together in the Keychain on iOS and the Keystore on Android. |
 | Web + API | **Next.js (App Router) + TypeScript** | The dashboard UI and the REST API live in one deployable app. |
 | Database | **PostgreSQL** (Neon / Supabase / RDS) + **Drizzle ORM** | |
 | Audio file storage | **Cloudflare R2** (S3-compatible; Vercel Blob or S3 also work) | Cheap object storage with no download (egress) fees. Files move through short-lived presigned URLs. |
 | Access | **ID-based, no accounts** (custom, see §5) | No email, no password, no third-party auth library. |
+| Rate limiting | **Upstash Redis** + `@upstash/ratelimit` | Serverless instances share no memory, so limits need a shared store. A Postgres table also works at small scale. |
+| Scheduled jobs | **Vercel Cron** | Runs the audio deletion queue and the orphaned-file sweep (§6.3). |
 | Charts (web) | **Recharts** | Simple and good enough for line and bar charts. |
 | Charts (mobile) | **victory-native** (Skia-based, works with Expo) | Native-speed line and bar charts with touch tooltips. A simpler alternative is `react-native-gifted-charts`. |
 | Validation / shared types | **zod** in a shared package | Mobile and server validate payloads the same way. |
-| Hosting | Vercel (web/API) + managed Postgres + R2 | |
+| Hosting | Vercel (web/API) + managed Postgres + R2 + Upstash | No third-party analytics or ad SDKs anywhere. |
 
 **Repo layout (pnpm workspaces monorepo):**
 ```
@@ -76,18 +78,20 @@ CREATE TABLE audio_files (
   uploaded    INTEGER NOT NULL DEFAULT 0 -- 1 = file is on the server
 );
 CREATE TABLE sync_state (
-  key   TEXT PRIMARY KEY,                -- 'cursor', 'last_synced_at', 'id_registered'
+  key   TEXT PRIMARY KEY,                -- 'cursor', 'last_synced_at'
   value TEXT
 );
 ```
-The unique ID itself lives in `expo-secure-store`, not in SQLite.
+The identity record `{ id, secret, registered }` lives in `expo-secure-store`, not in SQLite. All three are kept together so they survive or disappear together (see §5.2 for the reinstall rules).
 
 ### Server (Postgres)
 ```sql
 profiles (
-  id          text PRIMARY KEY,          -- the unique ID, normalized (uppercase, no spaces)
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  last_seen   timestamptz
+  id           text PRIMARY KEY,         -- the unique ID, normalized (uppercase, no spaces)
+  secret_hash  text NOT NULL,            -- hash of the registering device's secret (§5.2)
+  seq          bigint NOT NULL DEFAULT 0,-- per-profile change counter (§6.2)
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  last_seen    timestamptz
 );
 entries (
   profile_id         text REFERENCES profiles(id) ON DELETE CASCADE,
@@ -99,12 +103,25 @@ entries (
   audio_id           uuid,
   audio_duration_ms  integer,
   audio_updated_at   timestamptz,
-  server_seq         bigserial,          -- bumped on every change, used as pull cursor
+  server_seq         bigint NOT NULL,    -- set from profiles.seq on every insert AND update; pull cursor
   PRIMARY KEY (profile_id, date)
 );
 CREATE INDEX ON entries (profile_id, server_seq);
+
+sessions (                               -- web sessions (§5.3)
+  id          text PRIMARY KEY,          -- random; the cookie holds this, signed
+  profile_id  text REFERENCES profiles(id) ON DELETE CASCADE,
+  expires_at  timestamptz NOT NULL
+);
+
+audio_deletions (                        -- queue drained by a cron job (§6.3)
+  object_key   text PRIMARY KEY,
+  delete_after timestamptz NOT NULL
+);
 ```
 Audio objects are stored at `audio/<profile_id>/<audio_id>.m4a`.
+
+`server_seq` is deliberately **not** a `bigserial`. A sequence only assigns a number on insert, and concurrent transactions can commit out of order, which would let a client's cursor skip rows. See §6.2 for how it's assigned.
 
 ---
 
@@ -187,12 +204,12 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 ```
 
 - **Range:** presets 7D · 30D · 90D · 1Y · All, the same as the web dashboard. The default is 30D. Custom ranges are left to the web.
-- **Summary row:** average, min, max, and days logged out of days in range. These are computed by the same shared helper the web uses, so both show the same numbers.
+- **Summary row:** average, min, max, and days logged out of days in range. These are computed by the same shared helper the web uses, so both show the same numbers (definitions in §4.5).
 - **Line chart:**
   - X = date, Y = fixed 1–10 axis.
   - Missing days, and days that only have a note, are gaps, not zeros.
   - Press and drag shows the date and value.
-  - For 1Y and All, show weekly averages so the chart stays readable.
+  - Long ranges switch to weekly or monthly averages, following the shared rules in §4.5.
 - **Counts chart:** a toggle switches to a bar chart showing how many days each value (1–10) was recorded in the range.
 - **List (value-wise):**
   - One row per day in the range, newest first, showing the date and its value ("—" if none).
@@ -205,58 +222,116 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 
 ### 4.3 Screen: Settings
 - **Your ID:**
-  - Shown large and grouped for readability (e.g., `7K3M9 QX2PD`).
+  - Shown large and grouped for readability (e.g., `7K3M 9QX2 PDA4`).
   - Buttons to **Copy** and **Share** it, plus a "Write this down. It's the only way to see your data on the web or move it to a new phone" hint.
   - Before the ID has been registered with the server (first sync), it shows "Not active on the web yet".
 - **Open web view:** a link to the website. The ID is *not* put in the URL.
 - **Use an existing ID:** for a new phone or a reinstall. See §5.4.
-- **Sync:** last sync time and a "Sync now" button.
-- **Delete my data from the server** (with confirmation). This removes all entries and audio for the ID from the server. Local data stays unless the user also chooses "Delete from this device too".
+- **Sync:**
+  - Shows the last sync time and a "Sync now" button.
+  - When sync is off, shows "Sync is off" with a **Start syncing** button. Starting creates a new ID and uploads all local data.
+- **Delete my data from the server** (with confirmation). This removes all entries and audio for the ID from the server, then asks:
+  - **Also delete from this device:** wipes local data, then starts fresh with a new ID.
+  - **Keep on this device:** keeps local data, clears the ID, and **turns sync off**, so nothing gets re-uploaded.
 - **Export CSV:** date, value, and note. Recordings can optionally be shared as a zip.
 
 ### 4.4 Offline-first behavior
 - The app is **fully usable without internet from the very first launch.** The ID is generated on the device, and every change is saved locally with `dirty = 1`.
-- The first time the app is online, it registers the ID and pushes everything. After that, sync just keeps both sides up to date.
+- **One-time sync notice on first launch:** "Your entries are saved on this phone and synced to our server so you can view them on the web."
+  - **Continue** (default) turns sync on.
+  - **Keep on this phone only** leaves sync off. No ID is registered and nothing leaves the device until the user starts syncing in Settings.
+  - The wording stays neutral, and it links to the privacy policy.
+- The first time the app is online with sync on, it registers the ID and pushes everything. After that, sync just keeps both sides up to date.
 - Recordings are uploaded in the background when online, and they upload *before* the entry that references them (see §6.3).
+- **Backups:**
+  - Android Auto Backup is **disabled** (`android.allowBackup: false`). Otherwise it could restore the database without the secure-store ID, because Keystore-protected values aren't backed up.
+  - The server is the backup. Restoring on a new phone goes through "Use an existing ID".
+
+### 4.5 Stats definitions (shared with the web)
+Implemented once in `packages/shared` and used by both the History tab and the web dashboard:
+- **Logged day:** a day with a value. Days with only a note or recording don't count toward stats or "days logged".
+- **Average:** mean of logged values in the range, shown to 1 decimal. Min and max are taken over logged values.
+- **Bucketing by range length** (presets and custom ranges alike):
+  - ≤ 90 days: daily points.
+  - 91–730 days: weekly averages (ISO weeks, starting Monday).
+  - Over 730 days: monthly averages.
+  - A bucket with no logged days is a gap.
+- **7-day rolling average:** for each day, the mean of logged values in that day and the 6 before it. It's shown only when at least 4 of those 7 days are logged, otherwise it's a gap.
+- **Current streak** (web only): consecutive logged days ending today, or ending yesterday if today isn't logged yet, so the streak doesn't drop to zero before the day ends.
+- **Value counts:** how many logged days had each value 1–10 in the range.
 
 ---
 
 ## 5. Unique ID: access without accounts
 
 ### 5.1 Format
-- **10 characters** from the **Crockford Base32** alphabet: digits `0–9` and letters `A–Z` **excluding `I`, `L`, `O`, `U`**. That leaves letters and numbers only, without the easily confused characters.
-- **Size:** about 50 bits of randomness, roughly 1 quadrillion possible IDs. That is short enough to type and big enough that guessing one is impractical once rate limiting is added (§5.5).
-- **Display:** shown as two groups of five (`7K3M9 QX2PD`). The space is only visual and is not part of the ID.
+- **12 characters** from the **Crockford Base32** alphabet: digits `0–9` and letters `A–Z` **excluding `I`, `L`, `O`, `U`**. That leaves letters and numbers only, without the easily confused characters.
+- **Size:** 60 bits of randomness, about 1.15 quintillion possible IDs.
+  - 10 characters (50 bits) was considered and rejected. With ~100k users, a billion guesses spread across many IPs would have about a 9% chance of hitting someone's ID.
+  - At 12 characters the same attack has about a 0.01% chance. The data (mood scores and voice recordings) justifies the two extra characters.
+- **Display:** shown as three groups of four (`7K3M 9QX2 PDA4`). The spaces are only visual and are not part of the ID.
 - **Lenient input:** typed IDs are case-insensitive, spaces and dashes are ignored, and look-alikes are mapped (`O`→`0`, `I`/`L`→`1`).
 - **Generation:** uses a cryptographically secure random source (`expo-crypto` `getRandomBytes`).
 
 ### 5.2 Lifecycle
-1. **First launch:** the app generates an ID locally and stores it in secure storage. No network is needed.
-2. **First online sync:** `POST /api/ids/register` with the ID.
-   - If the ID is new, the server creates the profile, and the ID is now active.
-   - If the ID already exists (vanishingly rare), the server returns `409`. The app silently generates a new ID and tries again. This only happens before the ID has ever been shown as "active", so the user is never affected.
-3. **Every sync and API call** sends the ID as `Authorization: Bearer <ID>` over HTTPS.
+1. **First launch:**
+   - The app generates an ID and a 128-bit random **registration secret**.
+   - It stores `{ id, secret, registered: false }` as a single secure-storage record. No network is needed.
+2. **First online sync** (sync on): `POST /api/ids/register` with `{ id, secret }`. Registration is **idempotent**:
+   - **ID is new:** the server creates the profile and stores a hash of the secret. Returns `200`.
+   - **ID exists, same secret:** this is the same device re-registering (e.g., a reinstall, or a retry after a lost response). Returns `200`.
+   - **ID exists, different secret:** a true collision (odds are negligible at 60 bits). Returns `409`, and the app generates a new ID and secret and retries.
+     - At this point the ID may already have been displayed, so Settings shows it as "Not active on the web yet" until registration succeeds. Users should only rely on an ID once it's active.
+   - On `200`, the app sets `registered: true` in the same secure-storage record.
+3. **Every sync and API call** sends the ID as `Authorization: Bearer <ID>` over HTTPS. The secret is used only for registration. The ID alone grants access (§5.5).
+4. **Startup reconciliation.** The ID (secure storage) and data (SQLite) can survive independently. On iOS, Keychain items survive an uninstall but app files don't.
+   - **ID present, database empty or missing:** treat as a reinstall. Reset the cursor, re-register (succeeds thanks to the secret), and do a full pull.
+   - **Database has synced history (a cursor exists), but the ID is missing:** **don't** silently generate a new ID. Show a one-time prompt: "Enter your ID to keep syncing" with **Enter ID** (goes to §5.4) or **Start new** (new ID, all rows marked dirty, all recordings re-queued for upload).
+   - **Neither present:** this is a first launch.
 
 ### 5.3 Web login
 - `/` is a single field: "Enter your ID", plus a "View" button. Wording stays neutral.
-- On success, the server sets a signed, `httpOnly`, `Secure`, `SameSite=Lax` session cookie (30 days) and redirects to `/dashboard`. A **Sign out** link clears the cookie.
+- On success, the server creates a `sessions` row and sets a signed, `httpOnly`, `Secure`, `SameSite=Lax` cookie holding the session ID (30 days). Then it redirects to `/dashboard`. **Sign out** deletes the session row and clears the cookie.
 - Invalid IDs get a generic "ID not found" error after a small fixed delay.
 - The ID never appears in URLs, page titles, or logs. Server logs record a hash of it only.
 
 ### 5.4 New phone / reinstall
-- Settings → **Use an existing ID** → enter the ID → the app verifies it with the server.
-  - If this device already has local entries under its own ID, the app asks: **Merge** them into the existing ID or **Discard** them.
-  - The app then switches to the existing ID and does a full pull.
+- Settings → **Use an existing ID** → enter the ID → the app verifies it with `POST /api/ids/verify`.
+- The app saves `{ id, secret: null, registered: true }`. A device that adopts an ID never registers it, so it doesn't need the secret.
+- If this device already has local entries, the app asks:
+  - **Merge into this ID:**
+    - Mark **every** local row `dirty = 1`. Rows synced under the old ID were clean and would otherwise never be pushed.
+    - Set `uploaded = 0` on every local recording.
+    - Reset the cursor to `null`, then sync.
+    - Per-field LWW decides any days that exist on both sides.
+  - **Discard local data:** delete local rows and recording files, reset the cursor to `null`, then do a full pull.
+- The previous ID's server data is left untouched. The confirmation dialog says so, and suggests "Delete my data from the server" first if the user wants it gone.
 - Several devices can use the same ID at once. They sync through the per-field merge (§6.2).
 
 ### 5.5 Security model (accepted trade-offs)
 - **The ID is the only key.** Anyone who has it can view and add data for it. There is no email, so **a lost ID can't be recovered**. The Settings screen makes this clear.
-- **Brute-force protection:**
-  - Limit login and registration attempts per IP (e.g., 10 per minute, then increasing backoff).
+- **Brute-force protection** (counters live in Upstash Redis, since serverless instances share no memory):
+  - **Per IP:** 10 failed lookups per minute, then increasing backoff.
+  - **Global:** a cap on failed lookups across all IPs (e.g., 1,000 per minute). Above it, every lookup gets a short delay, and an alert fires. This covers attacks spread over many IPs, where per-IP limits alone don't help.
   - Return the same response for "wrong format" and "not found".
-  - Alert on unusual numbers of failed lookups.
-- **Replace ID** (Settings, low cost): generates a new ID and moves the server data over to it, in case the old one was shared by accident. Other devices using the old ID get `401` and are asked to enter the new one.
+- **Replace ID** (Settings, low cost): generates a new ID and secret and moves the server data over to it, in case the old one was shared by accident. Other devices using the old ID get `401` and are asked to enter the new one. Web sessions for the old ID stop working.
+- **Web sessions:** the session cookie holds a signed session ID, never the ID itself. The profile is looked up on every request, so deleted or replaced IDs lose access right away.
+- **CSRF:** cookie-authenticated mutations (`DELETE /api/session`, `DELETE /api/data`) also check the `Origin` header.
 - All traffic is HTTPS only. Audio is only reachable through short-lived signed URLs handed out after an ID check.
+
+### 5.6 Data protection & compliance
+Mood scores and voice recordings are likely **health-related data** (a special category under GDPR), so:
+- **Encryption:** TLS in transit. Encryption at rest for Postgres and R2 (the default on Neon/Supabase and R2, but confirm it for whichever provider is chosen).
+- **Consent:** the first-launch sync notice (§4.4) is the explicit opt-in. Keeping data on the phone only is always available.
+- **Retention and deletion:**
+  - "Delete my data" removes database rows immediately and queues audio objects for deletion within 24 hours.
+  - Database point-in-time backups expire within 7 days, and the privacy policy says so.
+  - Profiles with no sync for 2+ years may be purged after a notice in the app.
+- **Minimal collection:** no email, no name, no analytics or ad SDKs. IP addresses are used only transiently for rate limiting and are not stored with entries.
+- **Store disclosures:**
+  - **App Store privacy label:** Health, Audio Data, Other User Content (notes), User ID. Not used for tracking.
+  - **Google Play Data Safety:** the matching categories, encrypted in transit, deletion available.
+- **Privacy policy** (`/privacy`, linked in the app and the store listings) covers what's collected, why, the processors (Vercel, the Postgres host, Cloudflare, Upstash), retention, how to delete, and a contact address.
 
 ---
 
@@ -279,30 +354,49 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 }
 // response
 {
-  "applied": ["2026-10-10"],        // dates processed (accepted, or server already had newer)
-  "changes": [ /* server rows with server_seq > cursor, same shape */ ],
-  "cursor": "1840"
+  "applied": [ /* the server's stored version of every pushed row, after merge + clamping */ ],
+  "changes": [ /* up to 500 rows with server_seq > cursor, ordered by server_seq */ ],
+  "cursor": "1840",                 // server_seq of the last row in `changes`
+  "hasMore": false,                 // true → client immediately calls again with the new cursor and no changes
+  "missingAudio": []                // audioIds whose file isn't on the server yet; client re-uploads (§6.3)
 }
 ```
-Each field group (value / note / audio) is optional in a change. The client only sends the groups that changed.
+- Each field group (value / note / audio) is optional in a change. The client only sends the groups that changed.
+- **Pulls are paginated.** A new phone pulling years of history loops until `hasMore` is `false`. Pushes are chunked the same way (§6.5).
 
 ### 6.2 Conflict resolution: last-write-wins per field
-- For each field group, the server takes the incoming version **only if** its `*UpdatedAt` is newer than the stored one. Any accepted change bumps `server_seq`.
+- **Ordering:** each sync request runs in one transaction that first locks the profile row (`SELECT … FROM profiles WHERE id = $1 FOR UPDATE`).
+  - Every inserted **or updated** entry gets `server_seq = profiles.seq + 1`, and `profiles.seq` is incremented.
+  - Concurrent syncs for the same ID are therefore serialized, and `server_seq` values always become visible in commit order. A cursor can never skip a row.
+  - Different IDs never block each other.
+- For each field group, the server takes the incoming version **only if** its `*UpdatedAt` is newer than the stored one.
 - **Value can't be cleared:** a `null` value is never accepted over an existing one.
 - **Notes and recordings can be cleared:** `null` plus a newer timestamp removes them.
-- When a recording is replaced or removed, the server deletes the old audio object asynchronously, after the database change commits.
-- The client applies each pulled field group only if the local copy of that group is not dirty, or the pulled timestamp is newer.
-- After a successful response, the client clears `dirty` only for rows unchanged since the push. It compares timestamps so a tap or keystroke during the sync isn't lost.
+- When a recording is replaced or removed, the old object key is inserted into `audio_deletions` in the same transaction. A cron job deletes it later (§6.3).
+- **Acknowledged rows:** for each row in `applied` that hasn't changed locally since the push, the client **replaces its local copy with the server's version, timestamps included**, and clears `dirty`.
+  - Rows edited during the sync (detected by comparing timestamps) stay dirty, so a tap or keystroke made mid-sync isn't lost.
+- **Pulled rows:** the client applies each pulled field group only if the local copy of that group is not dirty, or the pulled timestamp is newer.
 - Pushes are **idempotent**, so retries are always safe.
-- Known limitation: LWW relies on device clocks. That is fine for one person on one or two phones. The server clamps timestamps that are far in the future to `now()`.
+- **Clock limitation:** LWW relies on device clocks, which is fine for one person on one or two phones.
+  - The server clamps timestamps more than 5 minutes in the future to `now()`.
+  - Because the client adopts the server's stored timestamps, a phone with a fast clock can't keep a stale value that beats newer edits.
 
 ### 6.3 Audio transfer
 1. **Upload:**
-   - The client calls `POST /api/audio/upload-url` with `{ audioId, size }`. The server checks the ID and size, then returns a presigned PUT URL (valid 10 min).
+   - The client calls `POST /api/audio/upload-url` with `{ audioId, size }`. The server checks the ID and that `size` ≤ 5 MB, then returns a presigned PUT URL (valid 10 min).
+   - **`Content-Length` and `Content-Type: audio/mp4` are part of the signature**, so R2 rejects any upload of a different size or type.
    - The client PUTs the `.m4a` file directly to R2, then marks `audio_files.uploaded = 1`.
-   - The client only pushes a row's audio fields **after** its file has uploaded. Until then the row's value and note still sync, and the audio fields wait. That way the server never references a missing file.
-2. **Download:** `GET /api/audio/:audioId` checks the ID or web session, then redirects (302) to a presigned GET URL (valid 10 min). The mobile app downloads on first play and caches the file. The web plays it in an `<audio>` element.
-3. **Retries:** uploads use the same backoff as sync. Large uploads only start when online. An optional "Upload recordings on Wi-Fi only" setting is a cheap later addition.
+   - The client only pushes a row's audio fields **after** its file has uploaded. Until then the row's value and note still sync, and the audio fields wait.
+2. **Verification on sync:**
+   - Before accepting an audio field group, the server checks (`HEAD`) that `audio/<profile_id>/<audioId>.m4a` exists and is ≤ 5 MB.
+   - If not, the server rejects that group only and returns its `audioId` in a `missingAudio` list. The client resets `uploaded = 0` and uploads again.
+   - So the server never references a missing file.
+3. **Download:** `GET /api/audio/:audioId` checks the ID or web session, then redirects (302) to a presigned GET URL (valid 10 min). The mobile app downloads on first play and caches the file. The web plays it in an `<audio>` element.
+4. **Cleanup** (Vercel Cron, since serverless functions can't reliably do work after responding):
+   - **Hourly:** delete objects in `audio_deletions` whose `delete_after` has passed. This covers replaced and removed recordings and "Delete my data".
+   - **Daily orphan sweep:** list objects older than 24h that no entry references, and delete them. Orphans come from recordings uploaded and then deleted or replaced before their row synced, or from abandoned uploads.
+5. **Retries:** uploads use the same backoff as sync. Large uploads only start when online. An optional "Upload recordings on Wi-Fi only" setting is a cheap later addition.
+6. **Local cleanup:** when a recording is replaced or deleted on the phone, its local file and `audio_files` row are removed once the change has synced.
 
 ### 6.4 When sync runs
 iOS background execution is unreliable, so sync **opportunistically**:
@@ -315,15 +409,15 @@ iOS background execution is unreliable, so sync **opportunistically**:
 Failures retry with exponential backoff (cap ~5 min while foregrounded). Only one sync runs at a time, enforced with a mutex.
 
 ### 6.5 Server-side validation
-- **ID:** 10 valid Crockford Base32 characters after normalization, and registered.
+- **ID:** 12 valid Crockford Base32 characters after normalization, and registered.
 - **`value`:** an integer from 1 to 10.
 - **`note`:** at most 2,000 characters.
 - **Audio:** at most 5 MB and 5 minutes. `audioId` must be a UUID.
 - **`date`:**
   - It must be a valid date **on or before the current UTC date + 1 day**. That one day of leeway covers timezones ahead of UTC (e.g., Pacific/Kiritimati). The future-date rule is mainly enforced by the client.
   - There is no lower limit apart from a sanity floor of `1900-01-01`.
-- **Batch size:** at most ~1000 changes per request. The client splits larger pushes into chunks.
-- **Rate limiting:** per ID and per IP.
+- **Batch size:** at most 500 changes per push and 500 rows per pull. The client splits larger pushes into chunks.
+- **Rate limiting:** per ID and per IP, enforced through Upstash (§5.5).
 
 ---
 
@@ -332,7 +426,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 ### 7.1 API routes
 | Route | Purpose |
 |---|---|
-| `POST /api/ids/register` | Register a newly generated ID (mobile) |
+| `POST /api/ids/register` | Register a newly generated ID + secret (mobile, idempotent) |
 | `POST /api/ids/verify` | Check that an ID exists ("Use an existing ID" on mobile) |
 | `POST /api/ids/replace` | Move data to a new ID |
 | `POST /api/session` / `DELETE /api/session` | Web login with ID / sign out |
@@ -340,17 +434,18 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 | `POST /api/audio/upload-url` | Presigned upload URL |
 | `GET /api/audio/:audioId` | Redirect to a presigned download URL |
 | `GET /api/entries?from=YYYY-MM-DD&to=YYYY-MM-DD` | Dashboard data for a date range |
-| `DELETE /api/data` | Delete all server data for the ID (entries + audio) |
+| `DELETE /api/data` | Delete all server data for the ID (profile, entries, sessions; audio queued for deletion) |
+| `GET /api/cron/audio-deletions`, `GET /api/cron/orphan-sweep` | Vercel Cron jobs (protected by `CRON_SECRET`) |
 | `GET /api/health` | Uptime checks |
 
 ### 7.2 Dashboard page (`/dashboard`, session required)
 - **Date range control:** presets **7D · 30D · 90D · 1Y · All**, plus a **custom** from/to picker. The range is kept in the URL query string (`?from=…&to=…`) so it can be bookmarked. Only the range goes in the URL, never the ID.
-- **Summary tiles for the range:** average, min, max, days logged / days in range, and a current streak.
+- **Summary tiles for the range:** average, min, max, days logged / days in range, and a current streak (definitions in §4.5).
 - **Main chart: line chart of value over time.**
   - X = date, Y = 1–10 (fixed axis).
   - Days without a value show as **gaps** and are not interpolated to zero.
   - Optional toggle for a **7-day rolling average** overlay.
-  - For ranges longer than ~180 days, offer weekly or monthly averages so the chart stays readable.
+  - Long ranges switch to weekly or monthly averages, following the shared rules in §4.5 (identical to the app).
   - Tooltip shows the date, the value, and a short note preview, if any. Points for days with a note or recording get a small marker.
 - **Secondary chart: distribution bar chart** showing how many days each value (1–10) was recorded in the range.
 - **Entries table** below the charts, sorted newest first and paginated.
@@ -367,17 +462,18 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 
 ## 8. Implementation phases
 
-### Phase 0: Foundations (≈2–3 days)
+### Phase 0: Foundations (≈3–4 days)
 - Set up the monorepo (pnpm, TypeScript, ESLint/Prettier, CI running lint and tests).
 - `packages/shared`:
   - zod schemas for `Entry` and the sync request/response.
   - Date utilities (`todayLocal()`, `isFutureDate()`, `addDays()`) using `date-fns`.
   - ID utilities: `generateId()`, `normalizeId()`, `isValidId()`, `formatIdForDisplay()`.
-  - Stats helpers used by both the mobile History tab and the web dashboard: range presets → from/to, fill missing days with `null` for gaps, rolling and weekly averages, summary stats, and value counts.
+  - Stats helpers implementing §4.5, used by both the mobile History tab and the web dashboard: range presets → from/to, gap filling, bucketing, rolling average, summary stats, streak, and value counts.
 
-### Phase 1: Mobile, local-only (≈2.5 weeks)
+### Phase 1: Mobile, local-only (≈3 weeks)
 - Expo app scaffold (expo-router tabs: Today, History, Settings) with the SQLite schema and migrations.
-- Local ID generation on first launch, shown in Settings with copy/share.
+- Local ID + secret generation on first launch (a single secure-storage record), the one-time sync notice, and the ID shown in Settings with copy/share.
+- Android Auto Backup disabled.
 - Today screen:
   - Day selector (arrows + calendar picker, future blocked, no lower limit).
   - The 1–10 keypad (3×3 grid with 10 centered on the bottom row) with persistent highlight.
@@ -386,30 +482,40 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - History tab: range presets, summary row, line chart, counts chart toggle, and the list of days with note/recording markers. Tapping a row opens that day on the Today tab.
 - ✅ Done when everything works in airplane mode on both platforms.
 
-### Phase 2: Server (≈1–1.5 weeks)
-- Next.js app, Postgres schema, Drizzle migrations, R2 bucket.
-- ID register/verify endpoints, bearer-ID middleware, rate limiting.
-- `POST /api/sync` with per-field LWW and validation.
-- Presigned audio upload/download and async cleanup of replaced recordings.
+### Phase 2: Server (≈2 weeks)
+- Next.js app, Postgres schema, Drizzle migrations, R2 bucket, Upstash.
+- Idempotent ID register (with secret) and verify endpoints, bearer-ID middleware, per-IP and global rate limiting.
+- `POST /api/sync`:
+  - per-profile row lock and `seq` assignment,
+  - per-field LWW with timestamp clamping,
+  - `applied` rows in the response,
+  - paginated pulls,
+  - validation.
+- Presigned audio upload with signed size/type, a HEAD check during sync, and the `missingAudio` response list. Presigned download.
+- `audio_deletions` queue and the two cron jobs.
 - Deploy to staging.
 
-### Phase 3: Sync in the mobile app (≈1.5 weeks)
-- Sync engine: register the ID, push dirty field groups, pull since cursor, merge, mark clean. Includes triggers, backoff, mutex, and the status indicator.
-- Audio upload queue (upload before push) and lazy download with a local cache.
-- "Use an existing ID" flow with merge/discard.
+### Phase 3: Sync in the mobile app (≈2 weeks)
+- Sync engine: register the ID, push dirty field groups, adopt `applied` rows, pull pages until `hasMore` is false, merge. Includes triggers, backoff, mutex, and the status indicator.
+- Audio upload queue (upload before push, re-upload on `missingAudio`), lazy download with a local cache, and local file cleanup.
+- Startup reconciliation of ID vs. database (§5.2).
+- "Use an existing ID" with merge (mark all dirty, re-queue recordings, reset cursor) or discard.
+- Sync off/on states, and "Delete my data" with both of its outcomes.
 - ✅ Done when offline edits on two phones sharing an ID (value on one, note and recording on the other, same day) converge correctly after both come online.
 
-### Phase 4: Web dashboard (≈1 week)
-- ID entry page, session cookie, sign out.
+### Phase 4: Web dashboard (≈1.5 weeks)
+- ID entry page, server-side sessions, sign out, Origin checks.
 - `GET /api/entries` and the dashboard with range presets and custom range in the URL.
 - Line chart with gaps and the rolling average, distribution chart, summary tiles, and the entries table with notes and audio playback.
 
-### Phase 5: Polish + release (≈1 week)
-- App icon, splash screen, dark mode, store listings, privacy policy (needed by both stores). Keep the icon, display name ("Down & Up"), listing text, and the mic permission string neutral, with no mention of mood.
-- Delete-my-data, CSV export, and Replace ID.
+### Phase 5: Polish + release (≈2 weeks, including store review buffer)
+- App icon, splash screen, dark mode, store listings. Keep the icon, display name ("Down & Up"), listing text, and the mic permission string neutral, with no mention of mood.
+- Privacy policy, App Store privacy label, and Play Data Safety form (§5.6). Confirm encryption at rest and the backup retention settings with the chosen providers.
+- CSV export and Replace ID.
+- Real-device testing of audio (interruptions, Bluetooth headsets, both platforms) and two-phone sync.
 - EAS build and submission to TestFlight and Play internal testing, then production.
 
-**Rough total: about 8 weeks for one developer.**
+**Rough total: about 10–12 weeks for one developer.**
 
 ---
 
@@ -423,20 +529,32 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Two phones sharing an ID: offline edits on both, different fields on the same day, the same field on both.
   - A tap or keystroke during an in-flight sync.
   - Retry after a dropped response.
-  - The ID collision path (`409`) during registration.
+  - Two syncs for the same ID racing each other: no row is ever skipped by a cursor.
+  - Pull pagination across several pages, including rows changing between pages.
+  - A future-dated timestamp gets clamped, and the client adopts the server's version.
+  - Registration: a new ID, a repeat with the same secret (`200`), and a different secret (`409` → new ID).
 - **Audio:**
   - Upload interrupted mid-way, then retried.
   - Row pushed before its file finished uploading: the audio fields are held back.
   - Replace/delete removes the old object on the server.
   - Recording stopped by an interruption.
+  - A row referencing a file that's missing on the server is answered with `missingAudio`, and the file is re-uploaded.
+  - The cron jobs delete queued and orphaned objects, and nothing that's still referenced.
 - **Mobile E2E (Maestro):**
   - Select a day, tap 3 then 8, and check that 8 is highlighted.
   - Try to go past today and check it's blocked. Pick a date years back.
   - Add a note and a recording.
   - Airplane-mode round trip.
+  - Reinstall cases: ID kept but database gone (full restore), and database kept but ID gone (prompt, no silent new ID).
+  - "Use an existing ID" with Merge (previously synced rows reach the new ID) and with Discard.
+  - "Delete my data" with each choice. "Keep on this device" turns sync off and uploads nothing.
   - In History, check that the value, note marker, and chart update, then tap a row and confirm it opens that day on the Today tab.
 - **Web E2E (Playwright):** enter an ID, change range presets and check that the chart and the URL update, play a recording, sign out. A bad ID gets the generic error.
-- **Security checks:** rate limiting on ID lookup, and the ID never appearing in URLs or logs.
+- **Security checks:**
+  - Per-IP and global rate limits on ID lookup.
+  - The ID never appearing in URLs, cookies, or logs.
+  - Old sessions rejected after Replace ID or Delete.
+  - Origin checks on cookie-authenticated mutations.
 
 ---
 
@@ -449,7 +567,10 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **In-app history:** a History tab with a list of values by day and charts, read from local data so it works offline.
 - **Notes:** an optional text note (≤2,000 chars) and an optional audio recording (≤5 min, one per day) for any day.
 - **Past dates:** no limit on how far back.
-- **No sign-in:** a device-generated 10-character letters-and-numbers ID links the app to the web. The web login is just that ID.
+- **No sign-in:** a device-generated **12-character** letters-and-numbers ID links the app to the web. The web login is just that ID. A hidden registration secret makes re-registering safe after a reinstall.
+- **Sync consent:** a one-time notice on first launch. Sync is on by default, and "Keep on this phone only" is available.
+- **Android Auto Backup:** disabled. The server is the backup.
+- **Delete my data:** either wipes the device too (fresh ID), or keeps local data and turns sync off.
 
 ## 11. Open questions
 1. **Reminders:** a daily local notification? If added, it should use neutral text with no mood wording (e.g., just the app name, or "Reminder").
