@@ -36,6 +36,7 @@ Package manager: **pnpm** workspaces. Once tooling exists, list the real command
 - **Dates:** default to today. Future dates are never allowed. There is no lower limit.
 - **Offline-first:** every feature, including History, works with no network. All reads come from local SQLite. The network is used only for sync.
 - **No accounts:** access is a device-generated **12-character Crockford Base32 ID**. There's no email, no password, and no auth library. The web login is just that ID.
+- **Reminders:** set only on the web (on/off + `HH:MM`). The phone schedules them as local notifications in **phone-local time**, skips days that already have a value, and uses neutral text ("Down & Up" / "Reminder"). No server push (`PLAN.md` §4.6).
 - **Sync consent:** a one-time notice on first launch. Sync is on by default, and "keep on this phone only" must always work: no network calls with user data while sync is off.
 
 ## Technical invariants

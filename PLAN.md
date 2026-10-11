@@ -9,7 +9,7 @@
   - A History view shows past values as a list and a chart.
   - Everything is stored on the device, so the app works offline. It syncs to the server on its own when a connection is available.
 - **No accounts, no sign-in.** On first launch the app generates a short **unique ID** (letters and numbers only). That ID is what links the phone's data to the server. A one-time notice explains that entries sync to the server. Syncing is on by default, and the user can choose to keep data on the phone only.
-- **Web app:** enter your ID to see your numbers, notes, and recordings over time, with simple charts and an adjustable date range.
+- **Web app:** enter your ID to see your numbers, notes, and recordings over time, with simple charts and an adjustable date range. The web is also where you turn on an optional **daily reminder** and set its time.
 
 **At most one entry per calendar day.** Selecting a number updates that day's value. A value can be changed but never cleared. The note and recording for a day can be edited or removed.
 
@@ -26,6 +26,7 @@
 | Local storage | **expo-sqlite** | Durable and queryable, and it holds the sync metadata. |
 | Audio | **expo-audio** (record + playback) + **expo-file-system** | Records AAC `.m4a` files and stores them in the app's documents directory. |
 | Connectivity | `@react-native-community/netinfo` | Starts a sync when the device comes back online. |
+| Reminders | **expo-notifications** (local, scheduled on the phone) | Fires offline, with no push server, device tokens, or per-minute cron job. |
 | ID storage | `expo-secure-store` | Keeps the unique ID, its registration secret, and its registered flag together in the Keychain on iOS and the Keystore on Android. |
 | Web + API | **Next.js (App Router) + TypeScript** | The dashboard UI and the REST API live in one deployable app. |
 | Database | **PostgreSQL** (Neon / Supabase / RDS) + **Drizzle ORM** | |
@@ -78,7 +79,7 @@ CREATE TABLE audio_files (
   uploaded    INTEGER NOT NULL DEFAULT 0 -- 1 = file is on the server
 );
 CREATE TABLE sync_state (
-  key   TEXT PRIMARY KEY,                -- 'cursor', 'last_synced_at'
+  key   TEXT PRIMARY KEY,                -- 'cursor', 'last_synced_at', 'reminder' (JSON from server)
   value TEXT
 );
 ```
@@ -107,6 +108,13 @@ entries (
   PRIMARY KEY (profile_id, date)
 );
 CREATE INDEX ON entries (profile_id, server_seq);
+
+settings (                               -- per-ID settings, edited on the web (§4.6)
+  profile_id        text PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  reminder_enabled  boolean NOT NULL DEFAULT false,
+  reminder_time     text NOT NULL DEFAULT '20:00',  -- 'HH:MM', 24h, phone-local wall-clock time
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
 
 sessions (                               -- web sessions (§5.3)
   id          text PRIMARY KEY,          -- random; the cookie holds this, signed
@@ -227,6 +235,7 @@ Read entirely from local SQLite, so it works offline and updates instantly after
   - Before the ID has been registered with the server (first sync), it shows "Not active on the web yet".
 - **Open web view:** a link to the website. The ID is *not* put in the URL.
 - **Use an existing ID:** for a new phone or a reinstall. See §5.4.
+- **Reminder** (read-only here): "Daily at 8:00 PM", or "Off", with a note that it's set on the web. If notification permission is denied, it shows "Notifications are blocked" with a button that opens the phone's settings.
 - **Sync:**
   - Shows the last sync time and a "Sync now" button.
   - When sync is off, shows "Sync is off" with a **Start syncing** button. Starting creates a new ID and uploads all local data.
@@ -259,6 +268,27 @@ Implemented once in `packages/shared` and used by both the History tab and the w
 - **7-day rolling average:** for each day, the mean of logged values in that day and the 6 before it. It's shown only when at least 4 of those 7 days are logged, otherwise it's a gap.
 - **Current streak** (web only): consecutive logged days ending today, or ending yesterday if today isn't logged yet, so the streak doesn't drop to zero before the day ends.
 - **Value counts:** how many logged days had each value 1–10 in the range.
+
+### 4.6 Daily reminder (set on the web, delivered by the phone)
+- **Settings:** an on/off switch and a time of day, both set on the web (§7.3). They're stored per ID, so every phone using the ID follows them. The phone shows them read-only.
+- **Time zone:**
+  - The time is a phone-local wall-clock time. "20:00" means 8 PM wherever the phone is.
+  - If the phone changes time zones, the reminder follows it, and daylight saving time changes don't shift it.
+- **Delivery:** **local notifications scheduled on the phone** with `expo-notifications`. Nothing is sent from the server, so reminders fire with no connection and there's no push infrastructure.
+- **Getting settings to the phone:** every sync response includes the current settings (§6.1). A change made on the web takes effect the next time the phone syncs: on app open, on foreground, on reconnect, or opportunistically in the background. The web page says so.
+- **Scheduling:**
+  - The app schedules **individual notifications for the next 30 days** rather than one repeating notification. iOS allows 64 pending notifications.
+  - **The reminder is skipped on any day that already has a value.** Recording a value for today cancels today's notification.
+  - The schedule is rebuilt on app start, on foreground, after every sync, after a value is recorded for today, and when the phone's time zone changes.
+  - If the app isn't opened for 30 days, reminders stop until it's opened again. That's a deliberate quiet failure mode.
+- **Android timing:** uses inexact scheduling, which can be a few minutes late. Exact alarms would need the `SCHEDULE_EXACT_ALARM` permission, which Google Play restricts to alarm and calendar apps.
+- **Permission:**
+  - The app asks for notification permission only once a reminder has been turned on, the next time the app is in the foreground, with a short neutral explanation first. This covers iOS and Android 13+.
+  - If permission is denied, nothing is scheduled, and the app's Settings screen shows how to turn notifications back on.
+- **Discreet text:** the title is "Down & Up" and the body is "Reminder". There's no mood wording, and the lock-screen preview gives nothing away.
+- **Tapping the notification** opens the Today tab with today selected.
+- **Sync off:** reminders need the web, so they're unavailable while sync is off ("Turn on sync to set a reminder").
+- **Multiple phones:** each phone sharing the ID schedules its own reminders. Logging on one phone cancels the reminder on the others only after they sync.
 
 ---
 
@@ -316,7 +346,7 @@ Implemented once in `packages/shared` and used by both the History tab and the w
   - Return the same response for "wrong format" and "not found".
 - **Replace ID** (Settings, low cost): generates a new ID and secret and moves the server data over to it, in case the old one was shared by accident. Other devices using the old ID get `401` and are asked to enter the new one. Web sessions for the old ID stop working.
 - **Web sessions:** the session cookie holds a signed session ID, never the ID itself. The profile is looked up on every request, so deleted or replaced IDs lose access right away.
-- **CSRF:** cookie-authenticated mutations (`DELETE /api/session`, `DELETE /api/data`) also check the `Origin` header.
+- **CSRF:** cookie-authenticated mutations (`PUT /api/settings`, `DELETE /api/session`, `DELETE /api/data`) also check the `Origin` header.
 - All traffic is HTTPS only. Audio is only reachable through short-lived signed URLs handed out after an ID check.
 
 ### 5.6 Data protection & compliance
@@ -358,7 +388,8 @@ Mood scores and voice recordings are likely **health-related data** (a special c
   "changes": [ /* up to 500 rows with server_seq > cursor, ordered by server_seq */ ],
   "cursor": "1840",                 // server_seq of the last row in `changes`
   "hasMore": false,                 // true → client immediately calls again with the new cursor and no changes
-  "missingAudio": []                // audioIds whose file isn't on the server yet; client re-uploads (§6.3)
+  "missingAudio": [],               // audioIds whose file isn't on the server yet; client re-uploads (§6.3)
+  "settings": { "reminderEnabled": true, "reminderTime": "20:00" }  // always included (§4.6)
 }
 ```
 - Each field group (value / note / audio) is optional in a change. The client only sends the groups that changed.
@@ -411,6 +442,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 ### 6.5 Server-side validation
 - **ID:** 12 valid Crockford Base32 characters after normalization, and registered.
 - **`value`:** an integer from 1 to 10.
+- **`reminderTime`:** `HH:MM`, 24-hour, `00:00`–`23:59`. **`reminderEnabled`:** a boolean.
 - **`note`:** at most 2,000 characters.
 - **Audio:** at most 5 MB and 5 minutes. `audioId` must be a UUID.
 - **`date`:**
@@ -434,7 +466,8 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 | `POST /api/audio/upload-url` | Presigned upload URL |
 | `GET /api/audio/:audioId` | Redirect to a presigned download URL |
 | `GET /api/entries?from=YYYY-MM-DD&to=YYYY-MM-DD` | Dashboard data for a date range |
-| `DELETE /api/data` | Delete all server data for the ID (profile, entries, sessions; audio queued for deletion) |
+| `GET /api/settings` / `PUT /api/settings` | Read or update the reminder settings (web session) |
+| `DELETE /api/data` | Delete all server data for the ID (profile, entries, settings, sessions; audio queued for deletion) |
 | `GET /api/cron/audio-deletions`, `GET /api/cron/orphan-sweep` | Vercel Cron jobs (protected by `CRON_SECRET`) |
 | `GET /api/health` | Uptime checks |
 
@@ -452,10 +485,14 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Columns: date, value, note (full text, wrapped), and recording (inline play button with duration).
 - Responsive layout so the dashboard also works on a phone browser.
 - Use neutral wording throughout: "value" or no label at all, never "mood". Page titles and the browser tab title stay generic.
-- Read-only in v1. Editing on the web can come later; it would use the same per-field upsert.
+- Entries are read-only on the web in v1. Editing them can come later, using the same per-field upsert. The only thing editable on the web is the reminder (§7.3).
 
 ### 7.3 Other web pages
 - `/`: the ID entry page.
+- `/settings` (session required): the **daily reminder**.
+  - An on/off switch and a time picker (hour and minute, shown in 12h or 24h to match the browser's locale). Changes save on change, with a small "Saved" confirmation.
+  - A note: "Reminders come from the app on your phone, in the phone's local time. Changes apply the next time the app syncs."
+  - Neutral wording, with no mood terms.
 - `/privacy`: the privacy policy.
 
 ---
@@ -493,20 +530,23 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - validation.
 - Presigned audio upload with signed size/type, a HEAD check during sync, and the `missingAudio` response list. Presigned download.
 - `audio_deletions` queue and the two cron jobs.
+- `settings` table, `GET`/`PUT /api/settings`, and settings included in every sync response.
 - Deploy to staging.
 
-### Phase 3: Sync in the mobile app (≈2 weeks)
+### Phase 3: Sync in the mobile app (≈2.5 weeks)
 - Sync engine: register the ID, push dirty field groups, adopt `applied` rows, pull pages until `hasMore` is false, merge. Includes triggers, backoff, mutex, and the status indicator.
 - Audio upload queue (upload before push, re-upload on `missingAudio`), lazy download with a local cache, and local file cleanup.
 - Startup reconciliation of ID vs. database (§5.2).
 - "Use an existing ID" with merge (mark all dirty, re-queue recordings, reset cursor) or discard.
 - Sync off/on states, and "Delete my data" with both of its outcomes.
+- Reminders: store the synced settings, ask for notification permission, schedule 30 days of notifications (skipping logged days), rebuild the schedule on the triggers in §4.6, and open Today when a notification is tapped. Read-only reminder row in Settings.
 - ✅ Done when offline edits on two phones sharing an ID (value on one, note and recording on the other, same day) converge correctly after both come online.
 
 ### Phase 4: Web dashboard (≈1.5 weeks)
 - ID entry page, server-side sessions, sign out, Origin checks.
 - `GET /api/entries` and the dashboard with range presets and custom range in the URL.
 - Line chart with gaps and the rolling average, distribution chart, summary tiles, and the entries table with notes and audio playback.
+- `/settings` page with the reminder switch and time picker.
 
 ### Phase 5: Polish + release (≈2 weeks, including store review buffer)
 - App icon, splash screen, dark mode, store listings. Keep the icon, display name ("Down & Up"), listing text, and the mic permission string neutral, with no mention of mood.
@@ -515,7 +555,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - Real-device testing of audio (interruptions, Bluetooth headsets, both platforms) and two-phone sync.
 - EAS build and submission to TestFlight and Play internal testing, then production.
 
-**Rough total: about 10–12 weeks for one developer.**
+**Rough total: about 11–12 weeks for one developer.**
 
 ---
 
@@ -525,6 +565,11 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - ID generate/normalize (case, spaces, `O`→`0`, `I`/`L`→`1`) and the alphabet check.
   - The per-field LWW merge, including "value can't be cleared" and "note/audio can be cleared".
   - zod validation and the stats helpers (gap filling, averages, counts).
+  - Reminder scheduling:
+    - 30 one-off notifications at the right local time, with logged days skipped.
+    - Today's notification cancelled after logging.
+    - Rescheduling after a time zone change and across DST transitions.
+    - Nothing scheduled when the reminder is off, permission is denied, or sync is off.
 - **Sync integration tests:**
   - Two phones sharing an ID: offline edits on both, different fields on the same day, the same field on both.
   - A tap or keystroke during an in-flight sync.
@@ -548,8 +593,9 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Reinstall cases: ID kept but database gone (full restore), and database kept but ID gone (prompt, no silent new ID).
   - "Use an existing ID" with Merge (previously synced rows reach the new ID) and with Discard.
   - "Delete my data" with each choice. "Keep on this device" turns sync off and uploads nothing.
+  - Turn on a reminder on the web, sync, grant permission, and check that notifications are scheduled. Log today and check that today's notification is cancelled. Tap a notification and check that Today opens.
   - In History, check that the value, note marker, and chart update, then tap a row and confirm it opens that day on the Today tab.
-- **Web E2E (Playwright):** enter an ID, change range presets and check that the chart and the URL update, play a recording, sign out. A bad ID gets the generic error.
+- **Web E2E (Playwright):** enter an ID, change range presets and check that the chart and the URL update, play a recording, turn the reminder on and change its time (check it persists), sign out. A bad ID gets the generic error.
 - **Security checks:**
   - Per-IP and global rate limits on ID lookup.
   - The ID never appearing in URLs, cookies, or logs.
@@ -570,7 +616,8 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **No sign-in:** a device-generated **12-character** letters-and-numbers ID links the app to the web. The web login is just that ID. A hidden registration secret makes re-registering safe after a reinstall.
 - **Sync consent:** a one-time notice on first launch. Sync is on by default, and "Keep on this phone only" is available.
 - **Android Auto Backup:** disabled. The server is the backup.
+- **Daily reminder:** optional. Turned on and timed on the web, delivered as local notifications scheduled by the phone in its local time. Skipped on days already logged. Neutral text ("Down & Up" / "Reminder").
 - **Delete my data:** either wipes the device too (fresh ID), or keeps local data and turns sync off.
 
 ## 11. Open questions
-1. **Reminders:** a daily local notification? If added, it should use neutral text with no mood wording (e.g., just the app name, or "Reminder").
+None at the moment.
