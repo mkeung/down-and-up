@@ -98,6 +98,39 @@ it('plays cues at their offsets and cancels the ones not yet heard', async () =>
   expect(vi.getTimerCount()).toBe(0);
 });
 
+it.each([
+  [0, 4],
+  [0.9, 5],
+])(
+  'barks at backflip start and meows on the final recovery pose (%s)',
+  async (random, meow) => {
+    const { cueAnimationSounds } = await load();
+    vi.spyOn(Math, 'random').mockReturnValue(random);
+    cueAnimationSounds('backflip');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.created.map((player) => player.source)).toEqual([3]);
+    expect(mocks.created[0]!.play).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1139);
+    expect(mocks.created).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mocks.created.map((player) => player.source)).toEqual([3, meow]);
+    expect(mocks.created[1]!.play).toHaveBeenCalledTimes(1);
+    await vi.runAllTimersAsync();
+    expect(vi.getTimerCount()).toBe(0);
+  },
+);
+
+it('cancels the closing meow when backflip playback is interrupted', async () => {
+  const { cueAnimationSounds } = await load();
+  const cancel = cueAnimationSounds('backflip');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(mocks.created.map((player) => player.source)).toEqual([3]);
+  cancel();
+  await vi.runAllTimersAsync();
+  expect(mocks.created).toHaveLength(1);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
 it('scales existing and newly created players by the master volume', async () => {
   const { playSound, setSoundPreferences } = await load();
   playSound('click');
@@ -116,6 +149,7 @@ it.each([null, { muted: true, volume: 0.8 }, { muted: false, volume: 0 }])(
     setSoundPreferences(preference);
     playSound('click');
     cueAnimationSounds('food-can');
+    cueAnimationSounds('backflip');
     await vi.runAllTimersAsync();
     expect(mocks.created).toHaveLength(0);
     expect(mocks.setAudioModeAsync).not.toHaveBeenCalled();

@@ -108,6 +108,11 @@ export function soundCues(
         { sound: 'pomBark', at: 920 },
         { sound: pick(['meowA', 'meowB'] as const), at: 1360 },
       ];
+    case 'backflip':
+      return [
+        { sound: 'dogBark', at: 0 },
+        { sound: pick(['meowA', 'meowB'] as const), at: 1140 },
+      ];
     default:
       return [];
   }

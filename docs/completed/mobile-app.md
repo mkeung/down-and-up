@@ -53,7 +53,7 @@ Tap the date label to open the calendar. On iOS it opens a dismissible overlay w
 ### Text note (optional)
 
 - The note field is on the Pawsitive tab, below the day selector, as a multi-line panel with the same scaled height as the full keypad. Both screens share header geometry, so the date does not shift between tabs.
-- It autosaves, debounced ~1s and on blur. The keyboard’s Submit control flushes the current draft, dismisses the keyboard, and randomly plays either the food-can or backflip animation once (equal probability), retaining the character’s facing. iOS also shows an explicit Submit accessory button. No animation depends on note contents or numeric values.
+- It autosaves, debounced ~1s and on blur. The keyboard’s Submit control flushes the current draft, dismisses the keyboard, and randomly plays either the food-can or backflip animation once (equal probability), retaining the character’s facing. Backflip plays a dog bark at the start and a meow on the final recovery pose, respecting the local sound controls. iOS also shows an explicit Submit accessory button. No animation depends on note contents or numeric values.
 - Editing waits for the selected day's SQLite read. Drafts remain intact while a write is pending or fails; an older write cannot clear a newer draft.
 - Maximum 2,000 characters. Clearing the text removes the note (stored as `NULL`).
 - On small screens each tab scrolls, so the keypad never shrinks below its minimum size.
