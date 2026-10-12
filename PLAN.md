@@ -5,13 +5,15 @@
 - **Mobile app (iOS + Android):**
   - Pick a day: today or any earlier day, as far back as you like, but never a future day.
   - Tap a number from 1–10. The number you tap stays highlighted, and tapping a different number replaces it.
-  - Each day can also have an optional **text note** and an optional **audio recording**.
+  - Each day can also have an optional **text note**. An optional **audio recording** is deferred to a later release (see below).
   - A History view shows past values as a list and a chart.
   - Everything is stored on the device, so the app works offline. It syncs to the server on its own when a connection is available.
 - **No accounts, no sign-in.** On first launch the app generates a short **unique ID** (letters and numbers only). That ID is what links the phone's data to the server. A one-time notice explains that entries sync to the server. Syncing is on by default, and the user can choose to keep data on the phone only.
-- **Web app:** enter your ID to see your numbers, notes, and recordings over time, with simple charts and an adjustable date range. The web is also where you turn on an optional **daily reminder** and set its time.
+- **Web app:** enter your ID to see your numbers and notes (and recordings, once they ship) over time, with simple charts and an adjustable date range. The web is also where you turn on an optional **daily reminder** and set its time.
 
 **At most one entry per calendar day.** Selecting a number updates that day's value. A value can be changed but never cleared. The note and recording for a day can be edited or removed.
+
+**Deferred: voice recording.** The first release records a value and a text note only. The audio design in this plan (marked _deferred_) is kept for a later release, Phase 6 (§8). The data model and sync protocol keep their audio fields so recording can be turned on without a migration (§10).
 
 **Discreet by design:** the app tracks mood, but nothing in the UI, web dashboard, app name, icon, store listing, permission prompts, or notifications says so. The main screen shows only a date and the numbers 1–10, with no labels, prompts, or emotive colors or emoji.
 
@@ -24,13 +26,13 @@
 | Mobile                    | **Expo (React Native) + TypeScript**                           | One codebase for iOS and Android. EAS handles builds and store submission.                                                         |
 | Navigation (mobile)       | **expo-router** with a bottom tab bar                          | Two tabs: Rate and Pawsitive. History and Settings are routes without a tab.                                                       |
 | Local storage             | **expo-sqlite**                                                | Durable and queryable, and it holds the sync metadata.                                                                             |
-| Audio                     | **expo-audio** (record + playback) + **expo-file-system**      | Records AAC `.m4a` files and stores them in the app's documents directory.                                                         |
+| Audio (deferred)          | **expo-audio** (record + playback) + **expo-file-system**      | Records AAC `.m4a` files and stores them in the app's documents directory.                                                         |
 | Connectivity              | `@react-native-community/netinfo`                              | Starts a sync when the device comes back online.                                                                                   |
 | Reminders                 | **expo-notifications** (local, scheduled on the phone)         | Fires offline, with no push server, device tokens, or per-minute cron job.                                                         |
 | ID storage                | `expo-secure-store`                                            | Keeps the unique ID, its registration secret, and its registered flag together in the Keychain on iOS and the Keystore on Android. |
 | Web + API                 | **Next.js (App Router) + TypeScript**                          | The dashboard UI and the REST API live in one deployable app.                                                                      |
 | Database                  | **PostgreSQL** (Neon / Supabase / RDS) + **Drizzle ORM**       |                                                                                                                                    |
-| Audio file storage        | **Cloudflare R2** (S3-compatible; Vercel Blob or S3 also work) | Cheap object storage with no download (egress) fees. Files move through short-lived presigned URLs.                                |
+| Audio storage (deferred)  | **Cloudflare R2** (S3-compatible; Vercel Blob or S3 also work) | Cheap object storage with no download (egress) fees. Files move through short-lived presigned URLs.                                |
 | Access                    | **ID-based, no accounts** (custom, see §5)                     | No email, no password, no third-party auth library.                                                                                |
 | Rate limiting             | **Upstash Redis** + `@upstash/ratelimit`                       | Serverless instances share no memory, so limits need a shared store. A Postgres table also works at small scale.                   |
 | Scheduled jobs            | **Vercel Cron**                                                | Runs the audio deletion queue and the orphaned-file sweep (§6.3).                                                                  |
@@ -147,7 +149,7 @@ Audio objects are stored at `audio/<sha256(profile_id)>/<audio_id>.m4a`. Hashing
 
 ### 4.1 Screens: Rate (the main screen) and Pawsitive
 
-The bottom tab bar has two tabs. **Rate** holds the keypad and **Pawsitive** holds the note and recording. Both show the same day selector, and they share one selected day: changing the day on either tab changes it on both.
+The bottom tab bar has two tabs. **Rate** holds the keypad and **Pawsitive** holds the note. The recording will also go on Pawsitive once it ships. Both show the same day selector, and they share one selected day: changing the day on either tab changes it on both.
 
 ```
 Rate                              Pawsitive
@@ -156,7 +158,7 @@ Rate                              Pawsitive
 │                             │   │                             │
 │     [ 1 ]  [ 2 ]  [ 3 ]     │   │  ┌ Note…                  ┐ │
 │     [ 4 ]  [ 5 ]  [ 6 ]     │   │  └────────────────────────┘ │
-│     [ 7 ]  [ 8 ]  [ 9 ]     │   │  [ ● Record ]               │
+│     [ 7 ]  [ 8 ]  [ 9 ]     │   │                             │
 │            [10 ]            │   │                             │
 │                             │   │                             │
 │           ✓ Synced          │   │                             │
@@ -165,7 +167,7 @@ Rate                              Pawsitive
 └─────────────────────────────┘   └─────────────────────────────┘
 ```
 
-Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. A recording shows as `[ ▶ 0:42 ]  [ 🗑 ]`. The sync status on Rate is small and unobtrusive.
+Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. The sync status on Rate is small and unobtrusive.
 
 **Day selector**
 
@@ -195,7 +197,9 @@ Tap the date label to open the calendar. `10` sits where the 0 key is on a phone
 - Maximum 2,000 characters. Clearing the text removes the note (stored as `NULL`).
 - On small screens each tab scrolls, so the keypad never shrinks below its minimum size.
 
-**Audio recording (optional, one per day)**
+**Audio recording (optional, one per day): _deferred_ (Phase 6)**
+
+Not in the first release. When it ships, a recording shows on Pawsitive as `[ ● Record ]`, or `[ ▶ 0:42 ]  [ 🗑 ]` once recorded.
 
 - **Record:** on the Pawsitive tab, `● Record` starts recording and shows a timer and a Stop button. The microphone permission is requested on the first tap only.
 - **Recording format:** AAC `.m4a`, mono, ~64 kbps, about 0.5 MB per minute. There is a **5-minute maximum**, and recording stops on its own at the limit.
@@ -242,10 +246,10 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 - **Counts chart:** a toggle switches to a bar chart showing how many days each value (1–10) was recorded in the range.
 - **List (value-wise):**
   - One row per day in the range, newest first, showing the date and its value ("—" if none).
-  - `✎` marks days with a note and `🎙` marks days with a recording, with a one-line preview of the note.
+  - `✎` marks days with a note (and, once recording ships, `🎙` marks days with a recording), with a one-line preview of the note.
   - The list scrolls under the chart using a virtualized list (`FlatList` / `FlashList`), so long ranges stay smooth.
   - Days with unsynced changes get a subtle dot.
-- **Tap a row** to jump to the Rate tab with that day selected. The value can be changed there, and the note and recording for the same day are on the Pawsitive tab. History itself is read-only.
+- **Tap a row** to jump to the Rate tab with that day selected. The value can be changed there, and the note for the same day is on the Pawsitive tab. History itself is read-only.
 - **Empty state:** if the range has no entries, show a short neutral message ("Nothing recorded yet") instead of an empty chart.
 - **Refresh:** History re-queries SQLite when it gains focus and after a sync pulls new rows.
 
@@ -394,7 +398,7 @@ Mood scores and voice recordings are likely **health-related data** (a special c
   - Profiles with no sync for 2+ years may be purged after a notice in the app.
 - **Minimal collection:** no email, no name, no analytics or ad SDKs. IP addresses are used only transiently for rate limiting and are not stored with entries.
 - **Store disclosures:**
-  - **App Store privacy label:** Health, Audio Data, Other User Content (notes), User ID. Not used for tracking.
+  - **App Store privacy label:** Health, Other User Content (notes), User ID. Not used for tracking. Add Audio Data when recording ships (Phase 6).
   - **Google Play Data Safety:** the matching categories, encrypted in transit, deletion available.
 - **Privacy policy** (`/privacy`, linked in the app and the store listings) covers what's collected, why, the processors (Vercel, the Postgres host, Cloudflare, Upstash), retention, how to delete, and a contact address.
 
@@ -451,7 +455,9 @@ Mood scores and voice recordings are likely **health-related data** (a special c
   - The server clamps timestamps more than 5 minutes in the future to `now()`.
   - Because the client adopts the server's stored timestamps, a phone with a fast clock can't keep a stale value that beats newer edits.
 
-### 6.3 Audio transfer
+### 6.3 Audio transfer (deferred)
+
+Part of Phase 6. Until then no audio is uploaded or downloaded, and audio field groups stay empty.
 
 1. **Upload:**
    - The client calls `POST /api/audio/upload-url` with `{ audioId, size }`. The server checks the ID and that `size` ≤ 5 MB, then returns a presigned PUT URL (valid 10 min).
@@ -525,10 +531,10 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Days without a value show as **gaps** and are not interpolated to zero.
   - Optional toggle for a **7-day rolling average** overlay.
   - Long ranges switch to weekly or monthly averages, following the shared rules in §4.5 (identical to the app).
-  - Tooltip shows the date, the value, and a short note preview, if any. Points for days with a note or recording get a small marker.
+  - Tooltip shows the date, the value, and a short note preview, if any. Points for days with a note (or, once it ships, a recording) get a small marker.
 - **Secondary chart: distribution bar chart** showing how many days each value (1–10) was recorded in the range.
 - **Entries table** below the charts, sorted newest first and paginated.
-  - Columns: date, value, note (full text, wrapped), and recording (inline play button with duration).
+  - Columns: date, value, note (full text, wrapped), and recording (inline play button with duration; deferred to Phase 6).
 - Responsive layout so the dashboard also works on a phone browser.
 - Use neutral wording throughout: "value" or no label at all, never "mood". Page titles and the browser tab title stay generic.
 - Entries are read-only on the web in v1. Editing them can come later, using the same per-field upsert. The only thing editable on the web is the reminder (§7.3).
@@ -591,24 +597,32 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - "Use an existing ID" with merge (mark all dirty, re-queue recordings, reset cursor) or discard.
 - Sync off/on states, and "Delete my data" with both of its outcomes.
 - Reminders: store the synced settings, ask for notification permission, schedule 30 days of notifications (skipping logged days), rebuild the schedule on the triggers in §4.6, and open Today when a notification is tapped. Read-only reminder row in Settings.
-- ✅ Done when offline edits on two phones sharing an ID (value on one, note and recording on the other, same day) converge correctly after both come online.
+- ✅ Done when offline edits on two phones sharing an ID (value on one, note on the other, same day) converge correctly after both come online.
 
 ### Phase 4: Web dashboard (≈1.5 weeks)
 
 - ID entry page, server-side sessions, sign out, Origin checks.
 - `GET /api/entries` and the dashboard with range presets and custom range in the URL.
-- Line chart with gaps and the rolling average, distribution chart, summary tiles, and the entries table with notes and audio playback.
+- Line chart with gaps and the rolling average, distribution chart, summary tiles, and the entries table with notes. Audio playback is deferred to Phase 6.
 - `/settings` page with the reminder switch and time picker.
 
 ### Phase 5: Polish + release (≈2 weeks, including store review buffer)
 
-- App icon, splash screen, dark mode, store listings. Keep the icon, display name ("Down & Up"), listing text, and the mic permission string neutral, with no mention of mood.
+- App icon, splash screen, dark mode, store listings. Keep the icon, display name ("Down & Up"), and listing text neutral, with no mention of mood.
+- Ship without voice recording: hide the Record control and recording playback in the app and on the web, and drop the microphone permission from the app config. Keep the audio columns and sync field group, which stay empty.
 - Privacy policy, App Store privacy label, and Play Data Safety form (§5.6). Confirm encryption at rest and the backup retention settings with the chosen providers.
 - CSV export and Replace ID.
-- Real-device testing of audio (interruptions, Bluetooth headsets, both platforms) and two-phone sync.
+- Real-device testing of two-phone sync.
 - EAS build and submission to TestFlight and Play internal testing, then production.
 
 **Rough total: about 11–12 weeks for one developer.**
+
+### Phase 6: Voice recording (deferred)
+
+- Everything marked _deferred_ above: recording on the Pawsitive tab (§4.1), the audio transfer (§6.3), audio routes and cron jobs, the R2 bucket, recording markers in History and on the web, and recording playback in the web entries table.
+- The audio work already listed in Phases 1–4 belongs here; it doesn't block the first release.
+- Neutral microphone permission text ("Used to record audio notes."), Audio Data in the store disclosures (§5.6), and the audio tests in §9.
+- Real-device testing of audio (interruptions, Bluetooth headsets, both platforms).
 
 ---
 
@@ -632,7 +646,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Pull pagination across several pages, including rows changing between pages.
   - A future-dated timestamp gets clamped, and the client adopts the server's version.
   - Registration: a new ID, a repeat with the same secret (`200`), and a different secret (`409` → new ID).
-- **Audio:**
+- **Audio (deferred, Phase 6):**
   - Upload interrupted mid-way, then retried.
   - Row pushed before its file finished uploading: the audio fields are held back.
   - Replace/delete removes the old object on the server.
@@ -642,14 +656,14 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **Mobile E2E (Maestro):**
   - Select a day, tap 3 then 8, and check that 8 is highlighted.
   - Try to go past today and check it's blocked. Pick a date years back.
-  - Add a note and a recording.
+  - Add a note. (Add a recording once Phase 6 ships.)
   - Airplane-mode round trip.
   - Reinstall cases: ID kept but database gone (full restore), and database kept but ID gone (prompt, no silent new ID).
   - "Use an existing ID" with Merge (previously synced rows reach the new ID) and with Discard.
   - "Delete my data" with each choice. "Keep on this device" turns sync off and uploads nothing.
   - Turn on a reminder on the web, sync, grant permission, and check that notifications are scheduled. Log today and check that today's notification is cancelled. Tap a notification and check that Rate opens.
   - In History, check that the value, note marker, and chart update, then tap a row and confirm it opens that day on the Rate tab.
-- **Web E2E (Playwright):** enter an ID, change range presets and check that the chart and the URL update, play a recording, turn the reminder on and change its time (check it persists), sign out. A bad ID gets the generic error.
+- **Web E2E (Playwright):** enter an ID, change range presets and check that the chart and the URL update, turn the reminder on and change its time (check it persists), sign out. A bad ID gets the generic error.
 - **Security checks:**
   - Per-IP and global rate limits on ID lookup.
   - The ID never appearing in URLs, cookies, or logs.
@@ -667,8 +681,9 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **Official artwork:** keep the Cerberus character version 01c and final icon versions 09b (opaque) and 09c (transparent) in `OfficialAssets/`. Exploratory studies and generation prompts stay in `ConceptArt/`. The icons show two front paws with the legs hidden.
 - **App lock:** none.
 - **In-app history:** a History screen with a list of values by day and charts, read from local data so it works offline.
-- **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note and recording), sharing one selected day. History and Settings stay as screens without a tab and have no visible entry point for now. They open through `down-up://history` and `down-up://settings`, and Settings also opens from the "Enter ID" prompt. Until an entry point is added, sync can't be turned off after the first-launch notice, and the ID, export, and delete options aren't reachable from the app.
-- **Notes:** an optional text note (≤2,000 chars) and an optional audio recording (≤5 min, one per day) for any day.
+- **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note, plus recording once it ships), sharing one selected day. History and Settings stay as screens without a tab and have no visible entry point for now. They open through `down-up://history` and `down-up://settings`, and Settings also opens from the "Enter ID" prompt. Until an entry point is added, sync can't be turned off after the first-launch notice, and the ID, export, and delete options aren't reachable from the app.
+- **Notes:** an optional text note (≤2,000 chars) for any day. An optional audio recording (≤5 min, one per day) comes later.
+- **Voice recording deferred:** the first release ships without recording. The audio design (§4.1, §6.3, the audio routes, R2, and the cleanup cron jobs) is kept for Phase 6. The SQLite and Postgres audio columns and the audio field group in the sync protocol stay in place and empty, so turning recording on later needs no migration or protocol change.
 - **Past dates:** no limit on how far back.
 - **No sign-in:** a device-generated **12-character** letters-and-numbers ID links the app to the web. The web login is just that ID. A hidden registration secret makes re-registering safe after a reinstall.
 - **Sync consent:** a one-time notice on first launch. Sync is on by default, and "Keep on this phone only" is available.
