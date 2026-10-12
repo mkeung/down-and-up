@@ -17,9 +17,11 @@ import { useTheme } from '../src/theme';
 import { reportError, useApp } from '../src/app-context';
 import { Action, Row } from '../src/components';
 import { HistoryChart } from '../src/history-chart';
+import { useSelectedDate } from '../src/selected-date';
 export default function History() {
   const app = useApp();
   const theme = useTheme();
+  const { selectDate } = useSelectedDate();
   const [entries, setEntries] = useState<LocalEntry[]>([]);
   const [preset, setPreset] = useState<RangePreset>('30D');
   const [counts, setCounts] = useState(false);
@@ -113,9 +115,10 @@ export default function History() {
           return (
             <Action
               label={`${dateLabel(date, today)}, ${row?.value ?? 'no value'}${row?.note ? ', note' : ''}${row?.audioId ? ', recording' : ''}`}
-              onPress={() =>
-                router.navigate({ pathname: '/', params: { date } })
-              }
+              onPress={() => {
+                selectDate(date);
+                router.navigate('/');
+              }}
               style={{ marginBottom: 8, alignItems: 'stretch' }}
             >
               <View

@@ -2,7 +2,7 @@ appId: app.downandup.tracker
 name: Cached audio playback and deletion
 ---
 - launchApp
-- tapOn: Today
+- tapOn: Pawsitive
 - scrollUntilVisible:
     element:
       text: Play recording

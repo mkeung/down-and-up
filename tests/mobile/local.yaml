@@ -16,20 +16,21 @@ name: Local record and history
 - assertVisible:
     text: Next day
     enabled: false
+- tapOn: Pawsitive
+- assertVisible: 'Choose date, Today.*'
 - tapOn: 'Note.*'
 - inputText: Offline test note
 - swipe:
     start: 50%, 35%
     end: 50%, 15%
-- tapOn: History
+- openLink: down-up://history
 - assertVisible: '.*Today.*8.*note.*'
 - tapOn:
     text: '.*Today.*8.*note.*'
 - assertVisible: '8'
+- tapOn: Pawsitive
 - assertVisible: '.*Offline test note.*'
-- swipe:
-    start: 50%, 35%
-    end: 50%, 70%
+- tapOn: Rate
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
@@ -37,17 +38,22 @@ name: Local record and history
     retryTapIfNoChange: true
 - assertVisible: 'Choose date, Yesterday.*'
 - tapOn: '6'
+- tapOn: Pawsitive
+- assertVisible: 'Choose date, Yesterday.*'
 - tapOn:
     text: Next day
     retryTapIfNoChange: true
 - assertVisible: 'Choose date, Today.*'
+- assertVisible: '.*Offline test note.*'
+- tapOn: Rate
+- assertVisible: 'Choose date, Today.*'
 - assertVisible:
     text: '8'
     selected: true
-- assertVisible: '.*Offline test note.*'
 - stopApp
 - launchApp
+- tapOn: Pawsitive
 - assertVisible: '.*Offline test note.*'
 - takeScreenshot: test-results/mobile-local
-- tapOn: Settings
+- openLink: down-up://settings
 - assertVisible: Sync is off

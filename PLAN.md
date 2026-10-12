@@ -22,7 +22,7 @@
 | Layer                     | Choice                                                         | Why                                                                                                                                |
 | ------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Mobile                    | **Expo (React Native) + TypeScript**                           | One codebase for iOS and Android. EAS handles builds and store submission.                                                         |
-| Navigation (mobile)       | **expo-router** with a bottom tab bar                          | Three tabs: Today, History, Settings.                                                                                              |
+| Navigation (mobile)       | **expo-router** with a bottom tab bar                          | Two tabs: Rate and Pawsitive. History and Settings are routes without a tab.                                                       |
 | Local storage             | **expo-sqlite**                                                | Durable and queryable, and it holds the sync metadata.                                                                             |
 | Audio                     | **expo-audio** (record + playback) + **expo-file-system**      | Records AAC `.m4a` files and stores them in the app's documents directory.                                                         |
 | Connectivity              | `@react-native-community/netinfo`                              | Starts a sync when the device comes back online.                                                                                   |
@@ -145,27 +145,31 @@ Audio objects are stored at `audio/<sha256(profile_id)>/<audio_id>.m4a`. Hashing
 
 ## 4. Mobile app
 
-### 4.1 Screen: Today (the main screen)
+### 4.1 Screens: Rate (the main screen) and Pawsitive
+
+The bottom tab bar has two tabs. **Rate** holds the keypad and **Pawsitive** holds the note and recording. Both show the same day selector, and they share one selected day: changing the day on either tab changes it on both.
 
 ```
-┌─────────────────────────────┐
-│  ◀   Today, Sat Oct 10   ▶  │  ← tap the label to open the calendar
-│                             │
-│     [ 1 ]  [ 2 ]  [ 3 ]     │
-│     [ 4 ]  [ 5 ]  [ 6 ]     │
-│     [ 7 ]  [ 8 ]  [ 9 ]     │
-│            [10 ]            │  ← like the 0 key on a phone keypad
-│                             │
-│  ┌ Note…                  ┐ │  ← optional, expands when tapped
-│  └────────────────────────┘ │
-│  [ ● Record ]               │  ← or: [ ▶ 0:42 ]  [ 🗑 ]
-│                             │
-│           ✓ Synced          │  ← small, unobtrusive status
-└─────────────────────────────┘
+Rate                              Pawsitive
+┌─────────────────────────────┐   ┌─────────────────────────────┐
+│  ◀   Today, Sat Oct 10   ▶  │   │  ◀   Today, Sat Oct 10   ▶  │
+│                             │   │                             │
+│     [ 1 ]  [ 2 ]  [ 3 ]     │   │  ┌ Note…                  ┐ │
+│     [ 4 ]  [ 5 ]  [ 6 ]     │   │  └────────────────────────┘ │
+│     [ 7 ]  [ 8 ]  [ 9 ]     │   │  [ ● Record ]               │
+│            [10 ]            │   │                             │
+│                             │   │                             │
+│           ✓ Synced          │   │                             │
+│─────────────────────────────│   │─────────────────────────────│
+│     Rate       Pawsitive    │   │     Rate       Pawsitive    │
+└─────────────────────────────┘   └─────────────────────────────┘
 ```
+
+Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. A recording shows as `[ ▶ 0:42 ]  [ 🗑 ]`. The sync status on Rate is small and unobtrusive.
 
 **Day selector**
 
+- Shared by the Rate and Pawsitive tabs, which always show the same day.
 - Defaults to **today** (device local date) on launch.
 - `◀` goes back one day. `▶` goes forward one day and is **disabled when today is selected**.
 - Tapping the date label opens a native calendar picker with `maximumDate = today` and **no minimum date**, so any past day can be chosen. The native pickers allow quick month and year jumps for dates far back.
@@ -186,25 +190,26 @@ Audio objects are stored at `audio/<sha256(profile_id)>/<audio_id>.m4a`. Hashing
 
 **Text note (optional)**
 
-- The note field sits below the keypad as a one-line "Note…" field and expands to multi-line when focused.
+- The note field is on the Pawsitive tab, below the day selector, as a one-line "Note…" field and expands to multi-line when focused.
 - It autosaves, debounced ~1s and on blur. There is no save button.
 - Maximum 2,000 characters. Clearing the text removes the note (stored as `NULL`).
-- On small screens the area below the keypad scrolls, so the keypad never shrinks below its minimum size.
+- On small screens each tab scrolls, so the keypad never shrinks below its minimum size.
 
 **Audio recording (optional, one per day)**
 
-- **Record:** `● Record` starts recording and shows a timer and a Stop button. The microphone permission is requested on the first tap only.
+- **Record:** on the Pawsitive tab, `● Record` starts recording and shows a timer and a Stop button. The microphone permission is requested on the first tap only.
 - **Recording format:** AAC `.m4a`, mono, ~64 kbps, about 0.5 MB per minute. There is a **5-minute maximum**, and recording stops on its own at the limit.
 - **Saving:** stopping saves the recording right away to the documents directory. If an interruption (phone call, app sent to background) stops the recording, what was captured so far is kept.
 - **Playback:** a play/pause button and the duration. Delete is a trash icon with a confirmation. Recording again on a day that already has a recording asks "Replace recording?" first.
 - **Downloads:** recordings made on another device are downloaded the first time they're played and cached locally after that.
+- **Day changes while recording:** the day selector is disabled on both tabs, and leaving the Pawsitive tab stops and saves the recording.
 - **Discreet permission text:** "Used to record audio notes."
 
-**Sync status indicator:** one of "Synced", "Saved on device, will sync", or "Syncing…". Tapping it starts a manual sync.
+**Sync status indicator** (Rate tab): one of "Synced", "Saved on device, will sync", or "Syncing…". Tapping it starts a manual sync.
 
 ### 4.2 Screen: History
 
-Read entirely from local SQLite, so it works offline and updates instantly after a change on the Today screen. It uses the same neutral styling as the rest of the app: no labels or mood words, and one neutral color.
+Read entirely from local SQLite, so it works offline and updates instantly after a change on the Rate or Pawsitive tab. It has no tab; it opens through the `down-up://history` link. It uses the same neutral styling as the rest of the app: no labels or mood words, and one neutral color.
 
 ```
 ┌─────────────────────────────┐
@@ -240,11 +245,13 @@ Read entirely from local SQLite, so it works offline and updates instantly after
   - `✎` marks days with a note and `🎙` marks days with a recording, with a one-line preview of the note.
   - The list scrolls under the chart using a virtualized list (`FlatList` / `FlashList`), so long ranges stay smooth.
   - Days with unsynced changes get a subtle dot.
-- **Tap a row** to jump to the Today tab with that day selected, where the value, note, and recording can be viewed, played, and changed. History itself is read-only.
+- **Tap a row** to jump to the Rate tab with that day selected. The value can be changed there, and the note and recording for the same day are on the Pawsitive tab. History itself is read-only.
 - **Empty state:** if the range has no entries, show a short neutral message ("Nothing recorded yet") instead of an empty chart.
 - **Refresh:** History re-queries SQLite when it gains focus and after a sync pulls new rows.
 
 ### 4.3 Screen: Settings
+
+Settings has no tab. It opens from the "Enter ID" prompt (§5.2) and through the `down-up://settings` link.
 
 - **Your ID:**
   - Shown large and grouped for readability (e.g., `7K3M 9QX2 PDA4`).
@@ -307,7 +314,7 @@ Implemented once in `packages/shared` and used by both the History tab and the w
   - The app asks for notification permission only once a reminder has been turned on, the next time the app is in the foreground, with a short neutral explanation first. This covers iOS and Android 13+.
   - If permission is denied, nothing is scheduled, and the app's Settings screen shows how to turn notifications back on.
 - **Discreet text:** the title is "Down & Up" and the body is "Reminder". There's no mood wording, and the lock-screen preview gives nothing away.
-- **Tapping the notification** opens the Today tab with today selected.
+- **Tapping the notification** opens the Rate tab with today selected.
 - **Sync off:** reminders need the web, so they're unavailable while sync is off ("Turn on sync to set a reminder").
 - **Multiple phones:** each phone sharing the ID schedules its own reminders. Logging on one phone cancels the reminder on the others only after they sync.
 
@@ -550,15 +557,15 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 
 ### Phase 1: Mobile, local-only (≈3 weeks)
 
-- Expo app scaffold (expo-router tabs: Today, History, Settings) with the SQLite schema and migrations.
+- Expo app scaffold (expo-router tabs: Rate and Pawsitive, plus History and Settings routes) with the SQLite schema and migrations.
 - Local ID + secret generation on first launch (a single secure-storage record), the one-time sync notice, and the ID shown in Settings with copy/share.
 - Android Auto Backup disabled.
-- Today screen:
-  - Day selector (arrows + calendar picker, future blocked, no lower limit).
+- Rate and Pawsitive screens:
+  - Shared day selector (arrows + calendar picker, future blocked, no lower limit).
   - The 1–10 keypad (3×3 grid with 10 centered on the bottom row) with persistent highlight.
   - Instant local save, haptics, accessibility labels, midnight rollover handling.
-- Text note with autosave. Audio record, playback, replace, and delete, with a 5-minute cap and interruption handling.
-- History tab: range presets, summary row, line chart, counts chart toggle, and the list of days with note/recording markers. Tapping a row opens that day on the Today tab.
+- On Pawsitive: text note with autosave. Audio record, playback, replace, and delete, with a 5-minute cap and interruption handling.
+- History tab: range presets, summary row, line chart, counts chart toggle, and the list of days with note/recording markers. Tapping a row opens that day on the Rate tab.
 - ✅ Done when everything works in airplane mode on both platforms.
 
 ### Phase 2: Server (≈2 weeks)
@@ -640,8 +647,8 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Reinstall cases: ID kept but database gone (full restore), and database kept but ID gone (prompt, no silent new ID).
   - "Use an existing ID" with Merge (previously synced rows reach the new ID) and with Discard.
   - "Delete my data" with each choice. "Keep on this device" turns sync off and uploads nothing.
-  - Turn on a reminder on the web, sync, grant permission, and check that notifications are scheduled. Log today and check that today's notification is cancelled. Tap a notification and check that Today opens.
-  - In History, check that the value, note marker, and chart update, then tap a row and confirm it opens that day on the Today tab.
+  - Turn on a reminder on the web, sync, grant permission, and check that notifications are scheduled. Log today and check that today's notification is cancelled. Tap a notification and check that Rate opens.
+  - In History, check that the value, note marker, and chart update, then tap a row and confirm it opens that day on the Rate tab.
 - **Web E2E (Playwright):** enter an ID, change range presets and check that the chart and the URL update, play a recording, turn the reminder on and change its time (check it persists), sign out. A bad ID gets the generic error.
 - **Security checks:**
   - Per-IP and global rate limits on ID lookup.
@@ -658,7 +665,8 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **Number layout:** phone keypad style, with 1–9 in a 3×3 grid and 10 alone, centered, on the bottom row.
 - **Name:** keep "Down & Up".
 - **App lock:** none.
-- **In-app history:** a History tab with a list of values by day and charts, read from local data so it works offline.
+- **In-app history:** a History screen with a list of values by day and charts, read from local data so it works offline.
+- **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note and recording), sharing one selected day. History and Settings stay as screens without a tab and have no visible entry point for now. They open through `down-up://history` and `down-up://settings`, and Settings also opens from the "Enter ID" prompt. Until an entry point is added, sync can't be turned off after the first-launch notice, and the ID, export, and delete options aren't reachable from the app.
 - **Notes:** an optional text note (≤2,000 chars) and an optional audio recording (≤5 min, one per day) for any day.
 - **Past dates:** no limit on how far back.
 - **No sign-in:** a device-generated **12-character** letters-and-numbers ID links the app to the web. The web login is just that ID. A hidden registration secret makes re-registering safe after a reinstall.

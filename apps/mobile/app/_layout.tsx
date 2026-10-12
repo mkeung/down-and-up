@@ -4,14 +4,16 @@ import * as Notifications from 'expo-notifications';
 import { AppProvider } from '../src/app-context';
 import { useTheme } from '../src/theme';
 import { todayLocal } from '@down-up/shared';
+import { SelectedDateProvider, useSelectedDate } from '../src/selected-date';
+import { PawsitiveIcon, RateIcon } from '../src/tab-icons';
 function Navigation() {
   const theme = useTheme();
+  const { selectDate } = useSelectedDate();
   useEffect(() => {
-    const open = () =>
-      router.navigate({
-        pathname: '/',
-        params: { date: todayLocal(), notification: Date.now().toString() },
-      });
+    const open = () => {
+      selectDate(todayLocal());
+      router.navigate('/');
+    };
     const listener =
       Notifications.addNotificationResponseReceivedListener(open);
     void Notifications.getLastNotificationResponseAsync().then((response) => {
@@ -21,7 +23,7 @@ function Navigation() {
       }
     });
     return () => listener.remove();
-  }, []);
+  }, [selectDate]);
   return (
     <Tabs
       screenOptions={{
@@ -34,23 +36,31 @@ function Navigation() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Today', tabBarAccessibilityLabel: 'Today' }}
+        options={{
+          title: 'Rate',
+          tabBarAccessibilityLabel: 'Rate',
+          tabBarIcon: RateIcon,
+        }}
       />
       <Tabs.Screen
-        name="history"
-        options={{ title: 'History', tabBarAccessibilityLabel: 'History' }}
+        name="pawsitive"
+        options={{
+          title: 'Pawsitive',
+          tabBarAccessibilityLabel: 'Pawsitive',
+          tabBarIcon: PawsitiveIcon,
+        }}
       />
-      <Tabs.Screen
-        name="settings"
-        options={{ title: 'Settings', tabBarAccessibilityLabel: 'Settings' }}
-      />
+      <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }
 export default function Layout() {
   return (
     <AppProvider>
-      <Navigation />
+      <SelectedDateProvider>
+        <Navigation />
+      </SelectedDateProvider>
     </AppProvider>
   );
 }
