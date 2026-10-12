@@ -664,6 +664,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **Labels:** none. The app is for mood but stays discreet, so there is no label, prompt, or mood wording anywhere.
 - **Number layout:** phone keypad style, with 1–9 in a 3×3 grid and 10 alone, centered, on the bottom row.
 - **Name:** keep "Down & Up".
+- **Official artwork:** keep the Cerberus character version 01c and final icon versions 09b (opaque) and 09c (transparent) in `OfficialAssets/`. Exploratory studies and generation prompts stay in `ConceptArt/`. The icons show two front paws with the legs hidden.
 - **App lock:** none.
 - **In-app history:** a History screen with a list of values by day and charts, read from local data so it works offline.
 - **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note and recording), sharing one selected day. History and Settings stay as screens without a tab and have no visible entry point for now. They open through `down-up://history` and `down-up://settings`, and Settings also opens from the "Enter ID" prompt. Until an entry point is added, sync can't be turned off after the first-launch notice, and the ID, export, and delete options aren't reachable from the app.

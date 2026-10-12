@@ -2,13 +2,15 @@
 
 Fourteen PNG character studies generated with the built-in image generation tool from the pet photos in `../DogsAndCat/`, including three edited versions of concept 01 and three icon variants based on concept 08. Each combines the two dogs and cat into one creature with three heads and three tails; the icon variants show only the heads and a small chest.
 
+The selected official artwork (**01c**, **09b**, and **09c**) lives in [OfficialAssets](../OfficialAssets/). The remaining studies stay here; the original prompts for all versions are preserved below.
+
 Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01–05** retain more of the pets' appearance and explore different media. **09b** is the latest opaque app-icon master with two front paws and hidden legs; **09c** is its transparent companion for other icon uses. All other images have an opaque light background.
 
 | File | Direction |
 | --- | --- |
 | [01-cerberus-pixel.png](01-cerberus-pixel.png) | Pixel art |
 | [01b-cerberus-pixel-cat-legs-collars.png](01b-cerberus-pixel-cat-legs-collars.png) | Version 01 with tabby front legs and paws; pink Pom collar, blue middle dog collar, green cat collar |
-| [01c-cerberus-pixel-cat-legs-no-collars.png](01c-cerberus-pixel-cat-legs-no-collars.png) | Version 01b with all collars removed; tabby front legs and paws retained |
+| [01c-cerberus-pixel-cat-legs-no-collars.png](../OfficialAssets/01c-cerberus-pixel-cat-legs-no-collars.png) | Official character artwork; no collars, tabby front legs and paws |
 | [01d-cerberus-pixel-low-fidelity.png](01d-cerberus-pixel-low-fidelity.png) | Lower-fidelity version 01c with chunky pixels, simpler faces and coat shapes, tabby front legs, and no collars |
 | [02-cerberus-watercolor.png](02-cerberus-watercolor.png) | Watercolor |
 | [03-cerberus-anime.png](03-cerberus-anime.png) | Chibi anime |
@@ -18,8 +20,8 @@ Start with **06–08** for the lowest-detail options. **01d** simplifies the sta
 | [07-cerberus-minimal-watercolor.png](07-cerberus-minimal-watercolor.png) | Minimal watercolor |
 | [08-cerberus-minimal-anime.png](08-cerberus-minimal-anime.png) | Minimal chibi anime |
 | [09-cerberus-app-icon.png](09-cerberus-app-icon.png) | Three-head icon portrait in style 08; no paws or legs |
-| [09b-cerberus-app-icon-front-paws.png](09b-cerberus-app-icon-front-paws.png) | Latest opaque app icon; two small tabby front paws, legs hidden |
-| [09c-cerberus-icon-front-paws-transparent.png](09c-cerberus-icon-front-paws-transparent.png) | Transparent companion with two front paws and hidden legs |
+| [09b-cerberus-app-icon-front-paws.png](../OfficialAssets/09b-cerberus-app-icon-front-paws.png) | Official opaque app icon; two small tabby front paws, legs hidden |
+| [09c-cerberus-icon-front-paws-transparent.png](../OfficialAssets/09c-cerberus-icon-front-paws-transparent.png) | Official transparent icon; two front paws, legs hidden |
 
 Reference order: `IMG_4564.jpg` (both dogs), `IMG_1203.jpg` (larger dog), `IMG_1021.jpg` (cat), `IMG_20240625_181700362.jpg` (Pom and plume tail). The other supplied photos were also reviewed before generation.
 
