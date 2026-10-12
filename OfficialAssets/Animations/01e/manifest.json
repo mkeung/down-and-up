@@ -97,6 +97,25 @@
       "gif": "food-can/preview.gif",
       "webp": "food-can/preview.webp",
       "sheet": "food-can/sheet.png"
+    },
+    {
+      "id": "backflip",
+      "title": "Backflip",
+      "frames": [
+        "backflip/frames/01.png",
+        "backflip/frames/02.png",
+        "backflip/frames/03.png",
+        "backflip/frames/04.png",
+        "backflip/frames/05.png",
+        "backflip/frames/06.png",
+        "backflip/frames/07.png",
+        "backflip/frames/08.png"
+      ],
+      "durations": [300, 180, 120, 120, 120, 120, 180, 500],
+      "loop": false,
+      "gif": "backflip/preview.gif",
+      "webp": "backflip/preview.webp",
+      "sheet": "backflip/sheet.png"
     }
   ]
 }

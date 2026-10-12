@@ -263,7 +263,7 @@
       <div class="eyebrow">Down &amp; Up / Character 01e</div>
       <h1>A little life in every pixel.</h1>
       <p class="intro">
-        Fifteen Cerberus animation studies: five everyday actions and ten
+        Sixteen Cerberus animation studies: six character actions and ten
         reactions from carefree at 1 to most stressed at 10. Play, pause, or
         step through any sequence. These are review assets; mobile playback is
         unchanged.
@@ -526,6 +526,50 @@
               <a href="food-can/preview.gif" download>GIF</a
               ><a href="food-can/preview.webp" download>WebP</a
               ><a href="food-can/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="backflip">
+            <div class="card-top">
+              <span class="number">06</span><span>Plays once</span>
+            </div>
+            <div class="stage">
+              <img
+                src="backflip/frames/01.png"
+                width="512"
+                height="512"
+                alt="Backflip animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Backflip</h3>
+            <p>A crouch, spring, full backward somersault, and soft landing.</p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play backflip animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart backflip animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Backflip frame"
+            /></label>
+            <div class="downloads">
+              <a href="backflip/preview.gif" download>GIF</a
+              ><a href="backflip/preview.webp" download>WebP</a
+              ><a href="backflip/sheet.png">Sprite sheet ↗</a>
             </div>
           </article>
         </div>
@@ -1157,6 +1201,22 @@
             'food-can/frames/08.png',
           ],
           durations: [500, 200, 220, 220, 280, 220, 260, 700],
+          loop: false,
+        },
+        {
+          id: 'backflip',
+          title: 'Backflip',
+          frames: [
+            'backflip/frames/01.png',
+            'backflip/frames/02.png',
+            'backflip/frames/03.png',
+            'backflip/frames/04.png',
+            'backflip/frames/05.png',
+            'backflip/frames/06.png',
+            'backflip/frames/07.png',
+            'backflip/frames/08.png',
+          ],
+          durations: [300, 180, 120, 120, 120, 120, 180, 500],
           loop: false,
         },
         {

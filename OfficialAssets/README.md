@@ -1,6 +1,6 @@
 # Official artwork
 
-- [01e animation gallery](Animations/01e/index.html): walking, sitting idle, tennis-ball distraction, yarn-ball distraction, food-can opening, and all ten 1–10 reactions with a keypad preview. [Asset notes](Animations/01e/README.md) include frame formats and timing.
+- [01e animation gallery](Animations/01e/index.html): walking, sitting idle, tennis-ball distraction, yarn-ball distraction, food-can opening, backflip, and all ten 1–10 reactions with a keypad preview. [Asset notes](Animations/01e/README.md) include frame formats and timing.
 - [01e reaction set](Animations/01e/reactions/index.html): ten reactions from carefree at 1 to most stressed at 10, with a keypad review preview. Assets only; mobile playback is unchanged. [Reaction notes](Animations/01e/reactions/README.md) cover the mapping and formats.
 
 - [10 — app icon](10-cerberus-retro-pixel-icon.png): the official icon master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it.

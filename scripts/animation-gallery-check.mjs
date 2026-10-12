@@ -10,7 +10,8 @@ const actions = JSON.parse(
 const reactions = JSON.parse(
   await readFile(new URL('reactions/manifest.json', gallery), 'utf8'),
 ).animations;
-assert.equal(actions.length, 5);
+assert.equal(actions.length, 6);
+assert.equal(actions.find((action) => action.id === 'backflip')?.loop, false);
 assert.deepEqual(
   reactions.map((reaction) => reaction.value),
   Array.from({ length: 10 }, (_, i) => i + 1),
@@ -35,12 +36,29 @@ try {
       (img) => img.complete && img.naturalWidth === 512,
     ),
   );
-  await expect(page.locator('#everyday article')).toHaveCount(5);
+  await expect(page.locator('#everyday article')).toHaveCount(6);
   await expect(page.locator('#reactions article')).toHaveCount(10);
   for (const action of actions)
     await expect(page.locator(`[data-id="${action.id}"] .counter`)).toHaveText(
       '1 / 8',
     );
+  const backflip = page.locator('[data-id="backflip"]');
+  for (let frame = 1; frame <= 8; frame++) {
+    await backflip.locator('.scrub').fill(String(frame));
+    await expect(backflip.locator('img')).toHaveAttribute(
+      'src',
+      `backflip/frames/${String(frame).padStart(2, '0')}.png`,
+    );
+  }
+  await backflip.locator('.scrub').fill('1');
+  for (const [label, filename] of [
+    ['GIF', 'preview.gif'],
+    ['WebP', 'preview.webp'],
+    ['Sprite sheet ↗', 'sheet.png'],
+  ])
+    await expect(
+      backflip.getByRole('link', { name: label, exact: true }),
+    ).toHaveAttribute('href', `backflip/${filename}`);
   for (const reaction of reactions) {
     const card = page.locator(`[data-id="${reaction.id}"]`);
     await expect(card.locator('.counter')).toHaveText('8 / 8');
@@ -74,9 +92,19 @@ try {
   );
   await expect(page.locator('[data-id="walking"] .toggle')).toHaveText('Pause');
   await expect(page.locator('[data-id="food-can"] .toggle')).toHaveText('Play');
+  await expect(backflip.locator('.counter')).toHaveText('8 / 8');
+  await expect(backflip.locator('.toggle')).toHaveText('Play');
+  await expect(backflip.locator('img')).toHaveAttribute(
+    'src',
+    'backflip/frames/08.png',
+  );
   await page.locator('#pause-all').click();
   for (const button of await page.locator('.toggle').all())
     await expect(button).toHaveText('Play');
+  await backflip.locator('.restart').click();
+  await expect(backflip.locator('.counter')).toHaveText('1 / 8');
+  await backflip.locator('.toggle').click();
+  await expect(backflip.locator('.toggle')).toHaveText('Play');
   const reaction = page.locator('[data-id="reaction-05"]');
   await reaction.locator('.scrub').fill('3');
   await expect(reaction.locator('img')).toHaveAttribute(
@@ -141,7 +169,7 @@ try {
   assert.deepEqual(errors, []);
   assert.deepEqual(network, []);
   console.log(
-    'Gallery verified: fifteen previews, ten keypad mappings, shared controls, one-shot holds, Reduce Motion, offline loading, and mobile layout.',
+    'Gallery verified: sixteen previews, ten keypad mappings, shared controls, one-shot holds, Reduce Motion, offline loading, and mobile layout.',
   );
 } finally {
   await browser.close();

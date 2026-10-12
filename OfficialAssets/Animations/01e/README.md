@@ -1,8 +1,8 @@
 # Cerberus 01e animations
 
-Open [the animation gallery](index.html) to play, pause, restart, and scrub all fifteen sequences: five everyday actions and ten 1–10 reactions. It works from a local file without a server or network connection. Reduced-motion preferences disable automatic playback. The reaction section includes a keypad preview and final-pose comparison; shared playback, speed and background controls cover both sets.
+Open [the animation gallery](index.html) to play, pause, restart, and scrub all sixteen sequences: six character actions and ten 1–10 reactions. It works from a local file without a server or network connection. Reduced-motion preferences disable automatic playback. The reaction section includes a keypad preview and final-pose comparison; shared playback, speed and background controls cover both sets.
 
-The [reaction-only gallery](reactions/index.html) remains available for focused review of the ten one-shot reactions, from carefree at 1 to most stressed at 10. See [reaction notes](reactions/README.md). They are also bundled in mobile and play once after their corresponding keypad values are changed and saved locally. Reactions initially show frame 8 and hold their final pose after playback; everyday actions retain their existing autoplay behavior when Reduce Motion is off.
+The [reaction-only gallery](reactions/index.html) remains available for focused review of the ten one-shot reactions, from carefree at 1 to most stressed at 10. See [reaction notes](reactions/README.md). They are also bundled in mobile and play once after their corresponding keypad values are changed and saved locally. Reactions initially show frame 8 and hold their final pose after playback; character actions retain their existing autoplay behavior when Reduce Motion is off.
 
 | Sequence                                 | Action                                                                         | Playback                     | Duration |
 | ---------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------- | -------- |
@@ -11,10 +11,13 @@ The [reaction-only gallery](reactions/index.html) remains available for focused 
 | [Tennis ball](tennis-ball/preview.gif)   | Both dogs track the bounce and wag their tails excitedly; cat stays composed   | Loop                         | 2.20 s   |
 | [Yarn ball](yarn-ball/preview.gif)       | Cat tracks the rolling yarn with a broad striped-tail swish; dogs stay relaxed | Loop                         | 2.24 s   |
 | [Food can](food-can/preview.gif)         | Pull-tab opens, followed by all three heads perking up and tails wagging       | Plays once, holds final pose | 2.60 s   |
+| [Backflip](backflip/preview.gif)         | Crouch, spring, full backward somersault, soft landing and recovery            | Plays once, holds final pose | 1.64 s   |
 
 Each sequence contains eight 512×512 transparent PNG frames, a 2048×1024 transparent PNG sprite sheet (four columns × two rows, row-major order), a transparent GIF, and a lossless animated WebP. [manifest.json](manifest.json) provides paths, per-frame durations in milliseconds, dimensions, and loop behavior. PNG frames and WebP retain full alpha; GIF uses palette transparency.
 
 These are generated enlarged pixel-art animation studies based on [official character 01e](../../01e-cerberus-retro-pixel-character.png), with stepped outlines and natural coat colors. They are not literal low-resolution production sprites. Original generated sheets are preserved in `sources/`. The built-in image generation tool created the art; [generation.json](generation.json) records the exact initial prompts and correction prompts. The yarn sequence uses head tracking with both front paws planted.
+
+Backflip is an additional gallery study, with eight distinct poses and one-shot playback. Its generated source and exact prompt are preserved with the other sequences.
 
 All five everyday sheets now play in the mobile navigation footer, independently of daily values. Walking, seated idle, tennis ball, and yarn ball run autonomously; explicit note Submit plays food can once. The ten reaction sequences now play once from matching mobile keypad choices, retaining the current position and facing before roaming resumes. `node scripts/cerberus-assets.mjs` copies all fifteen sheets and original per-frame durations into the mobile bundle; `node scripts/cerberus-assets.mjs --check` verifies those copies. Re-run preparation after rebuilding these official assets.
 
@@ -34,7 +37,7 @@ Verify the exported frames and animation metadata without rebuilding:
 node scripts/animations.mjs --check
 ```
 
-Check all fifteen previews and the keypad in Chromium:
+Check all sixteen previews and the keypad in Chromium:
 
 ```sh
 node scripts/animation-gallery-check.mjs
