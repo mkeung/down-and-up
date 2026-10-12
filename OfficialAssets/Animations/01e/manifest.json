@@ -1,0 +1,102 @@
+{
+  "character": "01e",
+  "width": 512,
+  "height": 512,
+  "animations": [
+    {
+      "id": "walking",
+      "title": "Walking",
+      "frames": [
+        "walking/frames/01.png",
+        "walking/frames/02.png",
+        "walking/frames/03.png",
+        "walking/frames/04.png",
+        "walking/frames/05.png",
+        "walking/frames/06.png",
+        "walking/frames/07.png",
+        "walking/frames/08.png"
+      ],
+      "durations": [120, 120, 120, 120, 120, 120, 120, 120],
+      "loop": true,
+      "gif": "walking/preview.gif",
+      "webp": "walking/preview.webp",
+      "sheet": "walking/sheet.png"
+    },
+    {
+      "id": "sitting-idle",
+      "title": "Sitting idle",
+      "frames": [
+        "sitting-idle/frames/01.png",
+        "sitting-idle/frames/02.png",
+        "sitting-idle/frames/03.png",
+        "sitting-idle/frames/04.png",
+        "sitting-idle/frames/05.png",
+        "sitting-idle/frames/06.png",
+        "sitting-idle/frames/07.png",
+        "sitting-idle/frames/08.png"
+      ],
+      "durations": [500, 220, 180, 160, 160, 220, 300, 500],
+      "loop": true,
+      "gif": "sitting-idle/preview.gif",
+      "webp": "sitting-idle/preview.webp",
+      "sheet": "sitting-idle/sheet.png"
+    },
+    {
+      "id": "tennis-ball",
+      "title": "Tennis ball",
+      "frames": [
+        "tennis-ball/frames/01.png",
+        "tennis-ball/frames/02.png",
+        "tennis-ball/frames/03.png",
+        "tennis-ball/frames/04.png",
+        "tennis-ball/frames/05.png",
+        "tennis-ball/frames/06.png",
+        "tennis-ball/frames/07.png",
+        "tennis-ball/frames/08.png"
+      ],
+      "durations": [450, 180, 180, 220, 260, 220, 240, 450],
+      "loop": true,
+      "gif": "tennis-ball/preview.gif",
+      "webp": "tennis-ball/preview.webp",
+      "sheet": "tennis-ball/sheet.png"
+    },
+    {
+      "id": "yarn-ball",
+      "title": "Yarn ball",
+      "frames": [
+        "yarn-ball/frames/01.png",
+        "yarn-ball/frames/02.png",
+        "yarn-ball/frames/03.png",
+        "yarn-ball/frames/04.png",
+        "yarn-ball/frames/05.png",
+        "yarn-ball/frames/06.png",
+        "yarn-ball/frames/07.png",
+        "yarn-ball/frames/08.png"
+      ],
+      "durations": [450, 180, 200, 240, 260, 220, 240, 450],
+      "loop": true,
+      "gif": "yarn-ball/preview.gif",
+      "webp": "yarn-ball/preview.webp",
+      "sheet": "yarn-ball/sheet.png"
+    },
+    {
+      "id": "food-can",
+      "title": "Food can",
+      "frames": [
+        "food-can/frames/01.png",
+        "food-can/frames/02.png",
+        "food-can/frames/03.png",
+        "food-can/frames/04.png",
+        "food-can/frames/05.png",
+        "food-can/frames/06.png",
+        "food-can/frames/07.png",
+        "food-can/frames/08.png"
+      ],
+      "durations": [500, 200, 220, 220, 280, 220, 260, 700],
+      "loop": false,
+      "gif": "food-can/preview.gif",
+      "webp": "food-can/preview.webp",
+      "sheet": "food-can/sheet.png"
+    }
+  ]
+}

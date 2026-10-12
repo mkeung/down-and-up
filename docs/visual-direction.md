@@ -23,6 +23,7 @@ Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIX
 
 ## Done
 
+- **Animation assets:** five sequences based on 01e (walking, seated idle, tennis ball, yarn ball, and food-can opening) are prepared in `OfficialAssets/Animations/01e/`, with transparent frames, sprite sheets, GIF/WebP previews, timing metadata, and an [offline review gallery](../OfficialAssets/Animations/01e/index.html). These sequences are asset studies and are not wired into mobile playback; they remain independent of values.
 
 - **App icon:** `OfficialAssets/10-cerberus-retro-pixel-icon.png` is the master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. Earlier icons 09b (opaque) and 09c (transparent) live in `ConceptArt/` as reference studies; 10 is the only official icon master.
 - **Character artwork:** `OfficialAssets/01e-cerberus-retro-pixel-character.png` is a full-body retro-pixel variant of 01c, matching icon 10. It retains three heads, three tails, tabby front legs, golden rear legs, and no collars. The original 01c is preserved in `ConceptArt/` as a reference study. The exact prompt is in [concept art](../ConceptArt/README.md#01e-cerberus-retro-pixel-characterpng).

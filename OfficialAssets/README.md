@@ -1,5 +1,6 @@
 # Official artwork
 
+- [01e animation set](Animations/01e/index.html): walking, sitting idle, tennis-ball distraction, yarn-ball distraction, and food-can opening. [Asset notes](Animations/01e/README.md) include frame formats and timing.
 
 - [10 — app icon](10-cerberus-retro-pixel-icon.png): the official icon master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it.
 - [01e — retro-pixel character](01e-cerberus-retro-pixel-character.png): the full-body version of 01c in the same chunky style as icon 10.

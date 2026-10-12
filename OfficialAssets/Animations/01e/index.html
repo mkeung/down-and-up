@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Down &amp; Up — Cerberus animation studies</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4f3ec;
+        --ink: #302a25;
+        --line: #d6d1c5;
+        --stage: #ebe7db;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1240px;
+        margin: auto;
+        padding: 48px 28px;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        font-size: 12px;
+      }
+      h1 {
+        font-size: clamp(32px, 5vw, 56px);
+        line-height: 1.1;
+        letter-spacing: -0.045em;
+        margin: 16px 0;
+      }
+      .intro {
+        max-width: 660px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        padding: 24px 0;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 28px;
+      }
+      button,
+      select {
+        min-height: 44px;
+        padding: 8px 14px;
+        border: 1px solid var(--ink);
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      button:focus-visible,
+      select:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #7862aa;
+        outline-offset: 3px;
+      }
+      .toolbar label {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 24px;
+      }
+      article {
+        border: 1px solid var(--line);
+        padding: 16px;
+      }
+      .card-top {
+        display: flex;
+        justify-content: space-between;
+        color: #736b60;
+        font-size: 12px;
+      }
+      .number {
+        font-weight: 700;
+      }
+      .stage {
+        margin: 16px 0;
+        background: var(--stage);
+        aspect-ratio: 1;
+        display: grid;
+        place-items: center;
+      }
+      .stage img {
+        width: 100%;
+        height: auto;
+        image-rendering: pixelated;
+      }
+      body[data-background='dark'] .stage {
+        background: #272b31;
+      }
+      body[data-background='checker'] .stage {
+        background: conic-gradient(
+            #ddd9cf 25%,
+            #f4f3ec 0 50%,
+            #ddd9cf 0 75%,
+            #f4f3ec 0
+          )
+          0 0/24px 24px;
+      }
+      h2 {
+        font-size: 20px;
+        margin: 8px 0;
+      }
+      article p {
+        min-height: 72px;
+        font-size: 14px;
+        color: #675f55;
+        margin: 8px 0 16px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .counter {
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+        font-size: 12px;
+      }
+      .scrub-label {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 16px;
+        font-size: 12px;
+      }
+      .scrub {
+        min-width: 0;
+        flex: 1;
+        min-height: 32px;
+        accent-color: #524638;
+      }
+      .downloads {
+        display: flex;
+        gap: 16px;
+        margin-top: 16px;
+        font-size: 12px;
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 3px;
+      }
+      footer {
+        margin-top: 32px;
+        font-size: 13px;
+        color: #675f55;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 580px) {
+        main {
+          padding: 28px 16px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .toolbar label {
+          margin-left: 0;
+        }
+        article p {
+          min-height: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Down &amp; Up / Character 01e</div>
+      <h1>A little life in every pixel.</h1>
+      <p class="intro">
+        Five Cerberus animation studies. A walk, a quiet seat, two distractions,
+        and a shared treat. Step through any sequence or watch it play.
+      </p>
+      <div class="toolbar">
+        <button type="button" id="play-all">Play all</button
+        ><button type="button" id="pause-all">Pause all</button
+        ><label
+          >Speed<select id="speed" aria-label="Animation speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+          </select></label
+        ><label
+          >Background<select id="background" aria-label="Preview background">
+            <option value="ivory">Ivory</option>
+            <option value="dark">Dark</option>
+            <option value="checker">Transparency grid</option>
+          </select></label
+        >
+      </div>
+      <div class="grid">
+        <article data-id="walking">
+          <div class="card-top">
+            <span class="number">01</span><span>Loop</span>
+          </div>
+          <div class="stage">
+            <img
+              src="walking/frames/01.png"
+              width="512"
+              height="512"
+              alt="Walking animation of the three-headed Cerberus character"
+            />
+          </div>
+          <h2>Walking</h2>
+          <p>
+            Alternating tabby front legs and golden hind legs, with a gentle
+            head bob.
+          </p>
+          <div class="controls">
+            <button
+              type="button"
+              class="toggle"
+              aria-label="Play walking animation"
+            >
+              Play</button
+            ><button
+              type="button"
+              class="restart"
+              aria-label="Restart walking animation"
+            >
+              Restart</button
+            ><span class="counter" aria-hidden="true">1 / 8</span>
+          </div>
+          <label class="scrub-label"
+            >Frame<input
+              class="scrub"
+              type="range"
+              min="1"
+              max="8"
+              value="1"
+              aria-label="Walking frame"
+          /></label>
+          <div class="downloads">
+            <a href="walking/preview.gif" download>GIF</a
+            ><a href="walking/preview.webp" download>WebP</a
+            ><a href="walking/sheet.png">Sprite sheet ↗</a>
+          </div>
+        </article>
+        <article data-id="sitting-idle">
+          <div class="card-top">
+            <span class="number">02</span><span>Loop</span>
+          </div>
+          <div class="stage">
+            <img
+              src="sitting-idle/frames/01.png"
+              width="512"
+              height="512"
+              alt="Sitting idle animation of the three-headed Cerberus character"
+            />
+          </div>
+          <h2>Sitting idle</h2>
+          <p>
+            Seated breathing, blinking, an ear twitch, and a quiet tail sway.
+          </p>
+          <div class="controls">
+            <button
+              type="button"
+              class="toggle"
+              aria-label="Play sitting idle animation"
+            >
+              Play</button
+            ><button
+              type="button"
+              class="restart"
+              aria-label="Restart sitting idle animation"
+            >
+              Restart</button
+            ><span class="counter" aria-hidden="true">1 / 8</span>
+          </div>
+          <label class="scrub-label"
+            >Frame<input
+              class="scrub"
+              type="range"
+              min="1"
+              max="8"
+              value="1"
+              aria-label="Sitting idle frame"
+          /></label>
+          <div class="downloads">
+            <a href="sitting-idle/preview.gif" download>GIF</a
+            ><a href="sitting-idle/preview.webp" download>WebP</a
+            ><a href="sitting-idle/sheet.png">Sprite sheet ↗</a>
+          </div>
+        </article>
+        <article data-id="tennis-ball">
+          <div class="card-top">
+            <span class="number">03</span><span>Loop</span>
+          </div>
+          <div class="stage">
+            <img
+              src="tennis-ball/frames/01.png"
+              width="512"
+              height="512"
+              alt="Tennis ball animation of the three-headed Cerberus character"
+            />
+          </div>
+          <h2>Tennis ball</h2>
+          <p>
+            The two dog heads follow the bounce while the cat stays composed.
+          </p>
+          <div class="controls">
+            <button
+              type="button"
+              class="toggle"
+              aria-label="Play tennis ball animation"
+            >
+              Play</button
+            ><button
+              type="button"
+              class="restart"
+              aria-label="Restart tennis ball animation"
+            >
+              Restart</button
+            ><span class="counter" aria-hidden="true">1 / 8</span>
+          </div>
+          <label class="scrub-label"
+            >Frame<input
+              class="scrub"
+              type="range"
+              min="1"
+              max="8"
+              value="1"
+              aria-label="Tennis ball frame"
+          /></label>
+          <div class="downloads">
+            <a href="tennis-ball/preview.gif" download>GIF</a
+            ><a href="tennis-ball/preview.webp" download>WebP</a
+            ><a href="tennis-ball/sheet.png">Sprite sheet ↗</a>
+          </div>
+        </article>
+        <article data-id="yarn-ball">
+          <div class="card-top">
+            <span class="number">04</span><span>Loop</span>
+          </div>
+          <div class="stage">
+            <img
+              src="yarn-ball/frames/01.png"
+              width="512"
+              height="512"
+              alt="Yarn ball animation of the three-headed Cerberus character"
+            />
+          </div>
+          <h2>Yarn ball</h2>
+          <p>
+            The cat follows the rolling yarn while the two dogs stay relaxed.
+          </p>
+          <div class="controls">
+            <button
+              type="button"
+              class="toggle"
+              aria-label="Play yarn ball animation"
+            >
+              Play</button
+            ><button
+              type="button"
+              class="restart"
+              aria-label="Restart yarn ball animation"
+            >
+              Restart</button
+            ><span class="counter" aria-hidden="true">1 / 8</span>
+          </div>
+          <label class="scrub-label"
+            >Frame<input
+              class="scrub"
+              type="range"
+              min="1"
+              max="8"
+              value="1"
+              aria-label="Yarn ball frame"
+          /></label>
+          <div class="downloads">
+            <a href="yarn-ball/preview.gif" download>GIF</a
+            ><a href="yarn-ball/preview.webp" download>WebP</a
+            ><a href="yarn-ball/sheet.png">Sprite sheet ↗</a>
+          </div>
+        </article>
+        <article data-id="food-can">
+          <div class="card-top">
+            <span class="number">05</span><span>Plays once</span>
+          </div>
+          <div class="stage">
+            <img
+              src="food-can/frames/01.png"
+              width="512"
+              height="512"
+              alt="Food can animation of the three-headed Cerberus character"
+            />
+          </div>
+          <h2>Food can</h2>
+          <p>
+            A pull-tab can opens, then all three perk up and wag their tails.
+          </p>
+          <div class="controls">
+            <button
+              type="button"
+              class="toggle"
+              aria-label="Play food can animation"
+            >
+              Play</button
+            ><button
+              type="button"
+              class="restart"
+              aria-label="Restart food can animation"
+            >
+              Restart</button
+            ><span class="counter" aria-hidden="true">1 / 8</span>
+          </div>
+          <label class="scrub-label"
+            >Frame<input
+              class="scrub"
+              type="range"
+              min="1"
+              max="8"
+              value="1"
+              aria-label="Food can frame"
+          /></label>
+          <div class="downloads">
+            <a href="food-can/preview.gif" download>GIF</a
+            ><a href="food-can/preview.webp" download>WebP</a
+            ><a href="food-can/sheet.png">Sprite sheet ↗</a>
+          </div>
+        </article>
+      </div>
+      <footer>
+        Eight frames per sequence · Transparent PNG frames, GIF, WebP, and
+        sprite sheets · <a href="README.md">Asset notes</a> ·
+        <a href="generation.json">Exact generation prompts</a>
+      </footer>
+    </main>
+    <script>
+      const definitions = [
+        {
+          id: 'walking',
+          title: 'Walking',
+          durations: [120, 120, 120, 120, 120, 120, 120, 120],
+          loop: true,
+        },
+        {
+          id: 'sitting-idle',
+          title: 'Sitting idle',
+          durations: [500, 220, 180, 160, 160, 220, 300, 500],
+          loop: true,
+        },
+        {
+          id: 'tennis-ball',
+          title: 'Tennis ball',
+          durations: [450, 180, 180, 220, 260, 220, 240, 450],
+          loop: true,
+        },
+        {
+          id: 'yarn-ball',
+          title: 'Yarn ball',
+          durations: [450, 180, 200, 240, 260, 220, 240, 450],
+          loop: true,
+        },
+        {
+          id: 'food-can',
+          title: 'Food can',
+          durations: [500, 200, 220, 220, 280, 220, 260, 700],
+          loop: false,
+        },
+      ];
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const speed = document.querySelector('#speed');
+      const players = definitions.map((definition) => {
+        const card = document.querySelector(
+          '[data-id="' + definition.id + '"]',
+        );
+        const img = card.querySelector('img');
+        const toggle = card.querySelector('.toggle');
+        const scrub = card.querySelector('.scrub');
+        const counter = card.querySelector('.counter');
+        let frame = 0;
+        let timer;
+        let playing = false;
+        const sources = Array.from(
+          { length: 8 },
+          (_, i) =>
+            definition.id +
+            '/frames/' +
+            String(i + 1).padStart(2, '0') +
+            '.png',
+        );
+        sources.forEach((src) => {
+          const preload = new Image();
+          preload.src = src;
+        });
+        function render() {
+          img.src = sources[frame];
+          scrub.value = String(frame + 1);
+          counter.textContent = frame + 1 + ' / 8';
+        }
+        function updateButton() {
+          toggle.textContent = playing ? 'Pause' : 'Play';
+          toggle.setAttribute(
+            'aria-label',
+            (playing ? 'Pause ' : 'Play ') +
+              definition.title.toLowerCase() +
+              ' animation',
+          );
+        }
+        function pause() {
+          clearTimeout(timer);
+          playing = false;
+          updateButton();
+        }
+        function schedule() {
+          clearTimeout(timer);
+          timer = setTimeout(
+            () => {
+              if (frame === 7 && !definition.loop) {
+                pause();
+                return;
+              }
+              frame = (frame + 1) % 8;
+              render();
+              schedule();
+            },
+            definition.durations[frame] / Number(speed.value),
+          );
+        }
+        function play() {
+          if (frame === 7 && !definition.loop) {
+            frame = 0;
+            render();
+          }
+          playing = true;
+          updateButton();
+          schedule();
+        }
+        toggle.addEventListener('click', () => (playing ? pause() : play()));
+        card.querySelector('.restart').addEventListener('click', () => {
+          pause();
+          frame = 0;
+          render();
+          play();
+        });
+        scrub.addEventListener('input', () => {
+          pause();
+          frame = Number(scrub.value) - 1;
+          render();
+        });
+        return {
+          play,
+          pause,
+          reschedule: () => {
+            if (playing) schedule();
+          },
+        };
+      });
+      document
+        .querySelector('#play-all')
+        .addEventListener('click', () =>
+          players.forEach((player) => player.play()),
+        );
+      document
+        .querySelector('#pause-all')
+        .addEventListener('click', () =>
+          players.forEach((player) => player.pause()),
+        );
+      speed.addEventListener('change', () =>
+        players.forEach((player) => player.reschedule()),
+      );
+      document
+        .querySelector('#background')
+        .addEventListener('change', (event) => {
+          document.body.dataset.background = event.target.value;
+        });
+      reducedMotion.addEventListener('change', () => {
+        if (reducedMotion.matches) players.forEach((player) => player.pause());
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) players.forEach((player) => player.pause());
+      });
+      if (!reducedMotion.matches) players.forEach((player) => player.play());
+    </script>
+  </body>
+</html>
