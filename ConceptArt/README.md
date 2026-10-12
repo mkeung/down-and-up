@@ -6,22 +6,22 @@ The selected official artwork (**01c**, **09b**, and **09c**) lives in [Official
 
 Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01–05** retain more of the pets' appearance and explore different media. **09b** is the latest opaque app-icon master with two front paws and hidden legs; **09c** is its transparent companion for other icon uses. All other images have an opaque light background.
 
-| File | Direction |
-| --- | --- |
-| [01-cerberus-pixel.png](01-cerberus-pixel.png) | Pixel art |
-| [01b-cerberus-pixel-cat-legs-collars.png](01b-cerberus-pixel-cat-legs-collars.png) | Version 01 with tabby front legs and paws; pink Pom collar, blue middle dog collar, green cat collar |
-| [01c-cerberus-pixel-cat-legs-no-collars.png](../OfficialAssets/01c-cerberus-pixel-cat-legs-no-collars.png) | Official character artwork; no collars, tabby front legs and paws |
-| [01d-cerberus-pixel-low-fidelity.png](01d-cerberus-pixel-low-fidelity.png) | Lower-fidelity version 01c with chunky pixels, simpler faces and coat shapes, tabby front legs, and no collars |
-| [02-cerberus-watercolor.png](02-cerberus-watercolor.png) | Watercolor |
-| [03-cerberus-anime.png](03-cerberus-anime.png) | Chibi anime |
-| [04-cerberus-paper-cutout.png](04-cerberus-paper-cutout.png) | Paper cutout |
-| [05-cerberus-ink-sketch.png](05-cerberus-ink-sketch.png) | Ink sketch |
-| [06-cerberus-minimal-pixel.png](06-cerberus-minimal-pixel.png) | Minimal pixel |
-| [07-cerberus-minimal-watercolor.png](07-cerberus-minimal-watercolor.png) | Minimal watercolor |
-| [08-cerberus-minimal-anime.png](08-cerberus-minimal-anime.png) | Minimal chibi anime |
-| [09-cerberus-app-icon.png](09-cerberus-app-icon.png) | Three-head icon portrait in style 08; no paws or legs |
-| [09b-cerberus-app-icon-front-paws.png](../OfficialAssets/09b-cerberus-app-icon-front-paws.png) | Official opaque app icon; two small tabby front paws, legs hidden |
-| [09c-cerberus-icon-front-paws-transparent.png](../OfficialAssets/09c-cerberus-icon-front-paws-transparent.png) | Official transparent icon; two front paws, legs hidden |
+| File                                                                                                           | Direction                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| [01-cerberus-pixel.png](01-cerberus-pixel.png)                                                                 | Pixel art                                                                                                      |
+| [01b-cerberus-pixel-cat-legs-collars.png](01b-cerberus-pixel-cat-legs-collars.png)                             | Version 01 with tabby front legs and paws; pink Pom collar, blue middle dog collar, green cat collar           |
+| [01c-cerberus-pixel-cat-legs-no-collars.png](../OfficialAssets/01c-cerberus-pixel-cat-legs-no-collars.png)     | Official character artwork; no collars, tabby front legs and paws                                              |
+| [01d-cerberus-pixel-low-fidelity.png](01d-cerberus-pixel-low-fidelity.png)                                     | Lower-fidelity version 01c with chunky pixels, simpler faces and coat shapes, tabby front legs, and no collars |
+| [02-cerberus-watercolor.png](02-cerberus-watercolor.png)                                                       | Watercolor                                                                                                     |
+| [03-cerberus-anime.png](03-cerberus-anime.png)                                                                 | Chibi anime                                                                                                    |
+| [04-cerberus-paper-cutout.png](04-cerberus-paper-cutout.png)                                                   | Paper cutout                                                                                                   |
+| [05-cerberus-ink-sketch.png](05-cerberus-ink-sketch.png)                                                       | Ink sketch                                                                                                     |
+| [06-cerberus-minimal-pixel.png](06-cerberus-minimal-pixel.png)                                                 | Minimal pixel                                                                                                  |
+| [07-cerberus-minimal-watercolor.png](07-cerberus-minimal-watercolor.png)                                       | Minimal watercolor                                                                                             |
+| [08-cerberus-minimal-anime.png](08-cerberus-minimal-anime.png)                                                 | Minimal chibi anime                                                                                            |
+| [09-cerberus-app-icon.png](09-cerberus-app-icon.png)                                                           | Three-head icon portrait in style 08; no paws or legs                                                          |
+| [09b-cerberus-app-icon-front-paws.png](../OfficialAssets/09b-cerberus-app-icon-front-paws.png)                 | Official opaque app icon; two small tabby front paws, legs hidden                                              |
+| [09c-cerberus-icon-front-paws-transparent.png](../OfficialAssets/09c-cerberus-icon-front-paws-transparent.png) | Official transparent icon; two front paws, legs hidden                                                         |
 
 Reference order: `IMG_4564.jpg` (both dogs), `IMG_1203.jpg` (larger dog), `IMG_1021.jpg` (cat), `IMG_20240625_181700362.jpg` (Pom and plume tail). The other supplied photos were also reviewed before generation.
 
@@ -64,7 +64,6 @@ Use case: background-extraction.
 Edit target: the supplied Cerberus app icon with TWO small front paws and hidden legs.
 Remove ONLY the opaque ivory background and replace it with genuinely transparent alpha. Preserve the entire character artwork, including BOTH small gray-brown FRONT PAWS along the bottom, their toe marks, three faces, three tails, small golden-and-cream chest, all dark outlines and internal colors. Keep pose, proportions and framing. The cream fur inside the Pom tail and dog muzzle/chest must remain opaque. No legs, no collars, no extra paws, no text, no new details. Clean antialiased edges. No painted checkerboard.
 ```
-
 
 ### 01d-cerberus-pixel-low-fidelity.png
 
