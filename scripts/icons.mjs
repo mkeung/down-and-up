@@ -6,7 +6,8 @@ const require = createRequire(
   ),
 );
 const sharp = require('sharp');
-await sharp('apps/mobile/assets/icon.svg')
-  .resize(1024, 1024)
+await sharp('OfficialAssets/10-cerberus-retro-pixel-icon.png')
+  .flatten({ background: '#f4f3ec' })
+  .resize(1024, 1024, { kernel: 'nearest' })
   .png()
   .toFile('apps/mobile/assets/icon.png');

@@ -1,10 +1,12 @@
 # Cerberus concept art
 
+Youth-oriented app UI explorations are in [UI](UI/README.md). **Retro pixel is the selected direction.** Open the [comparison gallery](UI/index.html) to review the five initial art directions and four additional retro-pixel palette/control studies. The [design note](UI/RETRO-PIXEL.md) records the selection and the new pixel app icon.
+
 Fourteen PNG character studies generated with the built-in image generation tool from the pet photos in `../DogsAndCat/`, including three edited versions of concept 01 and three icon variants based on concept 08. Each combines the two dogs and cat into one creature with three heads and three tails; the icon variants show only the heads and a small chest.
 
-The selected official artwork (**01c**, **09b**, and **09c**) lives in [OfficialAssets](../OfficialAssets/). The remaining studies stay here; the original prompts for all versions are preserved below.
+The selected official character (**01c**) and retro-pixel icon (**10**) live in [OfficialAssets](../OfficialAssets/). Earlier icon versions **09b** and **09c** remain there as reference studies. The new icon prompt is in [UI/RETRO-PIXEL.md](UI/RETRO-PIXEL.md); the original character and icon prompts are preserved below.
 
-Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01–05** retain more of the pets' appearance and explore different media. **09b** is the latest opaque app-icon master with two front paws and hidden legs; **09c** is its transparent companion for other icon uses. All other images have an opaque light background.
+Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01–05** retain more of the pets' appearance and explore different media. **10** is the current opaque retro-pixel app-icon master with two front paws and hidden legs. **09b** and its transparent companion **09c** preserve the previous illustrated icon. All other images have an opaque light background.
 
 | File                                                                                                           | Direction                                                                                                      |
 | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -20,8 +22,9 @@ Start with **06–08** for the lowest-detail options. **01d** simplifies the sta
 | [07-cerberus-minimal-watercolor.png](07-cerberus-minimal-watercolor.png)                                       | Minimal watercolor                                                                                             |
 | [08-cerberus-minimal-anime.png](08-cerberus-minimal-anime.png)                                                 | Minimal chibi anime                                                                                            |
 | [09-cerberus-app-icon.png](09-cerberus-app-icon.png)                                                           | Three-head icon portrait in style 08; no paws or legs                                                          |
-| [09b-cerberus-app-icon-front-paws.png](../OfficialAssets/09b-cerberus-app-icon-front-paws.png)                 | Official opaque app icon; two small tabby front paws, legs hidden                                              |
-| [09c-cerberus-icon-front-paws-transparent.png](../OfficialAssets/09c-cerberus-icon-front-paws-transparent.png) | Official transparent icon; two front paws, legs hidden                                                         |
+| [09b-cerberus-app-icon-front-paws.png](../OfficialAssets/09b-cerberus-app-icon-front-paws.png)                 | Previous opaque icon; two small tabby front paws, legs hidden                                                  |
+| [09c-cerberus-icon-front-paws-transparent.png](../OfficialAssets/09c-cerberus-icon-front-paws-transparent.png) | Previous transparent icon; two front paws, legs hidden                                                         |
+| [10-cerberus-retro-pixel-icon.png](../OfficialAssets/10-cerberus-retro-pixel-icon.png)                         | Current retro-pixel app-icon master; three heads and tails, two tabby paws, hidden legs                        |
 
 Reference order: `IMG_4564.jpg` (both dogs), `IMG_1203.jpg` (larger dog), `IMG_1021.jpg` (cat), `IMG_20240625_181700362.jpg` (Pom and plume tail). The other supplied photos were also reviewed before generation.
 
