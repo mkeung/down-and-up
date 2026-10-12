@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     volume: number;
     seekTo: ReturnType<typeof vi.fn>;
     play: ReturnType<typeof vi.fn>;
+    pause: ReturnType<typeof vi.fn>;
   }[],
   setAudioModeAsync: vi.fn(),
 }));
@@ -16,6 +17,7 @@ vi.mock('expo-audio', () => ({
       volume: 1,
       seekTo: vi.fn().mockResolvedValue(undefined),
       play: vi.fn(),
+      pause: vi.fn(),
     };
     mocks.created.push(player);
     return player;
@@ -30,7 +32,9 @@ vi.mock('../assets/sounds/meow-b.wav', () => ({ default: 5 }));
 
 async function load() {
   vi.resetModules();
-  return import('./sounds');
+  const sounds = await import('./sounds');
+  sounds.setSoundPreferences({ muted: false, volume: 1 });
+  return sounds;
 }
 beforeEach(() => {
   vi.useFakeTimers();
@@ -92,4 +96,63 @@ it('plays cues at their offsets and cancels the ones not yet heard', async () =>
   await vi.runAllTimersAsync();
   expect(mocks.created).toHaveLength(1);
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it('scales existing and newly created players by the master volume', async () => {
+  const { playSound, setSoundPreferences } = await load();
+  playSound('click');
+  await vi.runAllTimersAsync();
+  setSoundPreferences({ muted: false, volume: 0.4 });
+  expect(mocks.created[0]!.volume).toBe(0.2);
+  playSound('dogBark');
+  await vi.runAllTimersAsync();
+  expect(mocks.created[1]!.volume).toBeCloseTo(0.28);
+});
+
+it.each([null, { muted: true, volume: 0.8 }, { muted: false, volume: 0 }])(
+  'skips playback and cues while preferences are %s',
+  async (preference) => {
+    const { playSound, setSoundPreferences, cueAnimationSounds } = await load();
+    setSoundPreferences(preference);
+    playSound('click');
+    cueAnimationSounds('food-can');
+    await vi.runAllTimersAsync();
+    expect(mocks.created).toHaveLength(0);
+    expect(mocks.setAudioModeAsync).not.toHaveBeenCalled();
+  },
+);
+
+it('mute pauses active clips and cancels outstanding animation cues', async () => {
+  const { playSound, setSoundPreferences, cueAnimationSounds } = await load();
+  playSound('dogBark');
+  cueAnimationSounds('food-can');
+  await vi.advanceTimersByTimeAsync(100);
+  setSoundPreferences({ muted: true, volume: 0.6 });
+  expect(mocks.created[0]!.pause).toHaveBeenCalledTimes(1);
+  expect(mocks.created[0]!.volume).toBe(0);
+  expect(vi.getTimerCount()).toBe(0);
+  setSoundPreferences({ muted: false, volume: 0.6 });
+  await vi.runAllTimersAsync();
+  expect(mocks.created).toHaveLength(1);
+  expect(mocks.created[0]!.volume).toBeCloseTo(0.42);
+  expect(mocks.created[0]!.play).toHaveBeenCalledTimes(1);
+});
+
+it('does not play a pending seek that was muted, even after unmuting', async () => {
+  const { playSound, setSoundPreferences } = await load();
+  playSound('click');
+  await vi.runAllTimersAsync();
+  const clip = mocks.created[0]!;
+  let finish!: () => void;
+  clip.seekTo.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  playSound('click');
+  setSoundPreferences({ muted: true, volume: 1 });
+  setSoundPreferences({ muted: false, volume: 1 });
+  finish();
+  await vi.runAllTimersAsync();
+  expect(clip.play).toHaveBeenCalledTimes(1);
 });

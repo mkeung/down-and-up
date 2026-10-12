@@ -9,6 +9,7 @@ import dogBark from '../assets/sounds/dog-bark.wav';
 import meowA from '../assets/sounds/meow-a.wav';
 import meowB from '../assets/sounds/meow-b.wav';
 import type { CerberusAnimation } from './cerberus-motion';
+import type { SoundPreferences } from './sound-preferences';
 
 const sources = { click, pomBark, dogBark, meowA, meowB };
 export type SoundName = keyof typeof sources;
@@ -22,6 +23,31 @@ const volumes: Record<SoundName, number> = {
 
 const players: Partial<Record<SoundName, AudioPlayer>> = {};
 let configured = false;
+let preferences: SoundPreferences | null = null;
+let playbackVersion = 0;
+const pendingCues = new Set<ReturnType<typeof setTimeout>>();
+
+const masterVolume = () =>
+  preferences && !preferences.muted ? preferences.volume : 0;
+
+export function setSoundPreferences(next: SoundPreferences | null) {
+  preferences = next;
+  const volume = masterVolume();
+  if (volume === 0) {
+    playbackVersion++;
+    pendingCues.forEach(clearTimeout);
+    pendingCues.clear();
+  }
+  for (const name of Object.keys(players) as SoundName[]) {
+    try {
+      const sound = players[name]!;
+      sound.volume = volumes[name] * volume;
+      if (volume === 0) sound.pause();
+    } catch {
+      /* A missing player must not prevent the preference from applying. */
+    }
+  }
+}
 
 // Short effects follow the phone's silent mode and never pause other audio.
 function player(name: SoundName) {
@@ -37,18 +63,22 @@ function player(name: SoundName) {
   let existing = players[name];
   if (!existing) {
     existing = createAudioPlayer(sources[name]);
-    existing.volume = volumes[name];
+    existing.volume = volumes[name] * masterVolume();
     players[name] = existing;
   }
   return existing;
 }
 
 export function playSound(name: SoundName) {
+  if (masterVolume() === 0) return;
+  const version = playbackVersion;
   try {
     const sound = player(name);
     void sound
       .seekTo(0)
-      .then(() => sound.play())
+      .then(() => {
+        if (version === playbackVersion && masterVolume() > 0) sound.play();
+      })
       .catch(() => {
         /* Sound is decoration; a failed clip is skipped. */
       });
@@ -85,8 +115,18 @@ export function soundCues(
 
 // Plays an animation's cues once; the returned function cancels any not yet heard.
 export function cueAnimationSounds(animation: CerberusAnimation) {
-  const timers = soundCues(animation).map(({ sound, at }) =>
-    setTimeout(() => playSound(sound), at),
-  );
-  return () => timers.forEach(clearTimeout);
+  if (masterVolume() === 0) return () => {};
+  const timers = soundCues(animation).map(({ sound, at }) => {
+    const timer = setTimeout(() => {
+      pendingCues.delete(timer);
+      playSound(sound);
+    }, at);
+    pendingCues.add(timer);
+    return timer;
+  });
+  return () =>
+    timers.forEach((timer) => {
+      clearTimeout(timer);
+      pendingCues.delete(timer);
+    });
 }

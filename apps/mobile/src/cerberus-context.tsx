@@ -13,7 +13,7 @@ export type CerberusRequest = {
 };
 const CerberusContext = createContext({
   request: { sequence: 0, animation: null } as CerberusRequest,
-  playFood: () => {},
+  playNoteSubmit: () => {},
   playReaction: (_value: number) => {},
 });
 
@@ -25,7 +25,10 @@ export function CerberusProvider({ children }: { children: ReactNode }) {
   const play = useCallback((animation: OneShotAnimation) => {
     setRequest((previous) => ({ sequence: previous.sequence + 1, animation }));
   }, []);
-  const playFood = useCallback(() => play('food-can'), [play]);
+  const playNoteSubmit = useCallback(
+    () => play(Math.random() < 0.5 ? 'food-can' : 'backflip'),
+    [play],
+  );
   const playReaction = useCallback(
     (value: number) => {
       const animation = reactionForValue(value);
@@ -34,7 +37,7 @@ export function CerberusProvider({ children }: { children: ReactNode }) {
     [play],
   );
   return (
-    <CerberusContext.Provider value={{ request, playFood, playReaction }}>
+    <CerberusContext.Provider value={{ request, playNoteSubmit, playReaction }}>
       {children}
     </CerberusContext.Provider>
   );

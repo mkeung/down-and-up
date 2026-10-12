@@ -15,6 +15,7 @@ import sitting from '../assets/cerberus/sitting-idle.png';
 import tennis from '../assets/cerberus/tennis-ball.png';
 import yarn from '../assets/cerberus/yarn-ball.png';
 import food from '../assets/cerberus/food-can.png';
+import backflip from '../assets/cerberus/backflip.png';
 import tugSheet from '../assets/cerberus/tug-of-war.png';
 import reaction01 from '../assets/cerberus/reaction-01.png';
 import reaction02 from '../assets/cerberus/reaction-02.png';
@@ -52,6 +53,7 @@ const sheets = {
   'tennis-ball': tennis,
   'yarn-ball': yarn,
   'food-can': food,
+  backflip,
   'tug-of-war': tugSheet,
   'reaction-01': reaction01,
   'reaction-02': reaction02,
@@ -71,6 +73,7 @@ const bottomPadding = {
   'tennis-ball': 88,
   'yarn-ball': 67,
   'food-can': 75,
+  backflip: 49,
   'tug-of-war': 98,
   'reaction-01': 83,
   'reaction-02': 79,

@@ -15,6 +15,7 @@ import { PixelFontContext } from '../src/retro';
 import pixelifySans from '../assets/fonts/PixelifySans-Regular.ttf';
 import silkscreen from '../assets/fonts/Silkscreen-Regular.ttf';
 import { CerberusProvider } from '../src/cerberus-context';
+import { SoundProvider } from '../src/sound-preference';
 function Navigation() {
   const theme = useTheme();
   const { selectDate } = useSelectedDate();
@@ -95,11 +96,13 @@ function Appearance() {
   return (
     <ThemeProvider store={repo}>
       <StatusBar style="auto" />
-      <SelectedDateProvider>
-        <CerberusProvider>
-          <Navigation />
-        </CerberusProvider>
-      </SelectedDateProvider>
+      <SoundProvider store={repo}>
+        <SelectedDateProvider>
+          <CerberusProvider>
+            <Navigation />
+          </CerberusProvider>
+        </SelectedDateProvider>
+      </SoundProvider>
     </ThemeProvider>
   );
 }

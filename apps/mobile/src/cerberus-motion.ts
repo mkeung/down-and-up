@@ -12,7 +12,7 @@ export const reactionAnimations = [
   'reaction-10',
 ] as const;
 export type ReactionAnimation = (typeof reactionAnimations)[number];
-export type OneShotAnimation = 'food-can' | ReactionAnimation;
+export type OneShotAnimation = 'food-can' | 'backflip' | ReactionAnimation;
 export type CerberusAnimation =
   'walking' | 'tug-of-war' | OneShotAnimation | IdleAnimation;
 
@@ -21,7 +21,9 @@ export function reactionForValue(value: number): ReactionAnimation | undefined {
 }
 
 export const isOneShot = (animation: CerberusAnimation) =>
-  animation === 'food-can' || animation.startsWith('reaction-');
+  animation === 'food-can' ||
+  animation === 'backflip' ||
+  animation.startsWith('reaction-');
 export type CerberusBehavior = {
   animation: CerberusAnimation;
   facingRight: boolean;

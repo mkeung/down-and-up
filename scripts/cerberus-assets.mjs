@@ -18,6 +18,7 @@ const ids = [
   'tennis-ball',
   'yarn-ball',
   'food-can',
+  'backflip',
   'tug-of-war',
 ];
 const manifest = JSON.parse(
@@ -46,7 +47,7 @@ for (const animation of [
   assert.equal(animation.durations.length, 8);
   assert.equal(
     animation.loop,
-    id !== 'food-can' && !id.startsWith('reaction-'),
+    id !== 'food-can' && id !== 'backflip' && !id.startsWith('reaction-'),
   );
   timings[id] = animation.durations;
   // One bit per 16px tile: transparent space can receive holds, artwork cannot.

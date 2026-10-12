@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   reportError: vi.fn(),
   setNotePending: vi.fn(),
   fontScale: 1,
-  playFood: vi.fn(),
+  playNoteSubmit: vi.fn(),
   dismiss: vi.fn(),
 }));
 // Button motion is covered by feedback-pressable.test.ts.
@@ -37,7 +37,7 @@ vi.mock('./app-context', () => ({
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({}) }));
 vi.mock('./cerberus-context', () => ({
-  useCerberus: () => ({ playFood: mocks.playFood }),
+  useCerberus: () => ({ playNoteSubmit: mocks.playNoteSubmit }),
 }));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -60,7 +60,7 @@ function deferred() {
 }
 beforeEach(() => {
   mocks.fontScale = 1;
-  mocks.playFood.mockClear();
+  mocks.playNoteSubmit.mockClear();
   mocks.dismiss.mockClear();
   vi.useFakeTimers();
   mocks.repo.setField.mockReset().mockResolvedValue(true);
@@ -97,7 +97,7 @@ it.each([1, 2])(
 );
 
 it.each(['keyboard', 'accessory'])(
-  'submits from the %s, saves, dismisses input, and requests the food animation once',
+  'submits from the %s, saves, dismisses input, and requests a note submission animation once',
   async (source) => {
     await mount();
     await act(async () => input().props.onChangeText('submitted note'));
@@ -114,7 +114,7 @@ it.each(['keyboard', 'accessory'])(
       'submitted note',
     );
     expect(mocks.dismiss).toHaveBeenCalledTimes(1);
-    expect(mocks.playFood).toHaveBeenCalledTimes(1);
+    expect(mocks.playNoteSubmit).toHaveBeenCalledTimes(1);
   },
 );
 
@@ -127,6 +127,7 @@ describe('note autosave', () => {
     await act(async () => input().props.onChangeText('unsaved draft'));
     await act(async () => input().props.onBlur());
     expect(input().props.value).toBe('unsaved draft');
+    expect(mocks.playNoteSubmit).not.toHaveBeenCalled();
     const failure = new Error('Disk full');
     await act(async () => write.reject(failure));
     expect(input().props.value).toBe('unsaved draft');
@@ -199,6 +200,7 @@ describe('note autosave', () => {
     });
     expect(mocks.repo.setField).toHaveBeenCalledWith(date, 'note', null);
     expect(mocks.setNotePending).toHaveBeenLastCalledWith(false);
+    expect(mocks.playNoteSubmit).not.toHaveBeenCalled();
   });
 
   it('flushes the original day when its editor unmounts', async () => {

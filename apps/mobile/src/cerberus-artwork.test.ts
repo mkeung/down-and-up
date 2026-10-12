@@ -8,6 +8,7 @@ import type { CerberusRequest } from './cerberus-context';
 import { reactionAnimations } from './cerberus-motion';
 import { CerberusRope } from './cerberus-rope';
 import { HOLD_DELAY } from './cerberus-tug';
+import timings from '../assets/cerberus/timings.json';
 
 const mocks = vi.hoisted(() => ({
   reduceMotion: false,
@@ -46,6 +47,7 @@ vi.mock('../assets/cerberus/sitting-idle.png', () => ({ default: 2 }));
 vi.mock('../assets/cerberus/tennis-ball.png', () => ({ default: 3 }));
 vi.mock('../assets/cerberus/yarn-ball.png', () => ({ default: 4 }));
 vi.mock('../assets/cerberus/food-can.png', () => ({ default: 5 }));
+vi.mock('../assets/cerberus/backflip.png', () => ({ default: 7 }));
 vi.mock('../assets/cerberus/tug-of-war.png', () => ({ default: 6 }));
 vi.mock('../assets/cerberus/reaction-01.png', () => ({ default: 11 }));
 vi.mock('../assets/cerberus/reaction-02.png', () => ({ default: 12 }));
@@ -381,22 +383,62 @@ it('ignores a walking completion delivered after the app was paused', async () =
   expect(vi.getTimerCount()).toBe(0);
 });
 
-it('plays food once after keyboard dismissal, preserving its facing and holding the final pose until completion', async () => {
+it.each(['food-can', 'backflip'] as const)(
+  'plays %s once after keyboard dismissal, preserving its facing and holding the final pose until completion',
+  async (animation) => {
+    await mount();
+    expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+    await act(async () => mocks.keyboard.get('keyboardDidShow')!());
+    mocks.request = { sequence: 1, animation };
+    await act(async () => renderer.update(createElement(CerberusArtwork)));
+    expect(renderer.toJSON()).toBeNull();
+    await act(async () => mocks.keyboard.get('keyboardDidHide')!());
+    const source = animation === 'food-can' ? 5 : 7;
+    expect(image().props.source).toBe(source);
+    expect(mocks.cues.filter((cue) => cue !== 'walking')).toEqual([animation]);
+    expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+    const durations = timings[animation];
+    await advance(
+      durations.slice(0, -1).reduce((total, duration) => total + duration, 0),
+    );
+    expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+    await advance(durations.at(-1)! - 1);
+    expect(image().props.source).toBe(source);
+    expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+    await advance(1);
+    expect(image().props.source).toBe(1);
+  },
+);
+
+it('shows the backflip recovery pose without animation for Reduce Motion', async () => {
+  mocks.reduceMotion = true;
   await mount();
-  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
-  await act(async () => mocks.keyboard.get('keyboardDidShow')!());
-  mocks.request = { sequence: 1, animation: 'food-can' };
+  mocks.request = { sequence: 1, animation: 'backflip' };
   await act(async () => renderer.update(createElement(CerberusArtwork)));
-  expect(renderer.toJSON()).toBeNull();
-  await act(async () => mocks.keyboard.get('keyboardDidHide')!());
-  expect(image().props.source).toBe(5);
-  expect(mocks.cues.filter((cue) => cue !== 'walking')).toEqual(['food-can']);
-  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
-  await advance(1900);
+  expect(image().props.source).toBe(7);
   expect(image().props.style).toMatchObject({ left: -720, top: -240 });
-  await advance(699);
-  expect(image().props.source).toBe(5);
-  expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+  expect(mocks.start).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('pauses a backflip in the background and resumes without restarting', async () => {
+  vi.mocked(Math.random).mockReturnValue(0.9);
+  await mount();
+  const progress = mocks.values[0]!;
+  progress.value = 0.7;
+  mocks.request = { sequence: 1, animation: 'backflip' };
+  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  expect(progress.value).toBe(0.7);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
+  await advance(400);
+  await act(async () => mocks.appChanged!('background'));
+  const frozen = image().props.style;
+  await advance(60000);
+  await act(async () => mocks.appChanged!('active'));
+  expect(image().props.style).toEqual(frozen);
+  expect(mocks.cues.filter((cue) => cue !== 'walking')).toEqual(['backflip']);
+  await advance(1239);
+  expect(image().props.source).toBe(7);
   await advance(1);
   expect(image().props.source).toBe(1);
 });

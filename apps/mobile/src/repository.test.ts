@@ -66,13 +66,17 @@ describe('SQLite repository', () => {
     const edit = vi.fn();
     repo.onEdit(edit);
     await repo.setState('ui_theme', 'blue');
+    const sound = JSON.stringify({ muted: true, volume: 0.4 });
+    await repo.setState('ui_sound', sound);
     expect(await repo.state('ui_theme')).toBe('blue');
     expect(edit).not.toHaveBeenCalled();
     expect(await repo.pushBatch()).toEqual([]);
     await repo.resetSync(false);
     expect(await repo.state('ui_theme')).toBe('blue');
+    expect(await repo.state('ui_sound')).toBe(sound);
     await repo.resetSync(true);
     expect(await repo.state('ui_theme')).toBe('blue');
+    expect(await repo.state('ui_sound')).toBe(sound);
     db.close();
   });
   it('collects unreferenced recordings in phone-only mode while preserving active recordings', async () => {

@@ -26,7 +26,7 @@ export function NoteEditor({
   const theme = useTheme();
   const pixelType = usePixelType();
   const { fontScale } = useWindowDimensions();
-  const { playFood } = useCerberus();
+  const { playNoteSubmit } = useCerberus();
   const [text, setText] = useState(note ?? '');
   const [focused, setFocused] = useState(false);
   const latest = useRef(note ?? '');
@@ -77,7 +77,7 @@ export function NoteEditor({
     flush();
     setFocused(false);
     Keyboard.dismiss();
-    playFood();
+    playNoteSubmit();
   };
   return (
     <PixelPanel

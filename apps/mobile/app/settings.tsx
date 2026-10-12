@@ -26,6 +26,7 @@ import { apiUrl } from '../src/transport';
 import { DATA_STATUS_TEXT } from '../src/data-status';
 import { shareLocalRecordings } from '../src/export-recordings';
 import { ThemePicker } from '../src/theme-picker';
+import { SoundSettings } from '../src/sound-settings';
 
 export default function Settings() {
   const app = useApp();
@@ -115,6 +116,7 @@ export default function Settings() {
           Settings
         </PixelText>
         <ThemePicker />
+        <SoundSettings />
         {app.needsIdentity && (
           <PixelPanel style={{ gap: 12 }}>
             <Text style={{ color: theme.text, fontSize: 18 }}>
