@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   setField: vi.fn(),
   haptic: vi.fn(),
   value: null as number | null,
+  playReaction: vi.fn(),
+  reportError: vi.fn(),
 }));
 vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ fontScale: 1 }),
@@ -26,7 +28,10 @@ vi.mock('expo-router', () => ({ router: { navigate: vi.fn() } }));
 vi.mock('expo-haptics', () => ({ selectionAsync: mocks.haptic }));
 vi.mock('./app-context', () => ({
   useApp: () => ({ repo: { setField: mocks.setField }, needsConsent: false }),
-  reportError: vi.fn(),
+  reportError: mocks.reportError,
+}));
+vi.mock('./cerberus-context', () => ({
+  useCerberus: () => ({ playReaction: mocks.playReaction }),
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({ background: '#eee' }) }));
 vi.mock('./selected-date', () => ({
@@ -92,4 +97,55 @@ it('keeps selection on the pinned 10 and ignores tapping it again', async () => 
   expect(ten.props.accessibilityState.selected).toBe(true);
   await act(async () => ten.props.onPress());
   expect(mocks.setField).not.toHaveBeenCalled();
+  expect(mocks.playReaction).not.toHaveBeenCalled();
+});
+
+it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])(
+  'requests reaction %s after saving the new selection',
+  async (value) => {
+    await act(async () => {
+      renderer = create(createElement(Rate));
+    });
+    const key = renderer.root
+      .findByProps({ testID: 'value-keypad' })
+      .findAllByType(Pressable)[value - 1]!;
+    await act(async () => key.props.onPress());
+    expect(mocks.setField).toHaveBeenCalledWith('2026-10-12', 'value', value);
+    expect(mocks.playReaction).toHaveBeenCalledExactlyOnceWith(value);
+  },
+);
+
+it('does not play a reaction when storage rejects the write', async () => {
+  const error = new Error('Disk full');
+  mocks.setField.mockRejectedValueOnce(error);
+  await act(async () => {
+    renderer = create(createElement(Rate));
+  });
+  await act(async () =>
+    renderer.root
+      .findByProps({ testID: 'value-keypad' })
+      .findAllByType(Pressable)[0]!
+      .props.onPress(),
+  );
+  expect(mocks.reportError).toHaveBeenCalledWith(error);
+  expect(mocks.playReaction).not.toHaveBeenCalled();
+});
+
+it('does not let an older save completion override a newer reaction after quick taps', async () => {
+  let finishFirst!: (changed: boolean) => void;
+  mocks.setField.mockReturnValueOnce(
+    new Promise<boolean>((resolve) => {
+      finishFirst = resolve;
+    }),
+  );
+  await act(async () => {
+    renderer = create(createElement(Rate));
+  });
+  const keys = renderer.root
+    .findByProps({ testID: 'value-keypad' })
+    .findAllByType(Pressable);
+  await act(async () => keys[0]!.props.onPress());
+  await act(async () => keys[9]!.props.onPress());
+  await act(async () => finishFirst(true));
+  expect(mocks.playReaction.mock.calls).toEqual([[10]]);
 });

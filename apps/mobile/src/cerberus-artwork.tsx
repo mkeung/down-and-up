@@ -14,8 +14,23 @@ import sitting from '../assets/cerberus/sitting-idle.png';
 import tennis from '../assets/cerberus/tennis-ball.png';
 import yarn from '../assets/cerberus/yarn-ball.png';
 import food from '../assets/cerberus/food-can.png';
+import reaction01 from '../assets/cerberus/reaction-01.png';
+import reaction02 from '../assets/cerberus/reaction-02.png';
+import reaction03 from '../assets/cerberus/reaction-03.png';
+import reaction04 from '../assets/cerberus/reaction-04.png';
+import reaction05 from '../assets/cerberus/reaction-05.png';
+import reaction06 from '../assets/cerberus/reaction-06.png';
+import reaction07 from '../assets/cerberus/reaction-07.png';
+import reaction08 from '../assets/cerberus/reaction-08.png';
+import reaction09 from '../assets/cerberus/reaction-09.png';
+import reaction10 from '../assets/cerberus/reaction-10.png';
 import timings from '../assets/cerberus/timings.json';
-import { nextIdle, nextWalk, type CerberusBehavior } from './cerberus-motion';
+import {
+  isOneShot,
+  nextIdle,
+  nextWalk,
+  type CerberusBehavior,
+} from './cerberus-motion';
 import { useCerberus } from './cerberus-context';
 
 const sheets = {
@@ -24,6 +39,16 @@ const sheets = {
   'tennis-ball': tennis,
   'yarn-ball': yarn,
   'food-can': food,
+  'reaction-01': reaction01,
+  'reaction-02': reaction02,
+  'reaction-03': reaction03,
+  'reaction-04': reaction04,
+  'reaction-05': reaction05,
+  'reaction-06': reaction06,
+  'reaction-07': reaction07,
+  'reaction-08': reaction08,
+  'reaction-09': reaction09,
+  'reaction-10': reaction10,
 };
 // Empty rows below the visible artwork in each 512px frame sequence.
 const bottomPadding = {
@@ -32,11 +57,21 @@ const bottomPadding = {
   'tennis-ball': 88,
   'yarn-ball': 67,
   'food-can': 75,
+  'reaction-01': 83,
+  'reaction-02': 79,
+  'reaction-03': 74,
+  'reaction-04': 72,
+  'reaction-05': 88,
+  'reaction-06': 86,
+  'reaction-07': 71,
+  'reaction-08': 90,
+  'reaction-09': 97,
+  'reaction-10': 83,
 };
 
 export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
-  const { foodRequest } = useCerberus();
-  const handledFoodRequest = useRef(0);
+  const { request } = useCerberus();
+  const handledRequest = useRef(0);
   const { height } = useWindowDimensions();
   const size = Math.min(240, Math.max(96, height - 620));
   const [width, setWidth] = useState(0);
@@ -97,6 +132,44 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
   }, []);
 
   useEffect(() => {
+    if (
+      !visible ||
+      !active ||
+      keyboardVisible ||
+      reduceMotion !== true ||
+      !request.animation ||
+      request.sequence <= handledRequest.current
+    )
+      return;
+    let disposed = false;
+    progress.stopAnimation((position) => {
+      if (disposed || !request.animation) return;
+      handledRequest.current = request.sequence;
+      const next = {
+        animation: request.animation,
+        facingRight: behavior.current?.facingRight ?? false,
+        remaining: 0,
+        target: position,
+      };
+      behavior.current = next;
+      frameIndex.current = timings[next.animation].length - 1;
+      setFrame(frameIndex.current);
+      setPose({ animation: next.animation, facingRight: next.facingRight });
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [
+    visible,
+    active,
+    keyboardVisible,
+    reduceMotion,
+    request.animation,
+    request.sequence,
+    progress,
+  ]);
+
+  useEffect(() => {
     if (!running) return;
     let disposed = false;
     let deadline: number | undefined;
@@ -134,14 +207,14 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
     // Read the native driver's stopped position before resuming a walking leg.
     progress.stopAnimation((position) => {
       if (disposed) return;
-      if (foodRequest > handledFoodRequest.current) {
-        handledFoodRequest.current = foodRequest;
+      if (request.animation && request.sequence > handledRequest.current) {
+        handledRequest.current = request.sequence;
         frameIndex.current = 0;
         setFrame(0);
         begin({
-          animation: 'food-can',
+          animation: request.animation,
           facingRight: behavior.current?.facingRight ?? false,
-          remaining: timings['food-can'].reduce(
+          remaining: timings[request.animation].reduce(
             (total, duration) => total + duration,
             0,
           ),
@@ -156,7 +229,7 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
       clearTimeout(idleTimer);
       movement?.stop();
     };
-  }, [progress, running, travel, foodRequest]);
+  }, [progress, running, travel, request.animation, request.sequence]);
 
   useEffect(() => {
     if (!running) return;
@@ -165,7 +238,7 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
     function advance() {
       timer = setTimeout(() => {
         if (
-          pose.animation === 'food-can' &&
+          isOneShot(pose.animation) &&
           frameIndex.current === durations.length - 1
         )
           return;
@@ -176,7 +249,7 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
     }
     advance();
     return () => clearTimeout(timer);
-  }, [running, pose.animation, foodRequest]);
+  }, [running, pose.animation, request.sequence]);
 
   if (!visible || keyboardVisible) return null;
   return (

@@ -15,7 +15,7 @@ This folder is the source of truth for features, data model, sync protocol, and 
 
 **At most one entry per calendar day.** Selecting a number updates that day's value. A value can be changed but never cleared. The note and recording for a day can be edited or removed.
 
-**Discreet by design:** the app tracks mood, but nothing in the UI, web dashboard, app name, icon, store listing, permission prompts, or notifications says so. The main screen shows a date, the numbers 1–10, a data-status icon, and a quiet roaming Cerberus character. There are no prompts, emotive colors, or emoji, and the character never responds to values.
+**Discreet by design:** the app tracks mood, but nothing in the UI, web dashboard, app name, icon, store listing, permission prompts, or notifications says so. The main screen shows a date, the numbers 1–10, a data-status icon, and a quiet roaming Cerberus character. There are no prompts, emotive colors, or emoji, and all numeric keys keep the same neutral styling. Explicitly changing a value plays its corresponding Cerberus reaction once; ambient roaming stays independent of saved history.
 
 ## Plans
 

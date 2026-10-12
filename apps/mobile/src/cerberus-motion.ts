@@ -1,5 +1,26 @@
 export type IdleAnimation = 'sitting-idle' | 'tennis-ball' | 'yarn-ball';
-export type CerberusAnimation = 'walking' | 'food-can' | IdleAnimation;
+export const reactionAnimations = [
+  'reaction-01',
+  'reaction-02',
+  'reaction-03',
+  'reaction-04',
+  'reaction-05',
+  'reaction-06',
+  'reaction-07',
+  'reaction-08',
+  'reaction-09',
+  'reaction-10',
+] as const;
+export type ReactionAnimation = (typeof reactionAnimations)[number];
+export type OneShotAnimation = 'food-can' | ReactionAnimation;
+export type CerberusAnimation = 'walking' | OneShotAnimation | IdleAnimation;
+
+export function reactionForValue(value: number): ReactionAnimation | undefined {
+  return reactionAnimations[value - 1];
+}
+
+export const isOneShot = (animation: CerberusAnimation) =>
+  animation === 'food-can' || animation.startsWith('reaction-');
 export type CerberusBehavior = {
   animation: CerberusAnimation;
   facingRight: boolean;

@@ -4,11 +4,13 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CerberusArtwork } from './cerberus-artwork';
 import { RetroTabBar } from './retro-tab-bar';
+import type { CerberusRequest } from './cerberus-context';
+import { reactionAnimations } from './cerberus-motion';
 
 const mocks = vi.hoisted(() => ({
   reduceMotion: false,
   windowHeight: 874,
-  foodRequest: 0,
+  request: { sequence: 0, animation: null } as CerberusRequest,
   query: vi.fn(),
   motionChanged: null as ((value: boolean) => void) | null,
   appChanged: null as ((value: string) => void) | null,
@@ -31,8 +33,18 @@ vi.mock('../assets/cerberus/sitting-idle.png', () => ({ default: 2 }));
 vi.mock('../assets/cerberus/tennis-ball.png', () => ({ default: 3 }));
 vi.mock('../assets/cerberus/yarn-ball.png', () => ({ default: 4 }));
 vi.mock('../assets/cerberus/food-can.png', () => ({ default: 5 }));
+vi.mock('../assets/cerberus/reaction-01.png', () => ({ default: 11 }));
+vi.mock('../assets/cerberus/reaction-02.png', () => ({ default: 12 }));
+vi.mock('../assets/cerberus/reaction-03.png', () => ({ default: 13 }));
+vi.mock('../assets/cerberus/reaction-04.png', () => ({ default: 14 }));
+vi.mock('../assets/cerberus/reaction-05.png', () => ({ default: 15 }));
+vi.mock('../assets/cerberus/reaction-06.png', () => ({ default: 16 }));
+vi.mock('../assets/cerberus/reaction-07.png', () => ({ default: 17 }));
+vi.mock('../assets/cerberus/reaction-08.png', () => ({ default: 18 }));
+vi.mock('../assets/cerberus/reaction-09.png', () => ({ default: 19 }));
+vi.mock('../assets/cerberus/reaction-10.png', () => ({ default: 20 }));
 vi.mock('./cerberus-context', () => ({
-  useCerberus: () => ({ foodRequest: mocks.foodRequest }),
+  useCerberus: () => ({ request: mocks.request }),
 }));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({ useTheme: () => ({ background: '#f5e8ad' }) }));
@@ -119,7 +131,7 @@ beforeEach(() => {
   vi.spyOn(Math, 'random').mockReturnValue(0.1);
   mocks.reduceMotion = false;
   mocks.windowHeight = 874;
-  mocks.foodRequest = 0;
+  mocks.request = { sequence: 0, animation: null };
   mocks.keyboard.clear();
   mocks.values.length = 0;
   mocks.movements.length = 0;
@@ -326,7 +338,7 @@ it('plays food once after keyboard dismissal, preserving its facing and holding 
   await mount();
   expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
   await act(async () => mocks.keyboard.get('keyboardDidShow')!());
-  mocks.foodRequest = 1;
+  mocks.request = { sequence: 1, animation: 'food-can' };
   await act(async () => renderer.update(createElement(CerberusArtwork)));
   expect(renderer.toJSON()).toBeNull();
   await act(async () => mocks.keyboard.get('keyboardDidHide')!());
@@ -339,6 +351,52 @@ it('plays food once after keyboard dismissal, preserving its facing and holding 
   expect(image().props.style).toMatchObject({ left: -720, top: -240 });
   await advance(1);
   expect(image().props.source).toBe(1);
+});
+
+it.each(reactionAnimations)(
+  'plays %s once at the current position and facing before resuming walking',
+  async (animation) => {
+    await mount();
+    const progress = mocks.values[0]!;
+    progress.value = 0.7;
+    mocks.request = { sequence: 1, animation };
+    await act(async () => renderer.update(createElement(CerberusArtwork)));
+    const source = 11 + reactionAnimations.indexOf(animation);
+    expect(image().props.source).toBe(source);
+    expect(progress.value).toBe(0.7);
+    expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+    expect(mocks.stop).toHaveBeenCalledTimes(1);
+    await advance(1240);
+    expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+    await advance(649);
+    expect(image().props.source).toBe(source);
+    await advance(1);
+    expect(image().props.source).toBe(1);
+  },
+);
+
+it('replaces a playing reaction with the latest request without changing its left-facing orientation', async () => {
+  vi.mocked(Math.random).mockReturnValue(0.9);
+  await mount();
+  mocks.request = { sequence: 1, animation: 'reaction-01' };
+  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await advance(460);
+  mocks.request = { sequence: 2, animation: 'reaction-10' };
+  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  expect(image().props.source).toBe(20);
+  expect(image().props.style).toMatchObject({ left: -0, top: -0 });
+  expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
+});
+
+it('shows the final reaction pose without animation for Reduce Motion', async () => {
+  mocks.reduceMotion = true;
+  await mount();
+  mocks.request = { sequence: 1, animation: 'reaction-10' };
+  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  expect(image().props.source).toBe(20);
+  expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+  expect(mocks.start).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 it('waits for the accessibility preference and stays still in a narrow space', async () => {

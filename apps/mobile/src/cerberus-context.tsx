@@ -5,17 +5,36 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { reactionForValue, type OneShotAnimation } from './cerberus-motion';
 
-const CerberusContext = createContext({ foodRequest: 0, playFood: () => {} });
+export type CerberusRequest = {
+  sequence: number;
+  animation: OneShotAnimation | null;
+};
+const CerberusContext = createContext({
+  request: { sequence: 0, animation: null } as CerberusRequest,
+  playFood: () => {},
+  playReaction: (_value: number) => {},
+});
 
 export function CerberusProvider({ children }: { children: ReactNode }) {
-  const [foodRequest, setFoodRequest] = useState(0);
-  const playFood = useCallback(
-    () => setFoodRequest((request) => request + 1),
-    [],
+  const [request, setRequest] = useState<CerberusRequest>({
+    sequence: 0,
+    animation: null,
+  });
+  const play = useCallback((animation: OneShotAnimation) => {
+    setRequest((previous) => ({ sequence: previous.sequence + 1, animation }));
+  }, []);
+  const playFood = useCallback(() => play('food-can'), [play]);
+  const playReaction = useCallback(
+    (value: number) => {
+      const animation = reactionForValue(value);
+      if (animation) play(animation);
+    },
+    [play],
   );
   return (
-    <CerberusContext.Provider value={{ foodRequest, playFood }}>
+    <CerberusContext.Provider value={{ request, playFood, playReaction }}>
       {children}
     </CerberusContext.Provider>
   );

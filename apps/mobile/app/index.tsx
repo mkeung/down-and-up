@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Modal, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -11,6 +11,7 @@ import { useTheme } from '../src/theme';
 import { EntryHeader } from '../src/entry-header';
 import { useEntry, useSelectedDate } from '../src/selected-date';
 import { PrivacyNotice } from '../src/privacy-notice';
+import { useCerberus } from '../src/cerberus-context';
 
 export default function Rate() {
   const app = useApp();
@@ -18,10 +19,17 @@ export default function Rate() {
   const { date } = useSelectedDate();
   const selectedEntry = useEntry(date);
   const [privacyVisible, setPrivacyVisible] = useState(false);
+  const { playReaction } = useCerberus();
+  const latestChoice = useRef(0);
   const choose = (value: number) => {
+    const choice = ++latestChoice.current;
     void app.repo
       .setField(date, 'value', value)
-      .then((changed) => (changed ? Haptics.selectionAsync() : undefined))
+      .then((changed) => {
+        if (!changed) return;
+        if (choice === latestChoice.current) playReaction(value);
+        return Haptics.selectionAsync();
+      })
       .catch(reportError);
   };
   return (
