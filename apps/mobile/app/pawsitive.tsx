@@ -6,7 +6,6 @@ import { DateBar } from '../src/date-bar';
 import { DataStatusButton } from '../src/data-status-icon';
 import { useEntry, useSelectedDate } from '../src/selected-date';
 import { NoteEditor } from '../src/note-editor';
-import { CerberusArtwork } from '../src/cerberus-artwork';
 import { AudioNote } from '../src/audio-note';
 
 export default function Pawsitive() {
@@ -47,7 +46,6 @@ export default function Pawsitive() {
           )}
         </View>
       </ScrollView>
-      <CerberusArtwork />
     </SafeAreaView>
   );
 }

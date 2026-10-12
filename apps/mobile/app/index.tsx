@@ -6,7 +6,6 @@ import * as Haptics from 'expo-haptics';
 import { Action } from '../src/components';
 import { PixelPanel, PixelText } from '../src/retro';
 import { ValueKeypad } from '../src/value-keypad';
-import { CerberusArtwork } from '../src/cerberus-artwork';
 import { reportError, useApp } from '../src/app-context';
 import { useTheme } from '../src/theme';
 import { DateBar } from '../src/date-bar';
@@ -52,7 +51,6 @@ export default function Rate() {
           )}
         </View>
       </ScrollView>
-      <CerberusArtwork />
       <Modal
         visible={app.needsConsent && !privacyVisible}
         transparent

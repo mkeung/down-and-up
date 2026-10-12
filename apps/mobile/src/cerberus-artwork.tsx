@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -7,12 +7,11 @@ import {
   Keyboard,
   View,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import character from '../assets/cerberus.png';
 
 const SIZE = 120;
 
-export function CerberusArtwork() {
+export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
   const [width, setWidth] = useState(0);
   const [progress] = useState(() => new Animated.Value(0.5));
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
@@ -57,37 +56,40 @@ export function CerberusArtwork() {
     };
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      progress.setValue(0.5);
-      if (reduceMotion !== false || !active || keyboardVisible || travel === 0)
-        return;
-      const duration = Math.max(6000, travel * 35);
-      const wander = Animated.loop(
-        Animated.sequence([
-          Animated.timing(progress, {
-            toValue: 1,
-            duration,
-            delay: 800,
-            useNativeDriver: true,
-            isInteraction: false,
-          }),
-          Animated.timing(progress, {
-            toValue: 0,
-            duration,
-            delay: 1200,
-            useNativeDriver: true,
-            isInteraction: false,
-          }),
-        ]),
-        { resetBeforeIteration: false },
-      );
-      wander.start();
-      return () => wander.stop();
-    }, [progress, reduceMotion, active, keyboardVisible, travel]),
-  );
+  useEffect(() => {
+    if (
+      !visible ||
+      reduceMotion !== false ||
+      !active ||
+      keyboardVisible ||
+      travel === 0
+    )
+      return;
+    const duration = Math.max(6000, travel * 35);
+    const wander = Animated.loop(
+      Animated.sequence([
+        Animated.timing(progress, {
+          toValue: 1,
+          duration,
+          delay: 800,
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+        Animated.timing(progress, {
+          toValue: 0,
+          duration,
+          delay: 1200,
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+      ]),
+      { resetBeforeIteration: false },
+    );
+    wander.start();
+    return () => wander.stop();
+  }, [progress, reduceMotion, active, keyboardVisible, travel, visible]);
 
-  if (keyboardVisible) return null;
+  if (!visible || keyboardVisible) return null;
   return (
     <View
       testID="cerberus-roaming-area"

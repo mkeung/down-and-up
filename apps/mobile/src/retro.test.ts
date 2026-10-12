@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ValueKeypad } from './value-keypad';
@@ -11,6 +11,7 @@ vi.mock('react-native', () => ({
   Text: 'Text',
   View: 'View',
 }));
+vi.mock('./cerberus-artwork', () => ({ CerberusArtwork: () => null }));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({
   useTheme: () => ({
@@ -126,10 +127,12 @@ it('keeps only two tabs, announces selection, and honors navigation event cancel
     'pawsitive',
     undefined,
   );
-  expect(renderer.root.findAllByType(View)[0]!.props.style.paddingBottom).toBe(
-    34,
-  );
-  expect(renderer.root.findAllByType(View)[0]!.props.style.paddingLeft).toBe(
-    44,
-  );
+  expect(
+    renderer.root.findByProps({ testID: 'retro-navigation-tabs' }).props.style
+      .paddingBottom,
+  ).toBe(34);
+  expect(
+    renderer.root.findByProps({ testID: 'retro-navigation-tabs' }).props.style
+      .paddingLeft,
+  ).toBe(44);
 });

@@ -3,9 +3,9 @@ import { Image } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CerberusArtwork } from './cerberus-artwork';
+import { RetroTabBar } from './retro-tab-bar';
 
 const mocks = vi.hoisted(() => ({
-  focused: true,
   reduceMotion: false,
   query: vi.fn(),
   motionChanged: null as ((value: boolean) => void) | null,
@@ -18,30 +18,29 @@ const mocks = vi.hoisted(() => ({
   timing: vi.fn(),
   setValue: vi.fn(),
   interpolate: vi.fn(),
+  values: [] as { value: number }[],
 }));
 vi.mock('../assets/cerberus.png', () => ({ default: 1 }));
-vi.mock('expo-router', async () => {
-  const { useEffect } = await import('react');
-  return {
-    useFocusEffect: (effect: () => (() => void) | undefined) => {
-      const focused = mocks.focused;
-      useEffect(() => {
-        if (focused) return effect();
-      }, [effect, focused]);
-    },
-  };
-});
+vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
+vi.mock('./theme', () => ({ useTheme: () => ({ background: '#f5e8ad' }) }));
 vi.mock('react-native', () => ({
   View: 'View',
+  Pressable: 'Pressable',
+  Text: 'Text',
   Image: 'Image',
   Animated: {
     View: 'AnimatedView',
     Value: class {
-      setValue = mocks.setValue;
-      interpolate = mocks.interpolate;
+      value: number;
       constructor(value: number) {
+        this.value = value;
+        mocks.values.push(this);
+      }
+      setValue(value: number) {
+        this.value = value;
         mocks.setValue(value);
       }
+      interpolate = mocks.interpolate;
     },
     timing: mocks.timing,
     sequence: (animations: unknown[]) => animations,
@@ -86,9 +85,9 @@ async function mount(width = 360) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.focused = true;
   mocks.reduceMotion = false;
   mocks.keyboard.clear();
+  mocks.values.length = 0;
   mocks.query.mockImplementation(async () => mocks.reduceMotion);
   mocks.loop.mockReturnValue({ start: mocks.start, stop: mocks.stop });
   mocks.interpolate.mockReturnValue('interpolated');
@@ -149,11 +148,13 @@ it('pauses when backgrounded, hidden, or editing a note and cleans up on unmount
   expect(mocks.stop).toHaveBeenCalledTimes(1);
   await act(async () => mocks.appChanged!('active'));
   expect(mocks.start).toHaveBeenCalledTimes(2);
-  mocks.focused = false;
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () =>
+    renderer.update(createElement(CerberusArtwork, { visible: false })),
+  );
   expect(mocks.stop).toHaveBeenCalledTimes(2);
-  mocks.focused = true;
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () =>
+    renderer.update(createElement(CerberusArtwork, { visible: true })),
+  );
   expect(mocks.start).toHaveBeenCalledTimes(3);
   await act(async () => mocks.keyboard.get('keyboardDidShow')!());
   expect(renderer.toJSON()).toBeNull();
@@ -183,4 +184,58 @@ it('does not start moving before the accessibility preference resolves or in a n
   );
   expect(mocks.stop).toHaveBeenCalledTimes(1);
   expect(mocks.start).toHaveBeenCalledTimes(1);
+});
+
+it('keeps one animation and its current position when switching tabs, including the first visit', async () => {
+  const props = {
+    state: {
+      index: 0,
+      routes: [
+        { key: 'rate', name: 'index' },
+        { key: 'note', name: 'pawsitive' },
+        { key: 'settings', name: 'settings' },
+      ],
+    },
+    navigation: { emit: vi.fn(), navigate: vi.fn() },
+    insets: { top: 0, left: 0, right: 0, bottom: 34 },
+  };
+  const tree = () =>
+    createElement(
+      RetroTabBar,
+      props as unknown as Parameters<typeof RetroTabBar>[0],
+    );
+  await act(async () => {
+    renderer = create(tree());
+  });
+  await act(async () =>
+    area().props.onLayout({ nativeEvent: { layout: { width: 360 } } }),
+  );
+  expect(mocks.start).toHaveBeenCalledTimes(1);
+  const progress = mocks.values[0]!;
+  // Simulate the native driver moving the animal partway across the screen.
+  progress.value = 0.8;
+  for (const index of [1, 0, 1]) {
+    props.state.index = index;
+    await act(async () => renderer.update(tree()));
+    expect(mocks.values).toHaveLength(1);
+    expect(mocks.values[0]).toBe(progress);
+    expect(progress.value).toBe(0.8);
+    expect(mocks.setValue).not.toHaveBeenCalled();
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(mocks.stop).not.toHaveBeenCalled();
+  }
+  // Hidden routes pause the same animal; returning keeps its last position.
+  props.state.index = 2;
+  await act(async () => renderer.update(tree()));
+  expect(
+    renderer.root.findAllByProps({ testID: 'cerberus-roaming-area' }),
+  ).toHaveLength(0);
+  expect(mocks.stop).toHaveBeenCalledTimes(1);
+  props.state.index = 0;
+  await act(async () => renderer.update(tree()));
+  expect(area()).toBeDefined();
+  expect(mocks.values).toHaveLength(1);
+  expect(progress.value).toBe(0.8);
+  expect(mocks.setValue).not.toHaveBeenCalled();
+  expect(mocks.start).toHaveBeenCalledTimes(2);
 });
