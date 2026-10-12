@@ -17,21 +17,21 @@
 - Confirm 64pt minimum keys, a centered 10, selected accessibility state, VoiceOver/TalkBack labels, large fonts, landscape/tablet layout, and light/dark mode.
 - Confirm today's forward arrow is disabled. Pick a date years back, including a date before 1900; those dates should show the local-only notice. Test midnight rollover, timezone changes, and DST.
 - Add, blur, clear, and rapidly change dates while editing a note. Kill/restart after saving and confirm durable history.
-- Record, play/pause/resume, replace, and delete audio. Test a five-minute recording, file size, incoming calls, backgrounding, headset disconnects, and Bluetooth on both platforms. Recording is saved before switching tabs.
-- Put both phones offline with the same ID. Edit the value on one and note/audio on the other, then reconnect and confirm both converge.
+- Confirm Pawsitive has no Record control and no recording playback, the app never asks for microphone access, and the merged Android manifest has no `RECORD_AUDIO` permission.
+- Put both phones offline with the same ID. Edit the value on one and the note on the other, then reconnect and confirm both converge.
 - Edit during an in-flight sync, retry after a dropped response, restore multiple 500-row pages, and test a fast device clock.
 - Reinstall with identity present/database missing; restore the full history. Simulate database present/identity missing; verify the prompt and that no new ID is silently generated.
 - Switch IDs with Merge and Discard. Cache remote recordings before Merge, re-queue every field/file, reset the cursor, and confirm the previous ID remains untouched.
 - Replace ID, retry after a lost response, and verify old devices and browser sessions lose access.
 - Delete server data and choose each local outcome. Keeping local data must disable sync and must never re-upload it automatically.
 - Enable/change a reminder on the web, sync, and inspect the next 30 local calendar dates. Deny permission, log today, travel across timezones/DST, and tap a notification while a historical day is open.
-- Export CSV, including quotes/newlines/formula-like text, and share the ZIP of locally saved recordings. ZIP export streams files in 64KB chunks and does not download remote recordings.
+- Export CSV, including quotes/newlines/formula-like text. Settings has no recording export.
 
 ## Web
 
 - Enter normalized and aliased IDs; invalid format and missing ID must have a generic error with delay.
 - Confirm only Authorization headers carry the bearer ID. Check URLs, cookies, page source, titles, network logs, and error responses for leaks.
-- Test every range, weekly/monthly boundaries, chart gaps, rolling averages, note markers, count bars, table pagination, recordings, reminder autosave, and sign-out at phone/tablet/desktop sizes.
+- Test every range, weekly/monthly boundaries, chart gaps, rolling averages, note markers, count bars, table pagination (with no recording column), reminder autosave, and sign-out at phone/tablet/desktop sizes.
 - Verify per-IP and global failed-lookup limits on hosted Upstash; successful requests should not increment the failed counter.
 - Check missing/wrong Origin on all cookie-authenticated mutations. Delete/replace IDs and confirm existing sessions immediately fail.
 
@@ -45,10 +45,20 @@ Short description: **A simple daily record, saved on your phone.**
 
 Description:
 
-> Record one number from 1 to 10 each day. Add a text note or a short audio recording, and look back through your history. Everything works offline. Choose to keep your entries on your phone, or sync and view your record on the web with your unique ID. Set an optional daily reminder on the web and receive it on your phone. No email or password is needed.
+> Record one number from 1 to 10 each day. Add a text note, and look back through your history. Everything works offline. Choose to keep your entries on your phone, or sync and view your record on the web with your unique ID. Set an optional daily reminder on the web and receive it on your phone. No email or password is needed.
 
-Microphone permission: **Used to record audio notes.**
+Microphone permission: none in this release. Recording is deferred to Phase 6.
 
 Notification title/body: **Down & Up** / **Reminder**
 
-Prepare App Store and Google Play disclosures from the actual released configuration. The plan identifies Health, Audio Data, Other User Content, and User ID; no tracking. These forms require the operator's review and submission. Do not claim provider retention or encryption has been verified until it has been checked.
+Prepare App Store and Google Play disclosures from the actual released configuration. The plan identifies Health, Other User Content, and User ID; no tracking. Audio Data is added when recording ships. These forms require the operator's review and submission. Do not claim provider retention or encryption has been verified until it has been checked.
+
+## Deferred: voice recording (Phase 6)
+
+Run these when `RECORDING_ENABLED` is turned on:
+
+- Record, play/pause/resume, replace, and delete audio. Test a five-minute recording, file size, incoming calls, backgrounding, headset disconnects, and Bluetooth on both platforms. Recording is saved before switching tabs.
+- Two phones offline with the same ID: edit the value on one and audio on the other, then reconnect and confirm both converge.
+- Share the ZIP of locally saved recordings. ZIP export streams files in 64KB chunks and does not download remote recordings.
+- Web recordings column and playback.
+- Restore the microphone permission (**Used to record audio notes.**), recordings in the privacy notice, `/privacy`, and store description, and Audio Data in the store disclosures. Run `tests/mobile/deferred/audio.yaml` and `playback.yaml`.

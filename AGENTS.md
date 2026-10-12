@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository.
 
 **Down & Up** is a discreet daily 1–10 tracker. The repo will contain:
 
-- an offline-first mobile app (iOS + Android) for recording one value per day, with an optional text note and audio recording,
+- an offline-first mobile app (iOS + Android) for recording one value per day, with an optional text note (audio recording is deferred to Phase 6 in `PLAN.md` §8),
 - a web dashboard where users view their history as charts after entering their unique ID.
 
 **`PLAN.md` is the source of truth** for features, data model, sync protocol, and phases. Read it before starting work. If a change departs from the plan, update `PLAN.md` in the same change, and record any new decision in its "Decisions made" section.
@@ -43,6 +43,7 @@ Commands: `pnpm install --frozen-lockfile`, `pnpm dev`, `pnpm dev:mobile`, `pnpm
 - **No accounts:** access is a device-generated **12-character Crockford Base32 ID**. There's no email, no password, and no auth library. The web login is just that ID.
 - **Reminders:** set only on the web (on/off + `HH:MM`). The phone schedules them as local notifications in **phone-local time**, skips days that already have a value, and uses neutral text ("Down & Up" / "Reminder"). No server push (`PLAN.md` §4.6).
 - **Sync consent:** a one-time notice on first launch. Sync is on by default, and "keep on this phone only" must always work: no network calls with user data while sync is off.
+- **Recording is deferred:** keep every recording control, marker, and playback behind `RECORDING_ENABLED` from `packages/shared`, and request no microphone permission. The audio columns, sync fields, and server routes stay so Phase 6 needs no migration.
 
 ## Technical invariants
 

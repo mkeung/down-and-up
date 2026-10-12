@@ -16,9 +16,9 @@ export function PrivacyNotice({ close }: { close: () => void }) {
       <ScrollView contentContainerStyle={{ gap: 18, paddingBottom: 24 }}>
         <Text style={{ color: theme.text, fontSize: 28 }}>Privacy</Text>
         <Text style={{ color: theme.text, fontSize: 17 }}>
-          Values, notes, and recordings are saved on this phone. When sync is
-          on, they are copied to our server with your ID so you can view them on
-          the web and restore them on another phone.
+          Values and notes are saved on this phone. When sync is on, they are
+          copied to our server with your ID so you can view them on the web and
+          restore them on another phone.
         </Text>
         <Text style={{ color: theme.text, fontSize: 17 }}>
           Choose “Keep on this phone only” to stop sync. Your entries remain
@@ -30,9 +30,9 @@ export function PrivacyNotice({ close }: { close: () => void }) {
           replace it in Settings. A lost ID cannot be recovered.
         </Text>
         <Text style={{ color: theme.text, fontSize: 17 }}>
-          In Settings, you can export your entries, share saved recordings, or
-          delete server data. After deleting server data, you can keep entries
-          on this phone with sync off or delete them here too.
+          In Settings, you can export your entries or delete server data. After
+          deleting server data, you can keep entries on this phone with sync off
+          or delete them here too.
         </Text>
         <Text style={{ color: theme.muted, fontSize: 16 }}>
           The full service policy, including storage providers, retention, and

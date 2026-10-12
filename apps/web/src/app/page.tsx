@@ -9,10 +9,7 @@ export default function Home() {
           <br />
           for every day.
         </h1>
-        <p>
-          See your values, notes, and recordings together. Your ID opens your
-          history.
-        </p>
+        <p>See your values and notes together. Your ID opens your history.</p>
         <div className="number-strip" aria-hidden="true">
           {Array.from({ length: 10 }, (_, index) => (
             <span key={index}>{index + 1}</span>

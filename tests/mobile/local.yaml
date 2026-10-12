@@ -18,6 +18,7 @@ name: Local record and history
     enabled: false
 - tapOn: Pawsitive
 - assertVisible: 'Choose date, Today.*'
+- assertNotVisible: Record
 - tapOn: 'Note.*'
 - inputText: Offline test note
 - swipe:

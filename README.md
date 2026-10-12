@@ -1,6 +1,6 @@
 # Down & Up
 
-A discreet daily 1–10 record. The Expo app saves values, notes, and recordings in SQLite and works offline. The Next.js app provides the sync API and a read-only dashboard. Access uses a device-generated ID; there are no accounts or authentication SDKs.
+A discreet daily 1–10 record. The Expo app saves values and notes in SQLite and works offline. Voice recording is built but turned off until Phase 6 (`RECORDING_ENABLED` in `packages/shared`). The Next.js app provides the sync API and a read-only dashboard. Access uses a device-generated ID; there are no accounts or authentication SDKs.
 
 `PLAN.md` defines the product and protocol. Its implementation review records the changes required to make the original plan consistent.
 
@@ -59,12 +59,11 @@ Maestro flows are in `tests/mobile`. Install [Maestro](https://docs.maestro.dev/
 
 ```sh
 maestro test tests/mobile/local.yaml
-maestro test tests/mobile/audio.yaml
 ```
 
 Run the additional two-phone, reinstall, identity transition, notification, and audio interruption checks in `docs/RELEASE.md` on both platforms. The background-task trigger is optional in the plan; foreground, connectivity, local edits, and manual sync are the supported triggers in this implementation.
 
-`tests/mobile/playback.yaml` checks playback and deletion when a recording is already cached. Simulator capture requires a working host audio input; a silent `.m4a` fixture can be used to test playback separately. Audio preparation and playback are bounded and cancelled when leaving the screen, so delayed operations cannot start recording or playback in the background.
+The recording flows in `tests/mobile/deferred` (`audio.yaml`, `playback.yaml`) apply once recording is turned on. `playback.yaml` checks playback and deletion when a recording is already cached. Simulator capture requires a working host audio input; a silent `.m4a` fixture can be used to test playback separately. Audio preparation and playback are bounded and cancelled when leaving the screen, so delayed operations cannot start recording or playback in the background.
 
 ## Deployment
 

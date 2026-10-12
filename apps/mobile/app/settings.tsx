@@ -15,6 +15,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import {
   formatIdForDisplay,
+  RECORDING_ENABLED,
   type Settings as ReminderSettings,
 } from '@down-up/shared';
 import { useApp, reportError } from '../src/app-context';
@@ -75,7 +76,7 @@ export default function Settings() {
   const remove = () =>
     Alert.alert(
       'Delete my data from the server?',
-      'Server entries are removed immediately. Recordings are queued for deletion within 24 hours.',
+      'Server entries are removed immediately.',
       [
         { text: 'Cancel' },
         {
@@ -252,11 +253,13 @@ export default function Settings() {
           disabled={busy}
           onPress={() => run(exportFile)}
         />
-        <Action
-          label="Share saved recordings"
-          disabled={busy}
-          onPress={() => run(() => shareLocalRecordings(app.repo))}
-        />
+        {RECORDING_ENABLED && (
+          <Action
+            label="Share saved recordings"
+            disabled={busy}
+            onPress={() => run(() => shareLocalRecordings(app.repo))}
+          />
+        )}
         <Action
           label="Replace ID"
           disabled={busy || !app.syncEnabled || !app.identity?.registered}

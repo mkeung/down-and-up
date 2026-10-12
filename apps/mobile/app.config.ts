@@ -11,18 +11,22 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: 'app.downandup.tracker',
     infoPlist: {
-      NSMicrophoneUsageDescription: 'Used to record audio notes.',
       ITSAppUsesNonExemptEncryption: false,
     },
   },
-  android: { package: 'app.downandup.tracker', allowBackup: false },
+  android: {
+    package: 'app.downandup.tracker',
+    allowBackup: false,
+    blockedPermissions: ['android.permission.RECORD_AUDIO'],
+  },
   plugins: [
     ['expo-build-properties', { ios: { enableSceneSupport: true } }],
     'expo-router',
     'expo-secure-store',
     'expo-sqlite',
     'expo-notifications',
-    ['expo-audio', { microphonePermission: 'Used to record audio notes.' }],
+    // Recording is deferred (PLAN.md §8, Phase 6), so no microphone access.
+    ['expo-audio', { microphonePermission: false, recordAudioAndroid: false }],
     [
       'expo-splash-screen',
       {

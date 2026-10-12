@@ -6,9 +6,8 @@ export default function Privacy() {
       <h1>Your data, your choice.</h1>
       <p>
         Entries are saved on your phone. If you choose to sync, daily values,
-        text notes, recordings, your ID, and reminder settings are sent to our
-        server so you can view them on the web and restore them on another
-        phone.
+        text notes, your ID, and reminder settings are sent to our server so you
+        can view them on the web and restore them on another phone.
       </p>
       <h2>What we collect</h2>
       <p>
@@ -25,18 +24,16 @@ export default function Privacy() {
       </p>
       <h2>Storage and access</h2>
       <p>
-        The web and API use Vercel. Server entries are stored in Neon
-        PostgreSQL, recordings in Cloudflare R2, and temporary rate-limit
-        counters in Upstash Redis. Traffic uses HTTPS. Anyone with your ID can
-        access your entries; keep it private. You can replace your ID in the
-        app, and a lost ID cannot be recovered.
+        The web and API use Vercel. Server entries are stored in Neon PostgreSQL
+        and temporary rate-limit counters in Upstash Redis. Traffic uses HTTPS.
+        Anyone with your ID can access your entries; keep it private. You can
+        replace your ID in the app, and a lost ID cannot be recovered.
       </p>
       <h2>Deletion and export</h2>
       <p>
         “Delete my data from the server” removes server entries and web sessions
-        immediately and queues recordings for deletion within 24 hours. You can
-        keep local entries with sync off or delete them too. You can export your
-        entries as CSV in the app.
+        immediately. You can keep local entries with sync off or delete them
+        too. You can export your entries as CSV in the app.
       </p>
       <h2>Backups and retention</h2>
       <p>

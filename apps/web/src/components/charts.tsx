@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { RECORDING_ENABLED } from '@down-up/shared';
 type Point = {
   date: string;
   value: number | null;
@@ -103,7 +104,9 @@ export function Charts({
                   {point.notePreview && (
                     <p className="muted">{point.notePreview}</p>
                   )}
-                  {point.audio && <p className="muted">Recording</p>}
+                  {RECORDING_ENABLED && point.audio && (
+                    <p className="muted">Recording</p>
+                  )}
                   {rolling && point.rolling !== null && (
                     <p className="muted">
                       7-day average: {point.rolling.toFixed(1)}
@@ -130,7 +133,11 @@ export function Charts({
                   key={point.date}
                   cx={props.cx}
                   cy={props.cy}
-                  r={point.notePreview || point.audio ? 4 : 2}
+                  r={
+                    point.notePreview || (RECORDING_ENABLED && point.audio)
+                      ? 4
+                      : 2
+                  }
                   fill="var(--accent)"
                   stroke="var(--surface)"
                   strokeWidth={1}

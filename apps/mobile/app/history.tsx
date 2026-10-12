@@ -7,6 +7,7 @@ import {
   dateLabel,
   eachDay,
   presetRange,
+  RECORDING_ENABLED,
   RANGE_PRESETS,
   summary,
   todayLocal,
@@ -114,7 +115,7 @@ export default function History() {
           const row = byDate.get(date);
           return (
             <Action
-              label={`${dateLabel(date, today)}, ${row?.value ?? 'no value'}${row?.note ? ', note' : ''}${row?.audioId ? ', recording' : ''}`}
+              label={`${dateLabel(date, today)}, ${row?.value ?? 'no value'}${row?.note ? ', note' : ''}${RECORDING_ENABLED && row?.audioId ? ', recording' : ''}`}
               onPress={() => {
                 selectDate(date);
                 router.navigate('/');
@@ -135,7 +136,7 @@ export default function History() {
                 </Text>
                 <Text style={{ color: theme.text }}>
                   {row?.value ?? '—'} {row?.note ? '✎' : ''}{' '}
-                  {row?.audioId ? '●' : ''}{' '}
+                  {RECORDING_ENABLED && row?.audioId ? '●' : ''}{' '}
                   {row && Object.values(row.dirtyFields).some(Boolean)
                     ? '·'
                     : ''}

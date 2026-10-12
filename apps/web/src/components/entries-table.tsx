@@ -1,7 +1,11 @@
 'use client';
 import { useState } from 'react';
 import { z } from 'zod';
-import { serverEntrySchema, type ServerEntry } from '@down-up/shared';
+import {
+  RECORDING_ENABLED,
+  serverEntrySchema,
+  type ServerEntry,
+} from '@down-up/shared';
 const pageSchema = z.object({
   entries: z.array(serverEntrySchema),
   hasMore: z.boolean(),
@@ -53,7 +57,7 @@ export function EntriesTable({
               <th scope="col">Date</th>
               <th scope="col">Value</th>
               <th scope="col">Note</th>
-              <th scope="col">Recording</th>
+              {RECORDING_ENABLED && <th scope="col">Recording</th>}
             </tr>
           </thead>
           <tbody>
@@ -62,18 +66,20 @@ export function EntriesTable({
                 <td>{entry.date}</td>
                 <td>{entry.value ?? '—'}</td>
                 <td className="note">{entry.note ?? '—'}</td>
-                <td>
-                  {entry.audioId ? (
-                    <audio
-                      aria-label={`Recording for ${entry.date}`}
-                      controls
-                      preload="none"
-                      src={`/api/audio/${entry.audioId}`}
-                    />
-                  ) : (
-                    '—'
-                  )}
-                </td>
+                {RECORDING_ENABLED && (
+                  <td>
+                    {entry.audioId ? (
+                      <audio
+                        aria-label={`Recording for ${entry.date}`}
+                        controls
+                        preload="none"
+                        src={`/api/audio/${entry.audioId}`}
+                      />
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

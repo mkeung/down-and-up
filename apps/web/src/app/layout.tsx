@@ -4,7 +4,7 @@ import Link from 'next/link';
 import './globals.css';
 export const metadata: Metadata = {
   title: 'Down & Up',
-  description: 'A place for your daily values, notes, and recordings.',
+  description: 'A place for your daily values and notes.',
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: ReactNode }) {

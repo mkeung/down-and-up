@@ -609,7 +609,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 ### Phase 5: Polish + release (≈2 weeks, including store review buffer)
 
 - App icon, splash screen, dark mode, store listings. Keep the icon, display name ("Down & Up"), and listing text neutral, with no mention of mood.
-- Ship without voice recording: hide the Record control and recording playback in the app and on the web, and drop the microphone permission from the app config. Keep the audio columns and sync field group, which stay empty.
+- Ship without voice recording: hide the Record control, recording markers, and playback in the app and on the web behind `RECORDING_ENABLED` (`packages/shared`), and drop the microphone permission from the app config (blocking `RECORD_AUDIO` on Android). Keep the audio columns and sync field group, which stay empty.
 - Privacy policy, App Store privacy label, and Play Data Safety form (§5.6). Confirm encryption at rest and the backup retention settings with the chosen providers.
 - CSV export and Replace ID.
 - Real-device testing of two-phone sync.
@@ -621,6 +621,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 
 - Everything marked _deferred_ above: recording on the Pawsitive tab (§4.1), the audio transfer (§6.3), audio routes and cron jobs, the R2 bucket, recording markers in History and on the web, and recording playback in the web entries table.
 - The audio work already listed in Phases 1–4 belongs here; it doesn't block the first release.
+- Turn on `RECORDING_ENABLED` and restore recordings in the privacy notice, `/privacy`, the landing copy, and the store description.
 - Neutral microphone permission text ("Used to record audio notes."), Audio Data in the store disclosures (§5.6), and the audio tests in §9.
 - Real-device testing of audio (interruptions, Bluetooth headsets, both platforms).
 

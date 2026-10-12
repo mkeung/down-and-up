@@ -23,7 +23,7 @@ async function profile(request: APIRequestContext) {
   ).toBe(200);
   return { id, headers };
 }
-test('complete ID, history, range, recording, reminder and sign-out flow', async ({
+test('complete ID, history, range, hidden recording, reminder and sign-out flow', async ({
   page,
   request,
 }) => {
@@ -94,23 +94,11 @@ test('complete ID, history, range, recording, reminder and sign-out flow', async
     path: 'test-results/dashboard-desktop.png',
     fullPage: true,
   });
-  const player = page.locator('audio').first();
-  await player.evaluate((audio) => {
-    (audio as HTMLAudioElement).load();
-  });
-  await expect
-    .poll(() =>
-      player.evaluate((audio) => (audio as HTMLAudioElement).readyState),
-    )
-    .toBeGreaterThan(0);
-  await player.evaluate(async (audio) => {
-    await (audio as HTMLAudioElement).play();
-  });
-  await expect
-    .poll(() =>
-      player.evaluate((audio) => (audio as HTMLAudioElement).currentTime),
-    )
-    .toBeGreaterThan(0);
+  // Recording is deferred, so a synced recording is never shown.
+  await expect(page.locator('audio')).toHaveCount(0);
+  await expect(
+    page.getByRole('columnheader', { name: 'Recording' }),
+  ).toHaveCount(0);
   await page.getByRole('link', { name: 'Reminder', exact: true }).click();
   await page.getByRole('switch', { name: 'Daily reminder' }).check();
   await page.getByLabel('Reminder time').fill('18:45');
