@@ -12,7 +12,7 @@ import { PawsitiveIcon, RateIcon } from '../src/tab-icons';
 import { ThemeProvider } from '../src/theme-preference';
 import { RetroTabBar } from '../src/retro-tab-bar';
 import { PixelFontContext } from '../src/retro';
-import silkscreen from '../assets/fonts/Silkscreen-Regular.ttf';
+import pixelifySans from '../assets/fonts/PixelifySans-Regular.ttf';
 function Navigation() {
   const theme = useTheme();
   const { selectDate } = useSelectedDate();
@@ -65,7 +65,7 @@ function Navigation() {
 }
 export default function Layout() {
   const [loaded, error] = useFonts({
-    Silkscreen: silkscreen,
+    PixelifySans: pixelifySans,
   });
   if (!loaded && !error)
     return (

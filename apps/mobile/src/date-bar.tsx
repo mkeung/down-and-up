@@ -17,6 +17,12 @@ export function DateBar() {
   const theme = useTheme();
   const { date, today, selectDate, recording } = useSelectedDate();
   const [picker, setPicker] = useState(false);
+  // Always two single-line rows so the button never changes height.
+  const relative =
+    date === today ? 'Today' : date === addDays(today, -1) ? 'Yesterday' : null;
+  const heading =
+    relative ??
+    calendarDate(date).toLocaleDateString(undefined, { weekday: 'long' });
   return (
     <>
       <Row>
@@ -35,25 +41,27 @@ export function DateBar() {
         >
           <View style={{ gap: 4, alignItems: 'center' }}>
             <PixelText
+              numberOfLines={1}
+              adjustsFontSizeToFit
               style={{ color: theme.text, fontSize: 18, textAlign: 'center' }}
             >
-              {date === today ? 'Today' : dateLabel(date, today)}
+              {heading}
             </PixelText>
-            {date === today ? (
-              <Text
-                style={{
-                  color: theme.muted,
-                  fontSize: 15,
-                  textAlign: 'center',
-                }}
-              >
-                {calendarDate(date).toLocaleDateString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </Text>
-            ) : null}
+            <PixelText
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{ color: theme.muted, fontSize: 15, textAlign: 'center' }}
+            >
+              {calendarDate(date).toLocaleDateString(undefined, {
+                weekday: relative ? 'short' : undefined,
+                month: 'short',
+                day: 'numeric',
+                year:
+                  date.slice(0, 4) === today.slice(0, 4)
+                    ? undefined
+                    : 'numeric',
+              })}
+            </PixelText>
           </View>
         </Action>
         <Action

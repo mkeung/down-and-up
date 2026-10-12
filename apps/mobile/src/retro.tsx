@@ -10,13 +10,16 @@ import { useTheme } from './theme';
 
 export const PixelFontContext = createContext(false);
 const pixelType = {
-  fontFamily: 'Silkscreen',
+  fontFamily: 'PixelifySans',
   fontWeight: '400' as const,
 };
 
+export function usePixelType() {
+  return useContext(PixelFontContext) ? pixelType : undefined;
+}
+
 export function PixelText({ style, ...props }: TextProps) {
-  const loaded = useContext(PixelFontContext);
-  return <Text {...props} style={[loaded ? pixelType : undefined, style]} />;
+  return <Text {...props} style={[usePixelType(), style]} />;
 }
 
 // Three overlapping rectangles make two square steps at every corner.

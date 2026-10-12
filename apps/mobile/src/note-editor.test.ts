@@ -3,6 +3,7 @@ import { TextInput } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NoteEditor } from './note-editor';
+import { PixelFontContext } from './retro';
 
 const mocks = vi.hoisted(() => ({
   repo: { setField: vi.fn() },
@@ -49,6 +50,19 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => renderer?.unmount());
   vi.useRealTimers();
+});
+
+it('types notes in the pixel font once it has loaded', async () => {
+  await act(async () => {
+    renderer = create(
+      createElement(
+        PixelFontContext.Provider,
+        { value: true },
+        createElement(NoteEditor, { date, note: null }),
+      ),
+    );
+  });
+  expect(input().props.style.fontFamily).toBe('PixelifySans');
 });
 
 describe('note autosave', () => {

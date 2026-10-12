@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, TextInput } from 'react-native';
-import { PixelPanel, PixelText } from './retro';
+import { PixelPanel, PixelText, usePixelType } from './retro';
 import { MAX_NOTE_LENGTH } from '@down-up/shared';
 import { reportError, useApp } from './app-context';
 import { useTheme } from './theme';
@@ -13,6 +13,7 @@ export function NoteEditor({
 }) {
   const { repo, setNotePending } = useApp();
   const theme = useTheme();
+  const pixelType = usePixelType();
   const [text, setText] = useState(note ?? '');
   const [focused, setFocused] = useState(false);
   const latest = useRef(note ?? '');
@@ -91,6 +92,7 @@ export function NoteEditor({
           timer.current = setTimeout(flush, 1000);
         }}
         style={{
+          ...pixelType,
           color: theme.text,
           backgroundColor: theme.surface,
           borderWidth: 1,

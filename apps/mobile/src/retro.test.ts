@@ -74,7 +74,7 @@ it('keeps the 3×3 + centered 10 keypad, neutral keys, and a checkmarked selecti
     expect(numeral.props.allowFontScaling).not.toBe(false);
     expect(numeral.props.adjustsFontSizeToFit).toBe(true);
     expect(Object.assign({}, ...numeral.props.style).fontFamily).toBe(
-      'Silkscreen',
+      'PixelifySans',
     );
   }
   expect(keys[9]!.parent!.parent!.findAllByType(Pressable)).toHaveLength(1);
