@@ -1,8 +1,8 @@
 # Cerberus 01e animations
 
-Open [the animation gallery](index.html) to play, pause, restart, and scrub the five sequences. It works from a local file without a server or network connection. Reduced-motion preferences disable automatic playback.
+Open [the animation gallery](index.html) to play, pause, restart, and scrub all fifteen sequences: five everyday actions and ten 1–10 reactions. It works from a local file without a server or network connection. Reduced-motion preferences disable automatic playback. The reaction section includes a keypad preview and final-pose comparison; shared playback, speed and background controls cover both sets.
 
-The separate [reaction gallery](reactions/index.html) contains ten one-shot reactions from carefree at 1 to most stressed at 10, with a keypad preview. See [reaction notes](reactions/README.md). These are review assets and are not connected to mobile daily values.
+The [reaction-only gallery](reactions/index.html) remains available for focused review of the ten one-shot reactions, from carefree at 1 to most stressed at 10. See [reaction notes](reactions/README.md). These are review assets and are not connected to mobile daily values. Reactions initially show frame 8 and hold their final pose after playback; everyday actions retain their existing autoplay behavior when Reduce Motion is off.
 
 | Sequence                                 | Action                                                                         | Playback                     | Duration |
 | ---------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------- | -------- |
@@ -33,5 +33,13 @@ Verify the exported frames and animation metadata without rebuilding:
 ```sh
 node scripts/animations.mjs --check
 ```
+
+Check all fifteen previews and the keypad in Chromium:
+
+```sh
+node scripts/animation-gallery-check.mjs
+```
+
+This uses Playwright's installed Chromium. `ANIMATION_GALLERY_BROWSER` can select another Chromium executable; `ANIMATION_GALLERY_SCREENSHOTS` optionally saves desktop/mobile review images. The check covers reaction mapping, shared controls, one-shot holds, Reduce Motion, local-only loading and phone-width layout.
 
 Verification checks frame count, dimensions, at least four distinct poses per sequence, timing, loop settings, alpha, and clear margins. Tennis additionally checks for a compact green ball in every frame and the rise/fall/rebound pattern, protecting against a lost prop during tail edits. Rebuilding checks that source cell boundaries do not cut through the artwork. One common crop and nearest-neighbor scale per sequence preserve relative motion and camera position. Gait, tail silhouettes and anatomy require visual review.

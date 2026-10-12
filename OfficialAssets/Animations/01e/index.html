@@ -187,6 +187,75 @@
           min-height: 0;
         }
       }
+      .section-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin: 24px 0;
+      }
+      .section-heading {
+        font-size: 28px;
+        margin: 40px 0 12px;
+        scroll-margin-top: 24px;
+      }
+      h3 {
+        font-size: 20px;
+        margin: 8px 0;
+      }
+      .demo {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+        align-items: center;
+        gap: 40px;
+        border: 1px solid var(--line);
+        padding: 24px;
+        margin: 32px 0;
+      }
+      .demo .stage {
+        margin: 0;
+        max-width: 450px;
+        width: 100%;
+      }
+      .keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .keypad button {
+        min-height: 64px;
+        font-size: 24px;
+        font-weight: 600;
+        border: 2px solid var(--ink);
+      }
+      .keypad button:last-child {
+        grid-column: 2;
+      }
+      .keypad button[aria-pressed='true'] {
+        outline: 3px solid var(--ink);
+        outline-offset: 3px;
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .demo-copy p {
+        color: #675f55;
+      }
+      .demo-controls {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 700px) {
+        .demo {
+          grid-template-columns: 1fr;
+          gap: 20px;
+          padding: 16px;
+        }
+        .demo .stage {
+          max-width: 320px;
+          margin: auto;
+        }
+      }
     </style>
   </head>
   <body>
@@ -194,12 +263,19 @@
       <div class="eyebrow">Down &amp; Up / Character 01e</div>
       <h1>A little life in every pixel.</h1>
       <p class="intro">
-        Five Cerberus animation studies. A walk, a quiet seat, two distractions,
-        and a shared treat. Step through any sequence or watch it play.
+        Fifteen Cerberus animation studies: five everyday actions and ten
+        reactions from carefree at 1 to most stressed at 10. Play, pause, or
+        step through any sequence. These are review assets; mobile playback is
+        unchanged.
       </p>
+      <nav class="section-links" aria-label="Gallery sections">
+        <a href="#everyday">Everyday animations</a>
+        <a href="#reactions">1–10 reactions</a>
+      </nav>
       <div class="toolbar">
         <button type="button" id="play-all">Play all</button
         ><button type="button" id="pause-all">Pause all</button
+        ><button type="button" id="final-poses">Final reactions</button
         ><label
           >Speed<select id="speed" aria-label="Animation speed">
             <option value="0.5">0.5×</option>
@@ -214,246 +290,791 @@
           </select></label
         >
       </div>
-      <div class="grid">
-        <article data-id="walking">
-          <div class="card-top">
-            <span class="number">01</span><span>Loop</span>
+      <section id="everyday" aria-labelledby="everyday-heading">
+        <h2 class="section-heading" id="everyday-heading">
+          Everyday animations
+        </h2>
+        <div class="grid">
+          <article data-id="walking">
+            <div class="card-top">
+              <span class="number">01</span><span>Loop</span>
+            </div>
+            <div class="stage">
+              <img
+                src="walking/frames/01.png"
+                width="512"
+                height="512"
+                alt="Walking animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Walking</h3>
+            <p>
+              Coordinated front and hind footfalls, both rear paws lifting and
+              swinging, and broad tail wags.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play walking animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart walking animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Walking frame"
+            /></label>
+            <div class="downloads">
+              <a href="walking/preview.gif" download>GIF</a
+              ><a href="walking/preview.webp" download>WebP</a
+              ><a href="walking/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="sitting-idle">
+            <div class="card-top">
+              <span class="number">02</span><span>Loop</span>
+            </div>
+            <div class="stage">
+              <img
+                src="sitting-idle/frames/01.png"
+                width="512"
+                height="512"
+                alt="Sitting idle animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Sitting idle</h3>
+            <p>
+              Seated breathing, blinking, an ear twitch, and a quiet tail sway.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play sitting idle animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart sitting idle animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Sitting idle frame"
+            /></label>
+            <div class="downloads">
+              <a href="sitting-idle/preview.gif" download>GIF</a
+              ><a href="sitting-idle/preview.webp" download>WebP</a
+              ><a href="sitting-idle/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="tennis-ball">
+            <div class="card-top">
+              <span class="number">03</span><span>Loop</span>
+            </div>
+            <div class="stage">
+              <img
+                src="tennis-ball/frames/01.png"
+                width="512"
+                height="512"
+                alt="Tennis ball animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Tennis ball</h3>
+            <p>
+              Both dogs follow the bounce and wag their tails excitedly while
+              the cat stays composed.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play tennis ball animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart tennis ball animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Tennis ball frame"
+            /></label>
+            <div class="downloads">
+              <a href="tennis-ball/preview.gif" download>GIF</a
+              ><a href="tennis-ball/preview.webp" download>WebP</a
+              ><a href="tennis-ball/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="yarn-ball">
+            <div class="card-top">
+              <span class="number">04</span><span>Loop</span>
+            </div>
+            <div class="stage">
+              <img
+                src="yarn-ball/frames/01.png"
+                width="512"
+                height="512"
+                alt="Yarn ball animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Yarn ball</h3>
+            <p>
+              The cat follows the rolling yarn with a broad striped-tail swish
+              while the two dogs stay relaxed.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play yarn ball animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart yarn ball animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Yarn ball frame"
+            /></label>
+            <div class="downloads">
+              <a href="yarn-ball/preview.gif" download>GIF</a
+              ><a href="yarn-ball/preview.webp" download>WebP</a
+              ><a href="yarn-ball/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="food-can">
+            <div class="card-top">
+              <span class="number">05</span><span>Plays once</span>
+            </div>
+            <div class="stage">
+              <img
+                src="food-can/frames/01.png"
+                width="512"
+                height="512"
+                alt="Food can animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Food can</h3>
+            <p>
+              A pull-tab can opens, then all three perk up and wag their tails.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play food can animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart food can animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Food can frame"
+            /></label>
+            <div class="downloads">
+              <a href="food-can/preview.gif" download>GIF</a
+              ><a href="food-can/preview.webp" download>WebP</a
+              ><a href="food-can/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section id="reactions" aria-labelledby="reactions-heading">
+        <h2 class="section-heading" id="reactions-heading">1–10 reactions</h2>
+        <p class="intro">
+          Press a number to preview its reaction, or compare the final poses
+          below. 1 is carefree; 10 is most stressed.
+        </p>
+        <section class="demo" aria-label="Keypad reaction preview">
+          <div id="demo-player">
+            <div class="stage">
+              <img
+                src="reactions/reaction-01/frames/08.png"
+                width="512"
+                height="512"
+                alt="Selected Cerberus reaction preview"
+              />
+            </div>
+            <div class="demo-controls">
+              <button type="button" class="toggle">Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart selected reaction"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Selected reaction frame"
+            /></label>
           </div>
-          <div class="stage">
-            <img
-              src="walking/frames/01.png"
-              width="512"
-              height="512"
-              alt="Walking animation of the three-headed Cerberus character"
-            />
+          <div class="demo-copy">
+            <h3 id="demo-label" aria-live="polite">1 · Carefree</h3>
+            <p>
+              Each reaction plays once and holds its final pose. With Reduce
+              Motion, number presses show the final pose; Play still lets you
+              inspect the sequence.
+            </p>
+            <div class="keypad" aria-label="Choose a reaction">
+              <button
+                type="button"
+                data-value="1"
+                aria-label="1"
+                aria-pressed="true"
+              >
+                1</button
+              ><button
+                type="button"
+                data-value="2"
+                aria-label="2"
+                aria-pressed="false"
+              >
+                2</button
+              ><button
+                type="button"
+                data-value="3"
+                aria-label="3"
+                aria-pressed="false"
+              >
+                3</button
+              ><button
+                type="button"
+                data-value="4"
+                aria-label="4"
+                aria-pressed="false"
+              >
+                4</button
+              ><button
+                type="button"
+                data-value="5"
+                aria-label="5"
+                aria-pressed="false"
+              >
+                5</button
+              ><button
+                type="button"
+                data-value="6"
+                aria-label="6"
+                aria-pressed="false"
+              >
+                6</button
+              ><button
+                type="button"
+                data-value="7"
+                aria-label="7"
+                aria-pressed="false"
+              >
+                7</button
+              ><button
+                type="button"
+                data-value="8"
+                aria-label="8"
+                aria-pressed="false"
+              >
+                8</button
+              ><button
+                type="button"
+                data-value="9"
+                aria-label="9"
+                aria-pressed="false"
+              >
+                9</button
+              ><button
+                type="button"
+                data-value="10"
+                aria-label="10"
+                aria-pressed="false"
+              >
+                10
+              </button>
+            </div>
           </div>
-          <h2>Walking</h2>
-          <p>
-            Coordinated front and hind footfalls, both rear paws lifting and
-            swinging, and broad tail wags.
-          </p>
-          <div class="controls">
-            <button
-              type="button"
-              class="toggle"
-              aria-label="Play walking animation"
-            >
-              Play</button
-            ><button
-              type="button"
-              class="restart"
-              aria-label="Restart walking animation"
-            >
-              Restart</button
-            ><span class="counter" aria-hidden="true">1 / 8</span>
-          </div>
-          <label class="scrub-label"
-            >Frame<input
-              class="scrub"
-              type="range"
-              min="1"
-              max="8"
-              value="1"
-              aria-label="Walking frame"
-          /></label>
-          <div class="downloads">
-            <a href="walking/preview.gif" download>GIF</a
-            ><a href="walking/preview.webp" download>WebP</a
-            ><a href="walking/sheet.png">Sprite sheet ↗</a>
-          </div>
-        </article>
-        <article data-id="sitting-idle">
-          <div class="card-top">
-            <span class="number">02</span><span>Loop</span>
-          </div>
-          <div class="stage">
-            <img
-              src="sitting-idle/frames/01.png"
-              width="512"
-              height="512"
-              alt="Sitting idle animation of the three-headed Cerberus character"
-            />
-          </div>
-          <h2>Sitting idle</h2>
-          <p>
-            Seated breathing, blinking, an ear twitch, and a quiet tail sway.
-          </p>
-          <div class="controls">
-            <button
-              type="button"
-              class="toggle"
-              aria-label="Play sitting idle animation"
-            >
-              Play</button
-            ><button
-              type="button"
-              class="restart"
-              aria-label="Restart sitting idle animation"
-            >
-              Restart</button
-            ><span class="counter" aria-hidden="true">1 / 8</span>
-          </div>
-          <label class="scrub-label"
-            >Frame<input
-              class="scrub"
-              type="range"
-              min="1"
-              max="8"
-              value="1"
-              aria-label="Sitting idle frame"
-          /></label>
-          <div class="downloads">
-            <a href="sitting-idle/preview.gif" download>GIF</a
-            ><a href="sitting-idle/preview.webp" download>WebP</a
-            ><a href="sitting-idle/sheet.png">Sprite sheet ↗</a>
-          </div>
-        </article>
-        <article data-id="tennis-ball">
-          <div class="card-top">
-            <span class="number">03</span><span>Loop</span>
-          </div>
-          <div class="stage">
-            <img
-              src="tennis-ball/frames/01.png"
-              width="512"
-              height="512"
-              alt="Tennis ball animation of the three-headed Cerberus character"
-            />
-          </div>
-          <h2>Tennis ball</h2>
-          <p>
-            Both dogs follow the bounce and wag their tails excitedly while the
-            cat stays composed.
-          </p>
-          <div class="controls">
-            <button
-              type="button"
-              class="toggle"
-              aria-label="Play tennis ball animation"
-            >
-              Play</button
-            ><button
-              type="button"
-              class="restart"
-              aria-label="Restart tennis ball animation"
-            >
-              Restart</button
-            ><span class="counter" aria-hidden="true">1 / 8</span>
-          </div>
-          <label class="scrub-label"
-            >Frame<input
-              class="scrub"
-              type="range"
-              min="1"
-              max="8"
-              value="1"
-              aria-label="Tennis ball frame"
-          /></label>
-          <div class="downloads">
-            <a href="tennis-ball/preview.gif" download>GIF</a
-            ><a href="tennis-ball/preview.webp" download>WebP</a
-            ><a href="tennis-ball/sheet.png">Sprite sheet ↗</a>
-          </div>
-        </article>
-        <article data-id="yarn-ball">
-          <div class="card-top">
-            <span class="number">04</span><span>Loop</span>
-          </div>
-          <div class="stage">
-            <img
-              src="yarn-ball/frames/01.png"
-              width="512"
-              height="512"
-              alt="Yarn ball animation of the three-headed Cerberus character"
-            />
-          </div>
-          <h2>Yarn ball</h2>
-          <p>
-            The cat follows the rolling yarn with a broad striped-tail swish
-            while the two dogs stay relaxed.
-          </p>
-          <div class="controls">
-            <button
-              type="button"
-              class="toggle"
-              aria-label="Play yarn ball animation"
-            >
-              Play</button
-            ><button
-              type="button"
-              class="restart"
-              aria-label="Restart yarn ball animation"
-            >
-              Restart</button
-            ><span class="counter" aria-hidden="true">1 / 8</span>
-          </div>
-          <label class="scrub-label"
-            >Frame<input
-              class="scrub"
-              type="range"
-              min="1"
-              max="8"
-              value="1"
-              aria-label="Yarn ball frame"
-          /></label>
-          <div class="downloads">
-            <a href="yarn-ball/preview.gif" download>GIF</a
-            ><a href="yarn-ball/preview.webp" download>WebP</a
-            ><a href="yarn-ball/sheet.png">Sprite sheet ↗</a>
-          </div>
-        </article>
-        <article data-id="food-can">
-          <div class="card-top">
-            <span class="number">05</span><span>Plays once</span>
-          </div>
-          <div class="stage">
-            <img
-              src="food-can/frames/01.png"
-              width="512"
-              height="512"
-              alt="Food can animation of the three-headed Cerberus character"
-            />
-          </div>
-          <h2>Food can</h2>
-          <p>
-            A pull-tab can opens, then all three perk up and wag their tails.
-          </p>
-          <div class="controls">
-            <button
-              type="button"
-              class="toggle"
-              aria-label="Play food can animation"
-            >
-              Play</button
-            ><button
-              type="button"
-              class="restart"
-              aria-label="Restart food can animation"
-            >
-              Restart</button
-            ><span class="counter" aria-hidden="true">1 / 8</span>
-          </div>
-          <label class="scrub-label"
-            >Frame<input
-              class="scrub"
-              type="range"
-              min="1"
-              max="8"
-              value="1"
-              aria-label="Food can frame"
-          /></label>
-          <div class="downloads">
-            <a href="food-can/preview.gif" download>GIF</a
-            ><a href="food-can/preview.webp" download>WebP</a
-            ><a href="food-can/sheet.png">Sprite sheet ↗</a>
-          </div>
-        </article>
-      </div>
+        </section>
+        <div class="grid">
+          <article data-id="reaction-01">
+            <div class="card-top">
+              <span class="number">01</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-01/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 1: Carefree"
+              />
+            </div>
+            <h3>1 · Carefree</h3>
+            <p>Easy smiles, soft eyes, a buoyant lift and loose tail sway.</p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 1">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 1"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 1 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-01/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-01/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-01/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-02">
+            <div class="card-top">
+              <span class="number">02</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-02/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 2: Relaxed"
+              />
+            </div>
+            <h3>2 · Relaxed</h3>
+            <p>Half-lidded eyes, a slow head tilt and calm tail movement.</p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 2">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 2"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 2 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-02/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-02/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-02/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-03">
+            <div class="card-top">
+              <span class="number">03</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-03/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 3: At ease"
+              />
+            </div>
+            <h3>3 · At ease</h3>
+            <p>Open, content eyes, curious head movement and a gentle blink.</p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 3">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 3"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 3 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-03/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-03/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-03/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-04">
+            <div class="card-top">
+              <span class="number">04</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-04/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 4: Alert"
+              />
+            </div>
+            <h3>4 · Alert</h3>
+            <p>Watchful faces, ears forward and a quieter tail.</p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 4">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 4"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 4 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-04/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-04/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-04/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-05">
+            <div class="card-top">
+              <span class="number">05</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-05/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 5: Uneasy"
+              />
+            </div>
+            <h3>5 · Uneasy</h3>
+            <p>
+              Uncertain mouths, concerned brows and a hesitant weight shift.
+            </p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 5">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 5"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 5 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-05/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-05/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-05/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-06">
+            <div class="card-top">
+              <span class="number">06</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-06/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 6: Worried"
+              />
+            </div>
+            <h3>6 · Worried</h3>
+            <p>
+              Worried faces, drooping ears, an uneasy dip and lowered tails.
+            </p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 6">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 6"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 6 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-06/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-06/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-06/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-07">
+            <div class="card-top">
+              <span class="number">07</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-07/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 7: Tense"
+              />
+            </div>
+            <h3>7 · Tense</h3>
+            <p>
+              Tight mouths, worried brows, stiff shoulders and a tense shudder.
+            </p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 7">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 7"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 7 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-07/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-07/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-07/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-08">
+            <div class="card-top">
+              <span class="number">08</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-08/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 8: Highly anxious"
+              />
+            </div>
+            <h3>8 · Highly anxious</h3>
+            <p>
+              Wide anxious faces, ears back and a shallow crouch with a head
+              quiver.
+            </p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 8">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 8"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 8 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-08/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-08/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-08/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-09">
+            <div class="card-top">
+              <span class="number">09</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-09/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 9: Overwhelmed"
+              />
+            </div>
+            <h3>9 · Overwhelmed</h3>
+            <p>
+              Large worried eyes, a deeper hunch and small trembling shifts.
+            </p>
+            <div class="controls">
+              <button type="button" class="toggle" aria-label="Play reaction 9">
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 9"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 9 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-09/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-09/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-09/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="reaction-10">
+            <div class="card-top">
+              <span class="number">10</span><span>Plays once · 1.89 s</span>
+            </div>
+            <div class="stage">
+              <img
+                src="reactions/reaction-10/frames/08.png"
+                width="512"
+                height="512"
+                alt="Cerberus reaction 10: Most stressed"
+              />
+            </div>
+            <h3>10 · Most stressed</h3>
+            <p>
+              Open worried grimaces, pinned ears, the lowest crouch and a quick
+              tremble.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play reaction 10"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart reaction 10"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">8 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="8"
+                aria-label="Reaction 10 frame"
+            /></label>
+            <div class="downloads">
+              <a href="reactions/reaction-10/preview.gif" download>GIF</a
+              ><a href="reactions/reaction-10/preview.webp" download>WebP</a
+              ><a href="reactions/reaction-10/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+        </div>
+      </section>
       <footer>
         Eight frames per sequence · Transparent PNG frames, GIF, WebP, and
         sprite sheets · <a href="README.md">Asset notes</a> ·
         <a href="generation.json">Exact generation prompts</a>
-        · <a href="reactions/index.html">Ten reaction studies</a>
+        · <a href="reactions/generation.json">Reaction prompts</a> ·
+        <a href="reactions/index.html">Reaction-only gallery</a>
       </footer>
     </main>
     <script>
@@ -461,71 +1082,283 @@
         {
           id: 'walking',
           title: 'Walking',
+          frames: [
+            'walking/frames/01.png',
+            'walking/frames/02.png',
+            'walking/frames/03.png',
+            'walking/frames/04.png',
+            'walking/frames/05.png',
+            'walking/frames/06.png',
+            'walking/frames/07.png',
+            'walking/frames/08.png',
+          ],
           durations: [160, 160, 160, 160, 160, 160, 160, 160],
           loop: true,
         },
         {
           id: 'sitting-idle',
           title: 'Sitting idle',
+          frames: [
+            'sitting-idle/frames/01.png',
+            'sitting-idle/frames/02.png',
+            'sitting-idle/frames/03.png',
+            'sitting-idle/frames/04.png',
+            'sitting-idle/frames/05.png',
+            'sitting-idle/frames/06.png',
+            'sitting-idle/frames/07.png',
+            'sitting-idle/frames/08.png',
+          ],
           durations: [500, 220, 180, 160, 160, 220, 300, 500],
           loop: true,
         },
         {
           id: 'tennis-ball',
           title: 'Tennis ball',
+          frames: [
+            'tennis-ball/frames/01.png',
+            'tennis-ball/frames/02.png',
+            'tennis-ball/frames/03.png',
+            'tennis-ball/frames/04.png',
+            'tennis-ball/frames/05.png',
+            'tennis-ball/frames/06.png',
+            'tennis-ball/frames/07.png',
+            'tennis-ball/frames/08.png',
+          ],
           durations: [450, 180, 180, 220, 260, 220, 240, 450],
           loop: true,
         },
         {
           id: 'yarn-ball',
           title: 'Yarn ball',
+          frames: [
+            'yarn-ball/frames/01.png',
+            'yarn-ball/frames/02.png',
+            'yarn-ball/frames/03.png',
+            'yarn-ball/frames/04.png',
+            'yarn-ball/frames/05.png',
+            'yarn-ball/frames/06.png',
+            'yarn-ball/frames/07.png',
+            'yarn-ball/frames/08.png',
+          ],
           durations: [450, 180, 200, 240, 260, 220, 240, 450],
           loop: true,
         },
         {
           id: 'food-can',
           title: 'Food can',
+          frames: [
+            'food-can/frames/01.png',
+            'food-can/frames/02.png',
+            'food-can/frames/03.png',
+            'food-can/frames/04.png',
+            'food-can/frames/05.png',
+            'food-can/frames/06.png',
+            'food-can/frames/07.png',
+            'food-can/frames/08.png',
+          ],
           durations: [500, 200, 220, 220, 280, 220, 260, 700],
           loop: false,
         },
+        {
+          id: 'reaction-01',
+          title: '1 · Carefree',
+          frames: [
+            'reactions/reaction-01/frames/01.png',
+            'reactions/reaction-01/frames/02.png',
+            'reactions/reaction-01/frames/03.png',
+            'reactions/reaction-01/frames/04.png',
+            'reactions/reaction-01/frames/05.png',
+            'reactions/reaction-01/frames/06.png',
+            'reactions/reaction-01/frames/07.png',
+            'reactions/reaction-01/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 1,
+        },
+        {
+          id: 'reaction-02',
+          title: '2 · Relaxed',
+          frames: [
+            'reactions/reaction-02/frames/01.png',
+            'reactions/reaction-02/frames/02.png',
+            'reactions/reaction-02/frames/03.png',
+            'reactions/reaction-02/frames/04.png',
+            'reactions/reaction-02/frames/05.png',
+            'reactions/reaction-02/frames/06.png',
+            'reactions/reaction-02/frames/07.png',
+            'reactions/reaction-02/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 2,
+        },
+        {
+          id: 'reaction-03',
+          title: '3 · At ease',
+          frames: [
+            'reactions/reaction-03/frames/01.png',
+            'reactions/reaction-03/frames/02.png',
+            'reactions/reaction-03/frames/03.png',
+            'reactions/reaction-03/frames/04.png',
+            'reactions/reaction-03/frames/05.png',
+            'reactions/reaction-03/frames/06.png',
+            'reactions/reaction-03/frames/07.png',
+            'reactions/reaction-03/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 3,
+        },
+        {
+          id: 'reaction-04',
+          title: '4 · Alert',
+          frames: [
+            'reactions/reaction-04/frames/01.png',
+            'reactions/reaction-04/frames/02.png',
+            'reactions/reaction-04/frames/03.png',
+            'reactions/reaction-04/frames/04.png',
+            'reactions/reaction-04/frames/05.png',
+            'reactions/reaction-04/frames/06.png',
+            'reactions/reaction-04/frames/07.png',
+            'reactions/reaction-04/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 4,
+        },
+        {
+          id: 'reaction-05',
+          title: '5 · Uneasy',
+          frames: [
+            'reactions/reaction-05/frames/01.png',
+            'reactions/reaction-05/frames/02.png',
+            'reactions/reaction-05/frames/03.png',
+            'reactions/reaction-05/frames/04.png',
+            'reactions/reaction-05/frames/05.png',
+            'reactions/reaction-05/frames/06.png',
+            'reactions/reaction-05/frames/07.png',
+            'reactions/reaction-05/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 5,
+        },
+        {
+          id: 'reaction-06',
+          title: '6 · Worried',
+          frames: [
+            'reactions/reaction-06/frames/01.png',
+            'reactions/reaction-06/frames/02.png',
+            'reactions/reaction-06/frames/03.png',
+            'reactions/reaction-06/frames/04.png',
+            'reactions/reaction-06/frames/05.png',
+            'reactions/reaction-06/frames/06.png',
+            'reactions/reaction-06/frames/07.png',
+            'reactions/reaction-06/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 6,
+        },
+        {
+          id: 'reaction-07',
+          title: '7 · Tense',
+          frames: [
+            'reactions/reaction-07/frames/01.png',
+            'reactions/reaction-07/frames/02.png',
+            'reactions/reaction-07/frames/03.png',
+            'reactions/reaction-07/frames/04.png',
+            'reactions/reaction-07/frames/05.png',
+            'reactions/reaction-07/frames/06.png',
+            'reactions/reaction-07/frames/07.png',
+            'reactions/reaction-07/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 7,
+        },
+        {
+          id: 'reaction-08',
+          title: '8 · Highly anxious',
+          frames: [
+            'reactions/reaction-08/frames/01.png',
+            'reactions/reaction-08/frames/02.png',
+            'reactions/reaction-08/frames/03.png',
+            'reactions/reaction-08/frames/04.png',
+            'reactions/reaction-08/frames/05.png',
+            'reactions/reaction-08/frames/06.png',
+            'reactions/reaction-08/frames/07.png',
+            'reactions/reaction-08/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 8,
+        },
+        {
+          id: 'reaction-09',
+          title: '9 · Overwhelmed',
+          frames: [
+            'reactions/reaction-09/frames/01.png',
+            'reactions/reaction-09/frames/02.png',
+            'reactions/reaction-09/frames/03.png',
+            'reactions/reaction-09/frames/04.png',
+            'reactions/reaction-09/frames/05.png',
+            'reactions/reaction-09/frames/06.png',
+            'reactions/reaction-09/frames/07.png',
+            'reactions/reaction-09/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 9,
+        },
+        {
+          id: 'reaction-10',
+          title: '10 · Most stressed',
+          frames: [
+            'reactions/reaction-10/frames/01.png',
+            'reactions/reaction-10/frames/02.png',
+            'reactions/reaction-10/frames/03.png',
+            'reactions/reaction-10/frames/04.png',
+            'reactions/reaction-10/frames/05.png',
+            'reactions/reaction-10/frames/06.png',
+            'reactions/reaction-10/frames/07.png',
+            'reactions/reaction-10/frames/08.png',
+          ],
+          durations: [300, 160, 160, 120, 120, 160, 220, 650],
+          loop: false,
+          value: 10,
+        },
       ];
+
       const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
       const speed = document.querySelector('#speed');
-      const players = definitions.map((definition) => {
-        const card = document.querySelector(
-          '[data-id="' + definition.id + '"]',
-        );
+      function createPlayer(card, initial, definition, onFrame = () => {}) {
         const img = card.querySelector('img');
         const toggle = card.querySelector('.toggle');
         const scrub = card.querySelector('.scrub');
         const counter = card.querySelector('.counter');
-        let frame = 0;
-        let timer;
-        let playing = false;
-        const sources = Array.from(
-          { length: 8 },
-          (_, i) =>
-            definition.id +
-            '/frames/' +
-            String(i + 1).padStart(2, '0') +
-            '.png',
-        );
-        sources.forEach((src) => {
-          const preload = new Image();
-          preload.src = src;
-        });
+        let frame = initial,
+          playing = false,
+          timer;
+        function preload() {
+          definition.frames.forEach((src) => {
+            const image = new Image();
+            image.src = src;
+          });
+        }
         function render() {
-          img.src = sources[frame];
+          img.src = definition.frames[frame];
+          img.alt = 'Cerberus animation: ' + definition.title;
           scrub.value = String(frame + 1);
           counter.textContent = frame + 1 + ' / 8';
+          onFrame(definition);
         }
         function updateButton() {
           toggle.textContent = playing ? 'Pause' : 'Play';
           toggle.setAttribute(
             'aria-label',
-            (playing ? 'Pause ' : 'Play ') +
-              definition.title.toLowerCase() +
-              ' animation',
+            (playing ? 'Pause ' : 'Play ') + definition.title + ' animation',
           );
         }
         function pause() {
@@ -557,26 +1390,75 @@
           updateButton();
           schedule();
         }
-        toggle.addEventListener('click', () => (playing ? pause() : play()));
-        card.querySelector('.restart').addEventListener('click', () => {
+        function restart() {
           pause();
           frame = 0;
           render();
           play();
-        });
+        }
+        toggle.addEventListener('click', () => (playing ? pause() : play()));
+        card.querySelector('.restart').addEventListener('click', restart);
         scrub.addEventListener('input', () => {
           pause();
           frame = Number(scrub.value) - 1;
           render();
         });
+        preload();
+        render();
+        updateButton();
         return {
           play,
           pause,
-          reschedule: () => {
+          showFinal() {
+            pause();
+            frame = 7;
+            render();
+          },
+          reschedule() {
             if (playing) schedule();
           },
+          select(next) {
+            pause();
+            definition = next;
+            preload();
+            frame = 7;
+            render();
+            if (!reducedMotion.matches) restart();
+          },
         };
-      });
+      }
+      const cards = definitions.map((def) =>
+        createPlayer(
+          document.querySelector('[data-id="' + def.id + '"]'),
+          def.value ? 7 : 0,
+          def,
+        ),
+      );
+      const reactionDefinitions = definitions.filter((def) => def.value);
+      const label = document.querySelector('#demo-label');
+      const demo = createPlayer(
+        document.querySelector('#demo-player'),
+        7,
+        reactionDefinitions[0],
+        (def) => {
+          if (label.textContent !== def.title) label.textContent = def.title;
+        },
+      );
+      const players = [...cards, demo];
+      document.querySelectorAll('.keypad button').forEach((button) =>
+        button.addEventListener('click', () => {
+          document
+            .querySelectorAll('.keypad button')
+            .forEach((key) =>
+              key.setAttribute('aria-pressed', String(key === button)),
+            );
+          demo.select(
+            reactionDefinitions.find(
+              (def) => def.value === Number(button.dataset.value),
+            ),
+          );
+        }),
+      );
       document
         .querySelector('#play-all')
         .addEventListener('click', () =>
@@ -587,6 +1469,12 @@
         .addEventListener('click', () =>
           players.forEach((player) => player.pause()),
         );
+      document.querySelector('#final-poses').addEventListener('click', () => {
+        cards.forEach((player, i) => {
+          if (definitions[i].value) player.showFinal();
+        });
+        demo.showFinal();
+      });
       speed.addEventListener('change', () =>
         players.forEach((player) => player.reschedule()),
       );
@@ -601,7 +1489,10 @@
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) players.forEach((player) => player.pause());
       });
-      if (!reducedMotion.matches) players.forEach((player) => player.play());
+      if (!reducedMotion.matches)
+        cards.forEach((player, i) => {
+          if (!definitions[i].value) player.play();
+        });
     </script>
   </body>
 </html>

@@ -2,6 +2,8 @@
 
 Open the [offline reaction gallery](index.html). Its keypad previews ten reactions based on [01e](../../../01e-cerberus-retro-pixel-character.png), from no stress at 1 to maximum stress at 10. The gallery initially shows the final poses for comparison and supports playback, pause, restart, frame scrubbing, speed changes, and ivory/dark/transparency backgrounds.
 
+All ten reactions and the keypad preview are also included directly in the [main animation gallery](../index.html#reactions), alongside the five everyday sequences.
+
 | Value | Reaction       | Visual treatment                                                 |
 | ----- | -------------- | ---------------------------------------------------------------- |
 | 1     | Carefree       | Happy soft eyes, buoyant lift, loose tail sway                   |
