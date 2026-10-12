@@ -1,12 +1,6 @@
 import { useMemo, useState } from 'react';
 import { PanResponder, Text, View } from 'react-native';
-import Svg, {
-  Circle,
-  Line,
-  Path,
-  Rect,
-  Text as SvgText,
-} from 'react-native-svg';
+import Svg, { Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { chartPoints, valueCounts, type Entry } from '@down-up/shared';
 import { useTheme } from './theme';
 export function HistoryChart({
@@ -129,11 +123,12 @@ export function HistoryChart({
             <Path d={path} stroke={theme.accent} strokeWidth={2} fill="none" />
             {points.map((point, index) =>
               point.value === null ? null : (
-                <Circle
+                <Rect
                   key={point.date}
-                  cx={x(index)}
-                  cy={y(point.value)}
-                  r={index === selected ? 5 : 3}
+                  x={x(index) - (index === selected ? 5 : 3)}
+                  y={y(point.value) - (index === selected ? 5 : 3)}
+                  width={index === selected ? 10 : 6}
+                  height={index === selected ? 10 : 6}
                   fill={theme.accent}
                 />
               ),

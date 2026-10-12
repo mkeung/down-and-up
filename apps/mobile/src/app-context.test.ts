@@ -52,6 +52,9 @@ vi.mock('./repository', () => ({
     list = async () => [];
     subscribe = () => () => undefined;
     onEdit = () => () => undefined;
+    onWriteState = () => () => undefined;
+    writeState = () => ({ pending: false, failed: false });
+    hasDirty = async () => false;
     uploads = async () => [];
     pushBatch = async () => [];
     applyResponse = async () => undefined;

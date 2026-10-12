@@ -15,6 +15,7 @@ import {
   type RangePreset,
 } from '@down-up/shared';
 import { useTheme } from '../src/theme';
+import { PixelText } from '../src/retro';
 import { reportError, useApp } from '../src/app-context';
 import { Action, Row } from '../src/components';
 import { HistoryChart } from '../src/history-chart';
@@ -63,11 +64,9 @@ export default function History() {
         }}
         ListHeaderComponent={
           <View style={{ gap: 16, paddingBottom: 24 }}>
-            <Text
-              style={{ fontSize: 30, color: theme.text, fontWeight: '600' }}
-            >
+            <PixelText style={{ fontSize: 28, color: theme.text }}>
               History
-            </Text>
+            </PixelText>
             <Row>
               {RANGE_PRESETS.map((rangePreset) => (
                 <Action

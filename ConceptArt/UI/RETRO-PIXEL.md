@@ -2,7 +2,7 @@
 
 Retro pixel is the selected visual direction for Down & Up. The baseline is [03-retro-pixel.png](03-retro-pixel.png): stepped panel edges, legible pixel numerals, neutral keycaps, and pixel-art grid/paw navigation. The icon is now a compact pixel portrait of the existing Cerberus character.
 
-This round records the direction and explores art; the mobile UI theme is not implemented here. The native icon is updated. Palette and custom button/tab treatments below remain alternatives, not final choices.
+The mobile UI now implements shared stepped controls, pixel numerals, framed notes, and custom grid/paw tabs. The native icon uses official master 10. See [visual direction](../../docs/visual-direction.md) for implementation and remaining device checks. Palette and custom button/tab treatments below remain alternatives, not final choices.
 
 | Board                                         | Palette and control art                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -11,11 +11,11 @@ This round records the direction and explores art; the mobile UI theme is not im
 | [Peach tickets](08-retro-peach-tickets.png)   | Global palette: soft muted peach/coral canvas with warm ivory chrome and dark brown-black text, sophisticated rather than candy-like. ALL KEYS IDENTICAL NEUTRAL warm stone-gray, dark charcoal numerals, dark neutral selection frame. Custom art: square pixel ticket-like keycaps with small identical stepped corner cuts and 2-pixel ink-shadow borders. No ripped edges across numbers. Note card similarly a lightly inset pixel stationery frame. Bottom tabs two custom ticket-shaped equal rectangles with larger handmade grid and paw icons and a neutral underline inside active tab. Flat quiet warmth, visible coarse pixel contours, no smooth rounded modern pills.  |
 | [Plum stickers](09-retro-plum-stickers.png)   | Global palette: rich muted aubergine/plum background with dusty lilac chrome, warm ivory text. ALL KEYS IDENTICAL NEUTRAL medium warm-gray stone, ivory numerals and neutral ivory selection frame. Custom art: crisp chunky 16-bit sticker-outline keycaps with one stepped inner border and short block shadows, identical tiny corner marks on every key. Bottom tabs two large custom pixel-outline label patches with chunky grid/paw glyphs, selected tab marked by a second ivory perimeter and small neutral underline. Note panel inset lilac surround with neutral writing surface. Tasteful youthful graphic intensity, no gradients, hearts, sparkles or gaming controls. |
 
-Color belongs to the overall surfaces and chrome, never to the numeric scale. All ten keys retain one neutral color family and identical art. Selected 7 has a neutral double frame and checkmark. The newer boards also show the planned top-right cloud/check data-status control from [`docs/data-status-icon.md`](../../docs/data-status-icon.md); the earlier five studies predate that decision and still show bottom sync text. Status color describes storage only. Custom tabs retain the existing Rate and Pawsitive labels and equal touch areas.
+Color belongs to the overall surfaces and chrome, never to the numeric scale. All ten keys retain one neutral color family and identical art. Selected 7 has a neutral double frame and checkmark. The newer boards also show the planned top-right cloud/check data-status control from [`docs/completed/data-status-icon.md`](../../docs/completed/data-status-icon.md); the earlier five studies predate that decision and still show bottom sync text. Status color describes storage only. Custom tabs retain the existing Rate and Pawsitive labels and equal touch areas.
 
 ## Icon
 
-[Official retro-pixel icon](../../OfficialAssets/10-cerberus-retro-pixel-icon.png). `scripts/icons.mjs` prepares the 1024×1024 native asset from this master. The earlier icon studies remain in OfficialAssets for reference.
+[Official retro-pixel icon](../../OfficialAssets/10-cerberus-retro-pixel-icon.png). `scripts/icons.mjs` prepares the 1024×1024 native asset from this master. The earlier icon studies 09b and 09c live in `ConceptArt/` for reference. [Retro-pixel character 01e](../../OfficialAssets/01e-cerberus-retro-pixel-character.png) redraws the full-body 01c character in the same style as official icon 10.
 
 ## Exact prompts
 
@@ -25,7 +25,7 @@ All assets use the built-in image generation tool. Input paths below are relativ
 
 Destination: `OfficialAssets/10-cerberus-retro-pixel-icon.png`.
 
-References: `OfficialAssets/09b-cerberus-app-icon-front-paws.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
+References: `ConceptArt/09b-cerberus-app-icon-front-paws.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
 
 ```text
 Use case: style-transfer.

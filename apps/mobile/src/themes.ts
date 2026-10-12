@@ -4,6 +4,7 @@ export const THEME_OPTIONS = [
   { id: 'blue', label: 'Blue' },
   { id: 'peach', label: 'Peach' },
   { id: 'plum', label: 'Plum' },
+  { id: 'yellow', label: 'Yellow' },
 ] as const;
 export type ThemeId = (typeof THEME_OPTIONS)[number]['id'];
 export const THEME_STATE_KEY = 'ui_theme';
@@ -17,6 +18,7 @@ const palettes = {
   blue: { light: ['#d7e3f2', '#b8cde6'], dark: ['#0d2037', '#233d5c'] },
   peach: { light: ['#f6d7c6', '#ebbea4'], dark: ['#34251f', '#50372b'] },
   plum: { light: ['#e8dced', '#d2bfdc'], dark: ['#2c1d31', '#49304f'] },
+  yellow: { light: ['#f5e8ad', '#e5cf82'], dark: ['#2c2715', '#443b21'] },
 } as const;
 
 export function themeColors(id: ThemeId, dark: boolean) {

@@ -1,6 +1,6 @@
 # Visual direction: retro pixel
 
-**Status: direction chosen; theme color picker and app icon implemented.** Retro-pixel panel and typography work remains.
+**Status: mobile retro-pixel UI, theme picker, and app icon implemented; device accessibility checks remain.**
 
 ## Direction
 
@@ -11,7 +11,7 @@ Use retro pixel, based on [`ConceptArt/UI/03-retro-pixel.png`](../ConceptArt/UI/
 - neutral keycaps,
 - custom grid and paw tab art for Rate and Pawsitive.
 
-Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIXEL.md`](../ConceptArt/UI/RETRO-PIXEL.md) (mint cartridge, midnight blue, peach tickets, plum stickers). Settings now offers Neutral, Mint, Blue, Peach, and Plum color presets. Custom-control treatments remain exploratory.
+Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIXEL.md`](../ConceptArt/UI/RETRO-PIXEL.md) (mint cartridge, midnight blue, peach tickets, plum stickers). Settings now offers Neutral, Mint, Blue, Peach, Plum, and Yellow color presets. All six presets share stepped controls and custom pixel tabs; the different control treatments in the boards remain reference studies.
 
 ## Rules the theme must keep
 
@@ -19,16 +19,22 @@ Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIX
 - Palette color belongs to surfaces and chrome, never to the numeric scale.
 - The [data status icon](completed/data-status-icon.md) keeps its dedicated storage colors independently of the selected palette.
 - Keys stay at least 64×64pt. Text scaling and contrast must be checked in the real app; the mockups are illustrative.
-- No mood wording, emoji, gradients, or anything that reacts to the value. A Cerberus sprite on Pawsitive, if used, is static decoration.
+- No mood wording, emoji, gradients, or anything that reacts to the value. A Cerberus sprite roams gently at the bottom of Rate and Pawsitive, independently of entries. It is decoration, with no rewards, gameplay, or response to values.
 
 ## Done
 
-- **App icon:** `OfficialAssets/10-cerberus-retro-pixel-icon.png` is the master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. Earlier icons 09b (opaque) and 09c (transparent) stay as reference studies.
-- **Theme color picker:** Settings offers five labeled swatches with a checkmark and selected border. The choice is saved locally in SQLite, applies across mobile screens and tabs, survives restarts and ID changes, and works with sync off. Light/dark appearance follows the phone. Neutral key surfaces and fixed status colors remain independent of the palette. Details are in [mobile app](completed/mobile-app.md#theme-colors).
+
+- **App icon:** `OfficialAssets/10-cerberus-retro-pixel-icon.png` is the master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. Earlier icons 09b (opaque) and 09c (transparent) live in `ConceptArt/` as reference studies; 10 is the only official icon master.
+- **Character artwork:** `OfficialAssets/01e-cerberus-retro-pixel-character.png` is a full-body retro-pixel variant of 01c, matching icon 10. It retains three heads, three tails, tabby front legs, golden rear legs, and no collars. The original 01c is preserved in `ConceptArt/` as a reference study. The exact prompt is in [concept art](../ConceptArt/README.md#01e-cerberus-retro-pixel-characterpng).
+- **Theme color picker:** Settings offers six labeled swatches with a checkmark and selected border. The choice is saved locally in SQLite, applies across mobile screens and tabs, survives restarts and ID changes, and works with sync off. Light/dark appearance follows the phone. Neutral key surfaces and fixed status colors remain independent of the palette. Details are in [mobile app](completed/mobile-app.md#theme-colors).
+
+- **Mobile controls:** shared stepped frames with block shadows, double selection rims, pixel chevrons, a two-line Today/date panel, and a framed note editor. Keypad labels remain just the numbers; the selected key has a pixel checkmark and tapping it does nothing. All keycaps have the same neutral art. Keys grow vertically with text and scroll with the screen.
+- **Typography:** bundled Silkscreen Regular is used for numerals, headings, and controls. Notes, explanations, and IDs keep readable system text. Font loading is local; a font-load failure falls back to the system font. The font and OFL license are in `apps/mobile/assets/fonts/`.
+- **Tabs and status:** Rate uses a nine-square glyph and Pawsitive a stepped paw, each in a custom frame. The active tab has a double rim, underline, and accessibility selection state. Only those two tabs appear, including on Settings/History. Save-status glyphs use integer pixel contours and retain their labels and dedicated colors.
+- **Roaming artwork:** `OfficialAssets/01f-cerberus-retro-pixel-transparent.png` is a transparent cutout of 01e, prepared as `apps/mobile/assets/cerberus.png` with alpha preserved. A small unframed character moves gently across the bottom of both Rate and Pawsitive, above navigation. Its space is separate from the scrollable controls, it never intercepts touches or reacts to values, and it is hidden from the accessibility tree. Movement stops on hidden tabs, in the background, and with Reduce Motion (including when the preference cannot be read). It hides while the keyboard is open. The original opaque art and icon remain available. The exact built-in image-generation prompt is in [official artwork](../OfficialAssets/README.md#transparent-cutout-prompt).
+- **Verification:** component tests cover keypad layout, minimum targets, neutral selection, repeated taps, scalable labels, and tab navigation event cancellation. Existing note/theme tests, contrast checks, lint, typecheck, iOS native build, and both platform exports pass. The iOS Rate screen was inspected in the simulator.
 
 ## To do
 
-- Implement the mobile theme: panel edges, pixel numerals, keycaps, the date panel, the note frame, and the custom tab art.
-- Draw the data status icon's three shapes as pixel glyphs.
 - Check font scaling, contrast, light and dark mode, and touch targets on both platforms.
 - Decide whether the web dashboard adopts the direction.

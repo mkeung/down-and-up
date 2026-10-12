@@ -20,7 +20,7 @@ Two boards received targeted visual corrections; their exact prompts are in [REF
 
 ### 01-soft-clay.png
 
-Mascot reference: `../../OfficialAssets/09b-cerberus-app-icon-front-paws.png` (identity only).
+Mascot reference: `../09b-cerberus-app-icon-front-paws.png` (identity only).
 
 ```text
 Use case: ui-mockup.
@@ -42,7 +42,7 @@ Style/medium: contemporary soft 3D clay UI, tactile matte ceramic rounded-square
 
 ### 02-bold-graphic.png
 
-Mascot reference: `../../OfficialAssets/09b-cerberus-app-icon-front-paws.png` (identity only).
+Mascot reference: `../09b-cerberus-app-icon-front-paws.png` (identity only).
 
 ```text
 Use case: ui-mockup.
@@ -86,7 +86,7 @@ Style/medium: intentional handheld-era pixel interface, chunky stepped borders, 
 
 ### 04-paper-scrapbook.png
 
-Mascot reference: `../../OfficialAssets/09b-cerberus-app-icon-front-paws.png` (identity only).
+Mascot reference: `../09b-cerberus-app-icon-front-paws.png` (identity only).
 
 ```text
 Use case: ui-mockup.
@@ -108,7 +108,7 @@ Style/medium: tactile contemporary paper-cutout and quiet notebook UI. Warm ivor
 
 ### 05-manga-ink.png
 
-Mascot reference: `../../OfficialAssets/09b-cerberus-app-icon-front-paws.png` (identity only).
+Mascot reference: `../09b-cerberus-app-icon-front-paws.png` (identity only).
 
 ```text
 Use case: ui-mockup.

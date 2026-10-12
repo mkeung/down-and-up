@@ -18,6 +18,7 @@ import { Repository } from './repository';
 import { HttpTransport, apiUrl } from './transport';
 import { SyncEngine, type SyncStatus } from './sync-engine';
 import { Reminders } from './reminders';
+import { dataStatus, type DataStatus } from './data-status';
 
 type Runtime = {
   repo: Repository;
@@ -31,6 +32,8 @@ type AppContextValue = Runtime & {
   needsConsent: boolean;
   needsIdentity: boolean;
   status: SyncStatus;
+  dataStatus: DataStatus;
+  setNotePending: (pending: boolean) => void;
   revision: number;
   blockedNotifications: boolean;
   consent: (sync: boolean) => Promise<void>;
@@ -65,6 +68,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [blockedNotifications, setBlockedNotifications] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [online, setOnline] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [notePending, setNotePending] = useState(false);
+  const [writeState, setWriteState] = useState({
+    pending: false,
+    failed: false,
+  });
   const [startupError, setStartupError] = useState(false);
   const identityRef = useRef<Identity | null>(null);
   const enabledRef = useRef(false);
@@ -150,6 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       disposeNet = NetInfo.addEventListener((state) => {
         onlineRef.current =
           state.isConnected === true && state.isInternetReachable !== false;
+        setOnline(onlineRef.current);
         engine.configure(
           enabledRef.current && !!apiUrl(),
           onlineRef.current,
@@ -181,6 +192,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       operations.current.abort();
     };
   }, [saveIdentity]);
+  useEffect(() => {
+    if (!runtime) return;
+    return runtime.repo.onWriteState(() =>
+      setWriteState(runtime.repo.writeState()),
+    );
+  }, [runtime]);
+  useEffect(() => {
+    if (!runtime) return;
+    let active = true;
+    void runtime.repo
+      .hasDirty()
+      .then((value) => {
+        if (active) setDirty(value);
+      })
+      .catch(reportError);
+    return () => {
+      active = false;
+    };
+  }, [runtime, revision]);
   useEffect(() => {
     if (!runtime) return;
     let last = `${new Date().getDate()}:${new Date().getTimezoneOffset()}`;
@@ -284,6 +314,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     needsConsent,
     needsIdentity,
     status,
+    dataStatus: dataStatus({
+      notePending,
+      writePending: writeState.pending,
+      writeFailed: writeState.failed,
+      dirty,
+      syncEnabled,
+      serverConfigured: !!apiUrl(),
+      needsIdentity,
+      online,
+      syncStatus: status,
+    }),
+    setNotePending,
     revision,
     blockedNotifications,
     async consent(sync) {

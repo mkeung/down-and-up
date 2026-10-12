@@ -16,6 +16,8 @@ name: Local record and history
 - assertVisible:
     text: Next day
     enabled: false
+- assertVisible:
+    id: data-status-local
 - tapOn: Pawsitive
 - assertVisible: 'Choose date, Today.*'
 - assertNotVisible: Record
@@ -56,5 +58,11 @@ name: Local record and history
 - tapOn: Pawsitive
 - assertVisible: '.*Offline test note.*'
 - takeScreenshot: test-results/mobile-local
-- openLink: down-up://settings
+- tapOn:
+    id: data-status-local
+- assertVisible: Saved on this phone
+- assertVisible: Sync is off
+- tapOn: Rate
+- tapOn:
+    id: data-status-local
 - assertVisible: Sync is off

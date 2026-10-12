@@ -62,9 +62,9 @@ afterEach(async () => {
 });
 
 describe('Settings theme color picker', () => {
-  it('offers five labeled choices and marks selection without relying on color', async () => {
+  it('offers six labeled choices and marks selection without relying on color', async () => {
     await mount();
-    expect(renderer.root.findAllByType(Pressable)).toHaveLength(5);
+    expect(renderer.root.findAllByType(Pressable)).toHaveLength(6);
     expect(option('Neutral').props.accessibilityRole).toBe('radio');
     expect(option('Neutral').props.accessibilityState.selected).toBe(true);
     expect(option('Neutral').findByType(Text).children.join('')).toContain('✓');
@@ -74,23 +74,23 @@ describe('Settings theme color picker', () => {
 
   it('applies the chosen theme and restores it after restarting', async () => {
     await mount();
-    await act(async () => option('Blue').props.onPress());
-    expect(saved.get(THEME_STATE_KEY)).toBe('blue');
-    expect(colors).toEqual(themeColors('blue', false));
-    expect(option('Blue').props.accessibilityState.selected).toBe(true);
+    await act(async () => option('Yellow').props.onPress());
+    expect(saved.get(THEME_STATE_KEY)).toBe('yellow');
+    expect(colors).toEqual(themeColors('yellow', false));
+    expect(option('Yellow').props.accessibilityState.selected).toBe(true);
     await act(async () => renderer.unmount());
     await mount();
-    expect(preference.id).toBe('blue');
-    expect(colors.background).toBe(themeColors('blue', false).background);
+    expect(preference.id).toBe('yellow');
+    expect(colors.background).toBe(themeColors('yellow', false).background);
   });
 
   it('follows the phone appearance without changing the saved color', async () => {
-    saved.set(THEME_STATE_KEY, 'plum');
+    saved.set(THEME_STATE_KEY, 'yellow');
     await mount();
     mocks.scheme = 'dark';
     await act(async () => renderer.update(tree()));
-    expect(colors).toEqual(themeColors('plum', true));
-    expect(saved.get(THEME_STATE_KEY)).toBe('plum');
+    expect(colors).toEqual(themeColors('yellow', true));
+    expect(saved.get(THEME_STATE_KEY)).toBe('yellow');
     expect(store.setState).not.toHaveBeenCalled();
   });
 

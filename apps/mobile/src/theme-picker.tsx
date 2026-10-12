@@ -3,6 +3,7 @@ import { reportError } from './app-context';
 import { useTheme } from './theme';
 import { useThemePreference } from './theme-preference';
 import { THEME_OPTIONS, themeColors } from './themes';
+import { PixelBackdrop, PixelText } from './retro';
 
 export function ThemePicker() {
   const preference = useThemePreference();
@@ -10,7 +11,9 @@ export function ThemePicker() {
   const dark = useColorScheme() === 'dark';
   return (
     <View style={{ gap: 12 }}>
-      <Text style={{ color: theme.text, fontSize: 20 }}>Theme color</Text>
+      <PixelText style={{ color: theme.text, fontSize: 18 }}>
+        Theme color
+      </PixelText>
       <Text style={{ color: theme.muted, fontSize: 16 }}>
         Choose a color. Light and dark follow your phone.
       </Text>
@@ -39,11 +42,10 @@ export function ThemePicker() {
                 minHeight: 104,
                 padding: 12,
                 gap: 10,
-                backgroundColor: theme.surface,
-                borderWidth: 2,
-                borderColor: selected ? theme.text : theme.line,
+                paddingBottom: 16,
               }}
             >
+              <PixelBackdrop selected={selected} />
               <View
                 accessible={false}
                 style={{

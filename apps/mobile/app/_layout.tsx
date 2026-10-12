@@ -1,5 +1,8 @@
 import { Tabs, router } from 'expo-router';
 import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { AppProvider, useApp } from '../src/app-context';
 import { useTheme } from '../src/theme';
@@ -7,6 +10,9 @@ import { todayLocal } from '@down-up/shared';
 import { SelectedDateProvider, useSelectedDate } from '../src/selected-date';
 import { PawsitiveIcon, RateIcon } from '../src/tab-icons';
 import { ThemeProvider } from '../src/theme-preference';
+import { RetroTabBar } from '../src/retro-tab-bar';
+import { PixelFontContext } from '../src/retro';
+import silkscreen from '../assets/fonts/Silkscreen-Regular.ttf';
 function Navigation() {
   const theme = useTheme();
   const { selectDate } = useSelectedDate();
@@ -27,6 +33,7 @@ function Navigation() {
   }, [selectDate]);
   return (
     <Tabs
+      tabBar={(props) => <RetroTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: theme.background },
@@ -57,16 +64,34 @@ function Navigation() {
   );
 }
 export default function Layout() {
+  const [loaded, error] = useFonts({
+    Silkscreen: silkscreen,
+  });
+  if (!loaded && !error)
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          backgroundColor: '#f4f3ee',
+        }}
+      >
+        <ActivityIndicator accessibilityLabel="Loading" />
+      </View>
+    );
   return (
-    <AppProvider>
-      <Appearance />
-    </AppProvider>
+    <PixelFontContext.Provider value={loaded}>
+      <AppProvider>
+        <Appearance />
+      </AppProvider>
+    </PixelFontContext.Provider>
   );
 }
 function Appearance() {
   const { repo } = useApp();
   return (
     <ThemeProvider store={repo}>
+      <StatusBar style="auto" />
       <SelectedDateProvider>
         <Navigation />
       </SelectedDateProvider>

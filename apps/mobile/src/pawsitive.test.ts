@@ -1,5 +1,7 @@
 import { createElement } from 'react';
-import { ActivityIndicator, TextInput } from 'react-native';
+import { ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CerberusArtwork } from './cerberus-artwork';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { emptyEntry, todayLocal, type LocalEntry } from '@down-up/shared';
@@ -10,6 +12,8 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), setField: vi.fn() }));
 vi.mock('react-native', () => ({
   ActivityIndicator: 'ActivityIndicator',
   TextInput: 'TextInput',
+  Text: 'Text',
+  Image: 'Image',
   ScrollView: 'ScrollView',
   View: 'View',
   Keyboard: { dismiss() {} },
@@ -19,11 +23,13 @@ vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: 'SafeAreaView',
 }));
 vi.mock('./app-context', () => ({
-  useApp: () => ({ repo: mocks, revision: 0 }),
+  useApp: () => ({ repo: mocks, revision: 0, setNotePending: () => undefined }),
   reportError: vi.fn(),
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({}) }));
 vi.mock('./date-bar', () => ({ DateBar: () => null }));
+vi.mock('./data-status-icon', () => ({ DataStatusButton: () => null }));
+vi.mock('./cerberus-artwork', () => ({ CerberusArtwork: () => null }));
 vi.mock('./audio-note', () => ({ AudioNote: () => null }));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -90,6 +96,12 @@ it('treats a new day as loading and a loaded missing entry as an editable empty 
     );
   });
   expect(renderer.root.findByType(TextInput).props.value).toBe('');
+  expect(renderer.root.findByType(CerberusArtwork).parent!.type).toBe(
+    SafeAreaView,
+  );
+  expect(
+    renderer.root.findByType(ScrollView).findAllByType(CerberusArtwork),
+  ).toHaveLength(0);
   const load = loadLater();
   mocks.get.mockReturnValueOnce(load.promise);
   await act(async () => selectDate('2026-01-01'));

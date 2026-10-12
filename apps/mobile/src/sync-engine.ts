@@ -29,7 +29,11 @@ export interface Transport {
   ): Promise<void>;
   cleanup(): Promise<void>;
 }
-export type SyncStatus = 'Synced' | 'Saved on device, will sync' | 'Syncing…';
+export type SyncStatus =
+  | 'Synced'
+  | 'Saved on device, will sync'
+  | 'Syncing…'
+  | 'Could not sync, will retry';
 export class SyncEngine {
   private running: Promise<void> | null = null;
   private controller: AbortController | null = null;
@@ -196,6 +200,7 @@ export class SyncEngine {
         this.onUnauthorized();
         return;
       }
+      this.onStatus('Could not sync, will retry');
       this.failures++;
       this.schedule(Math.min(300_000, 2000 * 2 ** Math.min(this.failures, 8)));
     }

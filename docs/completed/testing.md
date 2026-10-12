@@ -1,12 +1,13 @@
 # Testing strategy
 
-**Status: completed.** The suites below are in place. Tests for planned work live in their plans: [data status icon](../data-status-icon.md#tests) and [voice recording](../voice-recording.md#tests). Device and store checks are in [`RELEASE.md`](../RELEASE.md).
+**Status: completed.** The suites below are in place. Tests for deferred work live in [voice recording](../voice-recording.md#tests). Device and store checks are in [`RELEASE.md`](../RELEASE.md).
 
 - **Unit (shared + server):**
   - Date utilities across timezones and DST.
   - ID generate/normalize (case, spaces, `O`→`0`, `I`/`L`→`1`) and the alphabet check.
   - The per-field LWW merge, including "value can't be cleared" and "note/audio can be cleared".
   - zod validation and the stats helpers (gap filling, averages, counts).
+  - Data status: each state, the order when several apply, sync off staying yellow, a failed sync staying yellow, a failed local write showing red, and the repository's write tracking and dirty check.
   - Reminder scheduling:
     - 30 one-off notifications at the right local time, with logged days skipped.
     - Today's notification cancelled after logging.
@@ -24,6 +25,7 @@
   - Select a day, tap 3 then 8, and check that 8 is highlighted.
   - Try to go past today and check it's blocked. Pick a date years back.
   - Add a note on Pawsitive, and check that the selected day matches across Rate and Pawsitive.
+  - The data status icon is yellow with sync off, and tapping it opens Settings from both tabs.
   - Airplane-mode round trip.
   - Reinstall cases: ID kept but database gone (full restore), and database kept but ID gone (prompt, no silent new ID).
   - "Use an existing ID" with Merge (previously synced rows reach the new ID) and with Discard.

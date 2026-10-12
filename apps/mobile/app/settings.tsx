@@ -7,7 +7,6 @@ import {
   Share,
   Text,
   TextInput,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -20,9 +19,11 @@ import {
 } from '@down-up/shared';
 import { useApp, reportError } from '../src/app-context';
 import { useTheme } from '../src/theme';
+import { PixelPanel, PixelText } from '../src/retro';
 import { PrivacyNotice } from '../src/privacy-notice';
 import { Action, Row } from '../src/components';
 import { apiUrl } from '../src/transport';
+import { DATA_STATUS_TEXT } from '../src/data-status';
 import { shareLocalRecordings } from '../src/export-recordings';
 import { ThemePicker } from '../src/theme-picker';
 
@@ -107,12 +108,12 @@ export default function Settings() {
         contentContainerStyle={{ padding: 24, gap: 26 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ color: theme.text, fontSize: 30, fontWeight: '600' }}>
+        <PixelText style={{ color: theme.text, fontSize: 30 }}>
           Settings
-        </Text>
+        </PixelText>
         <ThemePicker />
         {app.needsIdentity && (
-          <View style={{ gap: 12 }}>
+          <PixelPanel style={{ gap: 12 }}>
             <Text style={{ color: theme.text, fontSize: 18 }}>
               Enter your ID to keep syncing
             </Text>
@@ -133,9 +134,9 @@ export default function Settings() {
                 }
               />
             </Row>
-          </View>
+          </PixelPanel>
         )}
-        <View style={{ gap: 12 }}>
+        <PixelPanel style={{ gap: 12 }}>
           <Text style={{ color: theme.muted }}>Your ID</Text>
           <Text
             selectable
@@ -191,9 +192,11 @@ export default function Settings() {
               if (apiUrl()) void Linking.openURL(apiUrl()!);
             }}
           />
-        </View>
-        <View style={{ gap: 10 }}>
-          <Text style={{ color: theme.text, fontSize: 20 }}>Reminder</Text>
+        </PixelPanel>
+        <PixelPanel style={{ gap: 10 }}>
+          <PixelText style={{ color: theme.text, fontSize: 20 }}>
+            Reminder
+          </PixelText>
           <Text style={{ color: theme.muted }}>
             {!app.syncEnabled
               ? 'Turn on sync to set a reminder'
@@ -217,9 +220,19 @@ export default function Settings() {
               />
             </>
           )}
-        </View>
-        <View style={{ gap: 10 }}>
-          <Text style={{ color: theme.text, fontSize: 20 }}>Sync</Text>
+        </PixelPanel>
+        <PixelPanel style={{ gap: 10 }}>
+          <PixelText style={{ color: theme.text, fontSize: 20 }}>
+            Sync
+          </PixelText>
+          <Text style={{ color: theme.text }}>
+            {DATA_STATUS_TEXT[app.dataStatus]}
+          </Text>
+          {app.status === 'Could not sync, will retry' && (
+            <Text style={{ color: theme.muted }}>
+              The last sync failed. It will try again.
+            </Text>
+          )}
           <Text style={{ color: theme.muted }}>
             {app.syncEnabled
               ? lastSync
@@ -249,7 +262,7 @@ export default function Settings() {
               onPress={() => run(() => app.setSync(false))}
             />
           )}
-        </View>
+        </PixelPanel>
         <Action
           label="Export CSV"
           disabled={busy}
@@ -299,25 +312,26 @@ export default function Settings() {
         animationType="slide"
         onRequestClose={() => setEditing(false)}
       >
-        <View
-          style={{
-            flex: 1,
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          style={{ flex: 1, backgroundColor: '#0008' }}
+          contentContainerStyle={{
+            flexGrow: 1,
             justifyContent: 'center',
-            backgroundColor: '#0008',
             padding: 24,
           }}
         >
-          <View
+          <PixelPanel
             style={{
-              backgroundColor: theme.surface,
               padding: 24,
-              borderRadius: 20,
+
               gap: 20,
             }}
           >
-            <Text style={{ color: theme.text, fontSize: 22 }}>
+            <PixelText style={{ color: theme.text, fontSize: 22 }}>
               Enter your ID
-            </Text>
+            </PixelText>
             <TextInput
               accessibilityLabel="Existing ID"
               autoCapitalize="characters"
@@ -331,7 +345,7 @@ export default function Settings() {
                 borderWidth: 1,
                 borderColor: theme.line,
                 padding: 16,
-                borderRadius: 12,
+                borderRadius: 0,
                 fontSize: 22,
               }}
             />
@@ -344,8 +358,8 @@ export default function Settings() {
                 setInput('');
               }}
             />
-          </View>
-        </View>
+          </PixelPanel>
+        </ScrollView>
       </Modal>
     </SafeAreaView>
   );

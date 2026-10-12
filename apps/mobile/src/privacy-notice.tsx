@@ -1,6 +1,7 @@
 import { ScrollView, Text, View } from 'react-native';
 import { Action } from './components';
 import { useTheme } from './theme';
+import { PixelText } from './retro';
 export function PrivacyNotice({ close }: { close: () => void }) {
   const theme = useTheme();
   return (
@@ -14,7 +15,9 @@ export function PrivacyNotice({ close }: { close: () => void }) {
       }}
     >
       <ScrollView contentContainerStyle={{ gap: 18, paddingBottom: 24 }}>
-        <Text style={{ color: theme.text, fontSize: 28 }}>Privacy</Text>
+        <PixelText style={{ color: theme.text, fontSize: 28 }}>
+          Privacy
+        </PixelText>
         <Text style={{ color: theme.text, fontSize: 17 }}>
           Values and notes are saved on this phone. When sync is on, they are
           copied to our server with your ID so you can view them on the web and

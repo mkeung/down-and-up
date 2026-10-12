@@ -11,7 +11,7 @@ import {
   type SyncResponse,
 } from '@down-up/shared';
 import { Repository, type SqlDatabase } from './repository';
-import { SyncEngine, type Transport } from './sync-engine';
+import { SyncEngine, type SyncStatus, type Transport } from './sync-engine';
 
 export function sqliteRepository() {
   const db = new DatabaseSync(':memory:');
@@ -210,6 +210,34 @@ describe('SQLite repository', () => {
     expect((await repo.get(date))?.dirtyFields).toEqual(cleanFields());
     db.close();
   });
+  it('tracks writes in flight, remembers a failed write, and reports dirty fields', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    const pending: boolean[] = [];
+    repo.onWriteState(() => pending.push(repo.writeState().pending));
+    expect(await repo.hasDirty()).toBe(false);
+    await repo.setField(date, 'value', 3);
+    expect(pending).toEqual([true, false]);
+    expect(await repo.hasDirty()).toBe(true);
+    await expect(repo.setField(date, 'value', null)).rejects.toThrow(
+      'cannot be cleared',
+    );
+    expect(repo.writeState()).toEqual({ pending: false, failed: true });
+    await repo.setField(date, 'note', 'saved');
+    expect(repo.writeState()).toEqual({ pending: false, failed: false });
+    const sent = await repo.pushBatch();
+    await repo.applyResponse(
+      sent,
+      response(
+        sent.map((change, index) => ({
+          ...mergeServer(null, change, Date.now()).entry,
+          serverSeq: String(index + 1),
+        })),
+      ),
+    );
+    expect(await repo.hasDirty()).toBe(false);
+    db.close();
+  });
 });
 
 describe('sync engine', () => {
@@ -378,6 +406,30 @@ describe('sync engine', () => {
     await Promise.all([sync.sync(), sync.sync(), sync.sync()]);
     expect(maxConcurrent).toBe(1);
     expect(server.rows.get(date)?.audioId).toBe(audioId);
+    await sync.stop();
+    db.close();
+  });
+  it('reports a failed sync separately from a stopped one', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    await repo.setField(date, 'value', 3);
+    const statuses: SyncStatus[] = [];
+    const server = memoryServer();
+    server.request = async () => {
+      throw new Error('Offline');
+    };
+    const sync = new SyncEngine(
+      repo,
+      server,
+      () => identity,
+      async () => undefined,
+      (status) => statuses.push(status),
+      () => undefined,
+      async () => undefined,
+    );
+    sync.configure(true, true);
+    await sync.sync();
+    expect(statuses.at(-1)).toBe('Could not sync, will retry');
     await sync.stop();
     db.close();
   });

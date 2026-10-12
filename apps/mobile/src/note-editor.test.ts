@@ -7,13 +7,17 @@ import { NoteEditor } from './note-editor';
 const mocks = vi.hoisted(() => ({
   repo: { setField: vi.fn() },
   reportError: vi.fn(),
+  setNotePending: vi.fn(),
 }));
 vi.mock('react-native', () => ({
   TextInput: 'TextInput',
+  Text: 'Text',
+  Image: 'Image',
+  View: 'View',
   AppState: { addEventListener: () => ({ remove() {} }) },
 }));
 vi.mock('./app-context', () => ({
-  useApp: () => ({ repo: mocks.repo }),
+  useApp: () => ({ repo: mocks.repo, setNotePending: mocks.setNotePending }),
   reportError: mocks.reportError,
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({}) }));
@@ -40,6 +44,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   mocks.repo.setField.mockReset().mockResolvedValue(true);
   mocks.reportError.mockReset();
+  mocks.setNotePending.mockReset();
 });
 afterEach(async () => {
   await act(async () => renderer?.unmount());
@@ -113,6 +118,7 @@ describe('note autosave', () => {
     await mount();
     await act(async () => input().props.onFocus());
     await act(async () => input().props.onChangeText('draft'));
+    expect(mocks.setNotePending).toHaveBeenLastCalledWith(true);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(900);
     });
@@ -125,6 +131,7 @@ describe('note autosave', () => {
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(mocks.repo.setField).toHaveBeenCalledWith(date, 'note', null);
+    expect(mocks.setNotePending).toHaveBeenLastCalledWith(false);
   });
 
   it('flushes the original day when its editor unmounts', async () => {

@@ -15,18 +15,17 @@ This folder is the source of truth for features, data model, sync protocol, and 
 
 **At most one entry per calendar day.** Selecting a number updates that day's value. A value can be changed but never cleared. The note and recording for a day can be edited or removed.
 
-**Discreet by design:** the app tracks mood, but nothing in the UI, web dashboard, app name, icon, store listing, permission prompts, or notifications says so. The main screen shows only a date and the numbers 1–10, with no labels, prompts, or emotive colors or emoji.
+**Discreet by design:** the app tracks mood, but nothing in the UI, web dashboard, app name, icon, store listing, permission prompts, or notifications says so. The main screen shows a date, the numbers 1–10, a data-status icon, and a quiet roaming Cerberus character. There are no prompts, emotive colors, or emoji, and the character never responds to values.
 
 ## Plans
 
 ### Active
 
-| Plan                                    | Status                                    |
-| --------------------------------------- | ----------------------------------------- |
-| [v1 launch](v1-launch.md)               | In progress (Phase 5: polish and release) |
-| [Data status icon](data-status-icon.md) | Planned, part of v1                       |
-| [Visual direction](visual-direction.md) | Direction chosen, mobile UI to implement  |
-| [Voice recording](voice-recording.md)   | Deferred (Phase 6); built but hidden      |
+| Plan                                    | Status                                      |
+| --------------------------------------- | ------------------------------------------- |
+| [v1 launch](v1-launch.md)               | In progress (Phase 5: polish and release)   |
+| [Visual direction](visual-direction.md) | Mobile UI implemented; device checks remain |
+| [Voice recording](voice-recording.md)   | Deferred (Phase 6); built but hidden        |
 
 ### Completed
 
@@ -35,6 +34,7 @@ This folder is the source of truth for features, data model, sync protocol, and 
 | [Architecture](completed/architecture.md)                   | Tech stack, repo layout, Phase 0 foundations                 |
 | [Data model](completed/data-model.md)                       | SQLite and Postgres schemas                                  |
 | [Mobile app](completed/mobile-app.md)                       | Rate, Pawsitive, History, Settings, offline-first (Phase 1)  |
+| [Data status icon](completed/data-status-icon.md)           | Red/yellow/green save status that opens Settings             |
 | [Stats](completed/stats.md)                                 | Shared stats definitions                                     |
 | [Reminders](completed/reminders.md)                         | Daily reminder set on the web, delivered by the phone        |
 | [Identity](completed/identity.md)                           | The ID, web login, new phones, security, data protection     |

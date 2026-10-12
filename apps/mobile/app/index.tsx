@@ -4,9 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Action } from '../src/components';
+import { PixelPanel, PixelText } from '../src/retro';
+import { ValueKeypad } from '../src/value-keypad';
+import { CerberusArtwork } from '../src/cerberus-artwork';
 import { reportError, useApp } from '../src/app-context';
 import { useTheme } from '../src/theme';
 import { DateBar } from '../src/date-bar';
+import { DataStatusButton } from '../src/data-status-icon';
 import { useEntry, useSelectedDate } from '../src/selected-date';
 import { PrivacyNotice } from '../src/privacy-notice';
 
@@ -23,53 +27,18 @@ export default function Rate() {
       .catch(reportError);
   };
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
       <ScrollView
-        contentContainerStyle={{ padding: 24, gap: 22, alignItems: 'center' }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, gap: 22, alignItems: 'center' }}
       >
         <View style={{ width: '100%', maxWidth: 420, gap: 24 }}>
+          <DataStatusButton />
           <DateBar />
-          <View style={{ gap: 12 }}>
-            {[0, 1, 2, 3].map((row) => (
-              <View
-                key={row}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  gap: 12,
-                }}
-              >
-                {(row === 3
-                  ? [10]
-                  : [row * 3 + 1, row * 3 + 2, row * 3 + 3]
-                ).map((value) => (
-                  <Action
-                    key={value}
-                    label={String(value)}
-                    selected={selectedEntry?.value === value}
-                    onPress={() => choose(value)}
-                    style={{
-                      width: '29%',
-                      minWidth: 64,
-                      minHeight: 76,
-                      aspectRatio: 1,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 30,
-                        color: theme.text,
-                        fontWeight:
-                          selectedEntry?.value === value ? '800' : '400',
-                      }}
-                    >
-                      {value}
-                    </Text>
-                  </Action>
-                ))}
-              </View>
-            ))}
-          </View>
+          <ValueKeypad value={selectedEntry?.value ?? null} onChoose={choose} />
           {app.needsIdentity && (
             <>
               <Text style={{ color: theme.text }}>
@@ -81,43 +50,32 @@ export default function Rate() {
               />
             </>
           )}
-          <Action
-            label={app.syncEnabled ? app.status : 'Saved on this phone'}
-            onPress={() => {
-              void app.engine.sync();
-            }}
-            disabled={!app.syncEnabled}
-            style={{ borderWidth: 0, backgroundColor: theme.background }}
-          />
         </View>
       </ScrollView>
+      <CerberusArtwork />
       <Modal
         visible={app.needsConsent && !privacyVisible}
         transparent
         animationType="fade"
         onRequestClose={() => undefined}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: '#0008',
+        <ScrollView
+          style={{ flex: 1, backgroundColor: '#0008' }}
+          contentContainerStyle={{
+            flexGrow: 1,
             justifyContent: 'center',
             padding: 24,
           }}
         >
-          <View
+          <PixelPanel
             style={{
-              backgroundColor: theme.surface,
-              borderRadius: 24,
               padding: 28,
               gap: 20,
             }}
           >
-            <Text
-              style={{ color: theme.text, fontSize: 24, fontWeight: '600' }}
-            >
+            <PixelText style={{ color: theme.text, fontSize: 24 }}>
               Down & Up
-            </Text>
+            </PixelText>
             <Text style={{ color: theme.text, fontSize: 18 }}>
               Your entries are saved on this phone and synced to our server so
               you can view them on the web.
@@ -138,8 +96,8 @@ export default function Rate() {
                 void app.consent(false).catch(reportError);
               }}
             />
-          </View>
-        </View>
+          </PixelPanel>
+        </ScrollView>
       </Modal>
       <Modal
         visible={privacyVisible}

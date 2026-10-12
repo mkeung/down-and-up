@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   addDays,
@@ -11,6 +11,7 @@ import {
 import { Action, Row } from './components';
 import { useSelectedDate } from './selected-date';
 import { useTheme } from './theme';
+import { PixelChevron, PixelText } from './retro';
 
 export function DateBar() {
   const theme = useTheme();
@@ -24,26 +25,43 @@ export function DateBar() {
           disabled={recording || date === '0001-01-01'}
           onPress={() => selectDate(addDays(date, -1))}
         >
-          <Text style={{ color: theme.text, fontSize: 24 }}>‹</Text>
+          <PixelChevron direction="left" color={theme.text} />
         </Action>
         <Action
           label={`Choose date, ${dateLabel(date, today)}`}
           disabled={recording}
           onPress={() => setPicker(true)}
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 100 }}
         >
-          <Text
-            style={{ color: theme.text, fontSize: 17, textAlign: 'center' }}
-          >
-            {dateLabel(date, today)}
-          </Text>
+          <View style={{ gap: 4, alignItems: 'center' }}>
+            <PixelText
+              style={{ color: theme.text, fontSize: 18, textAlign: 'center' }}
+            >
+              {date === today ? 'Today' : dateLabel(date, today)}
+            </PixelText>
+            {date === today ? (
+              <Text
+                style={{
+                  color: theme.muted,
+                  fontSize: 15,
+                  textAlign: 'center',
+                }}
+              >
+                {calendarDate(date).toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Text>
+            ) : null}
+          </View>
         </Action>
         <Action
           label="Next day"
           disabled={recording || date >= today}
           onPress={() => selectDate(addDays(date, 1))}
         >
-          <Text style={{ color: theme.text, fontSize: 24 }}>›</Text>
+          <PixelChevron direction="right" color={theme.text} />
         </Action>
       </Row>
       {picker && (

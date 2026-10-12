@@ -2,18 +2,19 @@
 
 Youth-oriented app UI explorations are in [UI](UI/README.md). **Retro pixel is the selected direction.** Open the [comparison gallery](UI/index.html) to review the five initial art directions and four additional retro-pixel palette/control studies. The [design note](UI/RETRO-PIXEL.md) records the selection and the new pixel app icon.
 
-Fourteen PNG character studies generated with the built-in image generation tool from the pet photos in `../DogsAndCat/`, including three edited versions of concept 01 and three icon variants based on concept 08. Each combines the two dogs and cat into one creature with three heads and three tails; the icon variants show only the heads and a small chest.
+PNG character and icon studies generated with the built-in image generation tool from the pet photos in `../DogsAndCat/`, including four edited versions of concept 01 and icon variants based on concept 08. Each combines the two dogs and cat into one creature with three heads and three tails; the icon variants show only the heads and a small chest.
 
-The selected official character (**01c**) and retro-pixel icon (**10**) live in [OfficialAssets](../OfficialAssets/). Earlier icon versions **09b** and **09c** remain there as reference studies. The new icon prompt is in [UI/RETRO-PIXEL.md](UI/RETRO-PIXEL.md); the original character and icon prompts are preserved below.
+The official retro-pixel character (**01e**) and icon (**10**) live in [OfficialAssets](../OfficialAssets/). Original character **01c** and earlier icon versions **09b** and **09c** live in `ConceptArt/` as reference studies. The new icon prompt is in [UI/RETRO-PIXEL.md](UI/RETRO-PIXEL.md); the original character and icon prompts are preserved below.
 
-Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01–05** retain more of the pets' appearance and explore different media. **10** is the current opaque retro-pixel app-icon master with two front paws and hidden legs. **09b** and its transparent companion **09c** preserve the previous illustrated icon. All other images have an opaque light background.
+Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01e** redraws 01c in the same chunky retro-pixel style as official icon 10. **01–05** retain more of the pets' appearance and explore different media. **10** is the current opaque retro-pixel app-icon master with two front paws and hidden legs. **09b** and its transparent companion **09c** preserve the previous illustrated icon. All other images have an opaque light background.
 
 | File                                                                                                           | Direction                                                                                                      |
 | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | [01-cerberus-pixel.png](01-cerberus-pixel.png)                                                                 | Pixel art                                                                                                      |
 | [01b-cerberus-pixel-cat-legs-collars.png](01b-cerberus-pixel-cat-legs-collars.png)                             | Version 01 with tabby front legs and paws; pink Pom collar, blue middle dog collar, green cat collar           |
-| [01c-cerberus-pixel-cat-legs-no-collars.png](../OfficialAssets/01c-cerberus-pixel-cat-legs-no-collars.png)     | Official character artwork; no collars, tabby front legs and paws                                              |
+| [01c-cerberus-pixel-cat-legs-no-collars.png](01c-cerberus-pixel-cat-legs-no-collars.png)     | Original character study; no collars, tabby front legs and paws                                              |
 | [01d-cerberus-pixel-low-fidelity.png](01d-cerberus-pixel-low-fidelity.png)                                     | Lower-fidelity version 01c with chunky pixels, simpler faces and coat shapes, tabby front legs, and no collars |
+| [01e-cerberus-retro-pixel-character.png](../OfficialAssets/01e-cerberus-retro-pixel-character.png) | Retro-pixel version of 01c matching icon 10; full body, tabby front legs, three tails, and no collars |
 | [02-cerberus-watercolor.png](02-cerberus-watercolor.png)                                                       | Watercolor                                                                                                     |
 | [03-cerberus-anime.png](03-cerberus-anime.png)                                                                 | Chibi anime                                                                                                    |
 | [04-cerberus-paper-cutout.png](04-cerberus-paper-cutout.png)                                                   | Paper cutout                                                                                                   |
@@ -22,8 +23,8 @@ Start with **06–08** for the lowest-detail options. **01d** simplifies the sta
 | [07-cerberus-minimal-watercolor.png](07-cerberus-minimal-watercolor.png)                                       | Minimal watercolor                                                                                             |
 | [08-cerberus-minimal-anime.png](08-cerberus-minimal-anime.png)                                                 | Minimal chibi anime                                                                                            |
 | [09-cerberus-app-icon.png](09-cerberus-app-icon.png)                                                           | Three-head icon portrait in style 08; no paws or legs                                                          |
-| [09b-cerberus-app-icon-front-paws.png](../OfficialAssets/09b-cerberus-app-icon-front-paws.png)                 | Previous opaque icon; two small tabby front paws, legs hidden                                                  |
-| [09c-cerberus-icon-front-paws-transparent.png](../OfficialAssets/09c-cerberus-icon-front-paws-transparent.png) | Previous transparent icon; two front paws, legs hidden                                                         |
+| [09b-cerberus-app-icon-front-paws.png](09b-cerberus-app-icon-front-paws.png)                 | Previous opaque icon; two small tabby front paws, legs hidden                                                  |
+| [09c-cerberus-icon-front-paws-transparent.png](09c-cerberus-icon-front-paws-transparent.png) | Previous transparent icon; two front paws, legs hidden                                                         |
 | [10-cerberus-retro-pixel-icon.png](../OfficialAssets/10-cerberus-retro-pixel-icon.png)                         | Current retro-pixel app-icon master; three heads and tails, two tabby paws, hidden legs                        |
 
 Reference order: `IMG_4564.jpg` (both dogs), `IMG_1203.jpg` (larger dog), `IMG_1021.jpg` (cat), `IMG_20240625_181700362.jpg` (Pom and plume tail). The other supplied photos were also reviewed before generation.
@@ -31,6 +32,21 @@ Reference order: `IMG_4564.jpg` (both dogs), `IMG_1203.jpg` (larger dog), `IMG_1
 The images have been visually checked for one body or connected portrait, three recognizable heads, three visible tails, and uncropped extremities. The minimal studies favor tiny facial marks over eye detail. Icon 09b and its transparent companion have exactly two front paws and no visible legs.
 
 ## Exact generation prompts
+
+### 01e-cerberus-retro-pixel-character.png
+
+Built-in image generation edit of original character 01c, with official icon 10 as the style reference. Saved to `OfficialAssets/01e-cerberus-retro-pixel-character.png`. Visually checked for three heads, three separate tails, two tabby front legs, two golden rear legs, no collars, and uncropped extremities. Original 01c is preserved in `ConceptArt/`.
+
+```text
+Use case: style-transfer.
+Asset type: official full-body Cerberus character artwork for Down & Up.
+Input images: Image 1 is the EDIT TARGET, character 01c. Image 2 is the STYLE REFERENCE, official icon 10; use its chunky stepped outlines, flat natural coat colors and simple square facial marks, not its portrait pose.
+Primary request: Redraw character 01c as a clean, much simpler retro game pixel sprite that belongs to the same visual family as icon 10.
+Preserve the standing three-quarter full-body pose and anatomy of image 1: ONE shared golden quadruped torso, exactly THREE recognizable attached heads (small orange Pom on viewer LEFT, larger golden dog with dark brown muzzle in MIDDLE, brown/charcoal tabby cat on RIGHT); exactly FOUR legs with BOTH FRONT legs and paws striped brown/charcoal feline legs and BOTH REAR legs golden canine legs; exactly THREE separate tails attached to the rump on the RIGHT (golden sweeping dog tail, orange-and-cream curled Pom plume, fluffy dark striped cat tail). No collars or accessories.
+Style: unmistakable coarse retro pixel art as if drawn on roughly a 64–80 pixel square grid and enlarged with crisp nearest-neighbor edges. Large square pixel clusters, thick stepped dark-brown outline like icon 10, sparse flat palette of about 10–12 colors, at most one flat shadow tone per coat. Tiny square eyes and noses, simplified dark muzzle, broad cream chest patch, a few bold tabby stripe bands, only a few stepped fur tufts. Remove fine fur detail, glossy eyes, fine whiskers and individual toe detail. No gradients, soft edges, photographic texture, dithering, or smooth vector curves.
+Composition: square full-body character, every head, ear, paw and tail fully visible, ample ivory negative space around the complete silhouette. Fully opaque plain warm ivory background edge to edge.
+Constraints: preserve 01c's character identity and full-body proportions; match 10's visual simplicity. No text, props, extra animals, extra heads, extra tails, extra limbs, collars, or emotive symbols.
+```
 
 ### 09-cerberus-app-icon.png
 

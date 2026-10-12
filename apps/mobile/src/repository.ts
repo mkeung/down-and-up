@@ -122,6 +122,9 @@ export class Repository {
   private tail: Promise<unknown> = Promise.resolve();
   private listeners = new Set<() => void>();
   private editListeners = new Set<() => void>();
+  private writeListeners = new Set<() => void>();
+  private writes = 0;
+  private writeFailed = false;
   constructor(private readonly db: SqlDatabase) {}
   async initialize() {
     await this.db.execAsync(migrate);
@@ -138,6 +141,24 @@ export class Repository {
       this.editListeners.delete(listener);
     };
   };
+  onWriteState = (listener: () => void) => {
+    this.writeListeners.add(listener);
+    return () => {
+      this.writeListeners.delete(listener);
+    };
+  };
+  writeState() {
+    return { pending: this.writes > 0, failed: this.writeFailed };
+  }
+  private wrote() {
+    for (const listener of this.writeListeners) listener();
+  }
+  async hasDirty() {
+    await this.tail;
+    return !!(await this.db.getFirstAsync<{ found: number }>(
+      'SELECT 1 AS found FROM entries WHERE value_dirty=1 OR note_dirty=1 OR audio_dirty=1 LIMIT 1',
+    ));
+  }
   private changed() {
     for (const listener of this.listeners) listener();
   }
@@ -195,7 +216,30 @@ export class Repository {
     localPath?: string,
   ) {
     if (isFutureDate(date)) throw new Error('Choose today or an earlier day');
-    const didEdit = await this.exclusive(async (tx) => {
+    this.writes++;
+    this.wrote();
+    let didEdit: boolean;
+    try {
+      didEdit = await this.edit(date, field, value, duration, localPath);
+      this.writeFailed = false;
+    } catch (error) {
+      this.writeFailed = true;
+      throw error;
+    } finally {
+      this.writes--;
+      this.wrote();
+    }
+    if (didEdit) for (const listener of this.editListeners) listener();
+    return didEdit;
+  }
+  private edit(
+    date: string,
+    field: Field,
+    value: number | string | null,
+    duration: number | null,
+    localPath?: string,
+  ) {
+    return this.exclusive(async (tx) => {
       const row = (await read(tx, date)) ?? {
         ...emptyEntry(date),
         dirtyFields: cleanFields(),
@@ -228,8 +272,6 @@ export class Repository {
       await write(tx, row);
       return true;
     });
-    if (didEdit) for (const listener of this.editListeners) listener();
-    return didEdit;
   }
   async audio(audioId: string): Promise<AudioFile | null> {
     await this.tail;

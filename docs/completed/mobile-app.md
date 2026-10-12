@@ -1,8 +1,7 @@
 # Mobile app
 
-**Status: completed** (Phase 1, plus the Rate/Pawsitive tab split). This describes the screens as built. Planned changes to them live in active plans:
+**Status: completed** (Phase 1, the Rate/Pawsitive tab split, and the [data status icon](data-status-icon.md)). This describes the screens as built. Planned changes to them live in active plans:
 
-- [Data status icon](data-status-icon.md) replaces the status line on Rate and becomes the way into Settings.
 - [Visual direction](../visual-direction.md) restyles the screens.
 - [Voice recording](../voice-recording.md) adds recording to Pawsitive.
 
@@ -13,6 +12,7 @@ The bottom tab bar has two tabs. **Rate** holds the keypad and **Pawsitive** hol
 ```
 Rate                              Pawsitive
 ┌─────────────────────────────┐   ┌─────────────────────────────┐
+│                         (●) │   │                         (●) │
 │  ◀   Today, Sat Oct 10   ▶  │   │  ◀   Today, Sat Oct 10   ▶  │
 │                             │   │                             │
 │     [ 1 ]  [ 2 ]  [ 3 ]     │   │  ┌ Note…                  ┐ │
@@ -20,13 +20,12 @@ Rate                              Pawsitive
 │     [ 7 ]  [ 8 ]  [ 9 ]     │   │                             │
 │            [10 ]            │   │                             │
 │                             │   │                             │
-│           ✓ Synced          │   │                             │
 │─────────────────────────────│   │─────────────────────────────│
 │     Rate       Pawsitive    │   │     Rate       Pawsitive    │
 └─────────────────────────────┘   └─────────────────────────────┘
 ```
 
-Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. The sync status on Rate is small and unobtrusive.
+Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. `(●)` in the top-right corner is the data status icon.
 
 ### Day selector
 
@@ -57,9 +56,9 @@ Tap the date label to open the calendar. `10` sits where the 0 key is on a phone
 - Maximum 2,000 characters. Clearing the text removes the note (stored as `NULL`).
 - On small screens each tab scrolls, so the keypad never shrinks below its minimum size.
 
-### Sync status indicator
+### Data status icon
 
-On Rate: one of "Synced", "Saved on device, will sync", or "Syncing…". Tapping it starts a manual sync. [Data status icon](data-status-icon.md) replaces it.
+A red, yellow, or green icon in the top-right corner of Rate and Pawsitive shows whether entries are unsaved, saved on this phone, or saved to the cloud. Each state has its own shape. Tapping it opens Settings. Details in [data status icon](data-status-icon.md).
 
 ## Screen: History
 
@@ -105,7 +104,7 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 
 ## Screen: Settings
 
-Settings has no tab. It opens from the "Enter ID" prompt ([identity: lifecycle](identity.md#lifecycle)) and through the `down-up://settings` link. [Data status icon](data-status-icon.md) adds a visible entry point.
+Settings has no tab. It opens from the [data status icon](data-status-icon.md), from the "Enter ID" prompt ([identity: lifecycle](identity.md#lifecycle)), and through the `down-up://settings` link. The tab bar stays visible, so tapping Rate or Pawsitive returns.
 
 - **Your ID:**
   - Shown large and grouped for readability (e.g., `7K3M 9QX2 PDA4`).
@@ -115,7 +114,7 @@ Settings has no tab. It opens from the "Enter ID" prompt ([identity: lifecycle](
 - **Use an existing ID:** for a new phone or a reinstall. See [identity: new phone / reinstall](identity.md#new-phone--reinstall).
 - **Reminder** (read-only here): "Daily at 8:00 PM", or "Off", with a note that it's set on the web. If notification permission is denied, it shows "Notifications are blocked" with a button that opens the phone's settings.
 - **Sync:**
-  - Shows the last sync time and a "Sync now" button.
+  - Shows the data status in words, matching the icon, plus the last sync time and a "Sync now" button. If the last sync failed, it says "The last sync failed. It will try again."
   - When sync is off, shows "Sync is off" with a **Start syncing** button. Starting creates a new ID and uploads all local data.
 - **Delete my data from the server** (with confirmation). This removes all entries for the ID from the server, then asks:
   - **Also delete from this device:** wipes local data, then starts fresh with a new ID.
@@ -124,11 +123,17 @@ Settings has no tab. It opens from the "Enter ID" prompt ([identity: lifecycle](
 
 ### Theme colors
 
-- Settings has a **Theme color** picker: Neutral (default), Mint, Blue, Peach, and Plum. Labeled swatches preview the surface color with neutral keys. A checkmark, selected border, and accessibility selection state identify the active choice.
+- Settings has a **Theme color** picker: Neutral (default), Mint, Blue, Peach, Plum, and Yellow. Labeled swatches preview the surface color with neutral keys. A checkmark, selected border, and accessibility selection state identify the active choice.
 - Picking a swatch saves immediately and updates all mobile screens and the tab bar. There is no save button. The choice stays in SQLite under `ui_theme`, is never synced, and survives restarts and identity changes, including discarding entry data.
 - The saved choice loads before the screens render. Unknown saved choices fall back to Neutral. A failed save preserves the previous choice and shows an error so it can be retried.
 - Light and dark variants follow the phone's appearance. Text contrast is at least 4.5:1, control outlines at least 3:1, and dedicated data-status colors at least 3:1 against each palette's background.
 - Color applies to backgrounds and chrome. All ten number keys retain the same neutral surfaces and selection colors; data-status colors describe storage and do not change with the selected theme.
+
+### Retro-pixel presentation
+
+Rate, Pawsitive, History, Settings, and privacy/consent panels use shared stepped frames and block shadows. Pixel numerals, headings, and button labels use locally bundled Silkscreen; note bodies, explanations, and IDs retain regular text. Font scaling stays enabled, keycaps have at least 64pt targets, and content scrolls when enlarged. The custom two-tab bar keeps its safe-area inset and shows selection with a double rim and underline. The selected numeric key also has a pixel checkmark. Both Rate and Pawsitive show the approved Cerberus character with a transparent background and no visible container, gently roaming across the bottom above navigation. The noninteractive decoration reserves its own space below the scrollable controls, pauses for hidden tabs/background/Reduce Motion, and hides during keyboard input. Movement is independent of entries and never suggests anything about a value.
+
+The icon and splash image use `OfficialAssets/10-cerberus-retro-pixel-icon.png`, resized with nearest-neighbor sampling by `scripts/icons.mjs`. That script also prepares the Pawsitive character. Platform device/accessibility checks still live in the [visual-direction plan](../visual-direction.md).
 
 ## Offline-first behavior
 
