@@ -23,7 +23,11 @@ Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIX
 
 ## Done
 
+- **Reaction asset studies:** ten one-shot 01e reactions map 1 (carefree/no stress) through 10 (most stressed) in `OfficialAssets/Animations/01e/reactions/`. The [offline gallery](../OfficialAssets/Animations/01e/reactions/index.html) offers a keypad preview and final-pose comparison; exports include transparent PNG frames/sheets, GIF/WebP, timing and exact prompts. The user chose assets and gallery first. No mobile keypad behavior or value-dependent animation is implemented; the roaming character retains the existing discretion rule.
+
 - **Animation assets:** five sequences based on 01e (walking, seated idle, tennis ball, yarn ball, and food-can opening) are prepared in `OfficialAssets/Animations/01e/`, with transparent frames, sprite sheets, GIF/WebP previews, timing metadata, and an [offline review gallery](../OfficialAssets/Animations/01e/index.html). These sequences are asset studies and are not wired into mobile playback; they remain independent of values.
+  Walking now uses eight individually drawn poses with staggered front/hind footfalls and visible movement in both golden hind legs, following gait review. The 1.28 s loop and preserved original source are documented in [gait notes](../OfficialAssets/Animations/01e/walking/gait.md).
+  Tail revisions add broader wags to all three walking tails, both dog tails in the tennis-ball loop, and only the cat tail in the yarn-ball loop. The revised sheets retain the gait/prop actions; preceding sources and exact generation prompts remain available.
 
 - **App icon:** `OfficialAssets/10-cerberus-retro-pixel-icon.png` is the master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. Earlier icons 09b (opaque) and 09c (transparent) live in `ConceptArt/` as reference studies; 10 is the only official icon master.
 - **Character artwork:** `OfficialAssets/01e-cerberus-retro-pixel-character.png` is a full-body retro-pixel variant of 01c, matching icon 10. It retains three heads, three tails, tabby front legs, golden rear legs, and no collars. The original 01c is preserved in `ConceptArt/` as a reference study. The exact prompt is in [concept art](../ConceptArt/README.md#01e-cerberus-retro-pixel-characterpng).

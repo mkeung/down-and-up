@@ -10,11 +10,20 @@ const require = createRequire(
   ),
 );
 const sharp = require('sharp');
-const root = 'OfficialAssets/Animations/01e';
+const root = process.argv.includes('--reactions')
+  ? 'OfficialAssets/Animations/01e/reactions'
+  : 'OfficialAssets/Animations/01e';
 const size = 512;
 const { animations } = JSON.parse(
   await readFile(path.join(root, 'generation.json'), 'utf8'),
 );
+if (process.argv.includes('--reactions')) {
+  assert.deepEqual(
+    animations.map((animation) => animation.value),
+    Array.from({ length: 10 }, (_, i) => i + 1),
+    'Reaction pack must map each value from 1 through 10 exactly once',
+  );
+}
 const manifest = {
   character: '01e',
   width: size,
@@ -49,10 +58,11 @@ for (const animation of animations) {
     { length: 8 },
     (_, i) => `${id}/frames/${String(i + 1).padStart(2, '0')}.png`,
   );
-  const loop = id !== 'food-can';
+  const loop = animation.loop ?? id !== 'food-can';
   const entry = {
     id,
     title,
+    ...(animation.value === undefined ? {} : { value: animation.value }),
     frames,
     durations,
     loop,
@@ -62,21 +72,46 @@ for (const animation of animations) {
   };
 
   if (!process.argv.includes('--check')) {
-    const source = path.join(root, animation.source);
+    const source = path.join(
+      root,
+      animation.sourceFrames?.[0] ?? animation.source,
+    );
+    if (animation.sourceFrames) assert.equal(animation.sourceFrames.length, 8);
     const metadata = await sharp(source).metadata();
     assert(metadata.hasAlpha, `${id}: source must have alpha`);
-    const cellWidth = Math.ceil(metadata.width / 4);
-    const cellHeight = Math.ceil(metadata.height / 2);
+    const cellWidth = animation.sourceFrames
+      ? metadata.width
+      : Math.ceil(metadata.width / 4);
+    const cellHeight = animation.sourceFrames
+      ? metadata.height
+      : Math.ceil(metadata.height / 2);
     const extracted = [];
     const union = { left: cellWidth, top: cellHeight, right: -1, bottom: -1 };
     for (let i = 0; i < 8; i++) {
       const column = i % 4;
       const row = Math.floor(i / 4);
-      const left = Math.round((column * metadata.width) / 4);
-      const top = Math.round((row * metadata.height) / 2);
-      const width = Math.round(((column + 1) * metadata.width) / 4) - left;
-      const height = Math.round(((row + 1) * metadata.height) / 2) - top;
-      const frame = await sharp(source)
+      const left = animation.sourceFrames
+        ? 0
+        : Math.round((column * metadata.width) / 4);
+      const top = animation.sourceFrames
+        ? 0
+        : Math.round((row * metadata.height) / 2);
+      const width = animation.sourceFrames
+        ? cellWidth
+        : Math.round(((column + 1) * metadata.width) / 4) - left;
+      const height = animation.sourceFrames
+        ? cellHeight
+        : Math.round(((row + 1) * metadata.height) / 2) - top;
+      const input = animation.sourceFrames
+        ? path.join(root, animation.sourceFrames[i])
+        : source;
+      if (animation.sourceFrames) {
+        const inputMetadata = await sharp(input).metadata();
+        assert.equal(inputMetadata.width, cellWidth);
+        assert.equal(inputMetadata.height, cellHeight);
+        assert(inputMetadata.hasAlpha);
+      }
+      const frame = await sharp(input)
         .extract({ left, top, width, height })
         .extend({
           right: cellWidth - width,
@@ -169,6 +204,7 @@ for (const animation of animations) {
   }
 
   const hashes = new Set();
+  const ballCenters = [];
   for (const frame of frames) {
     const { data, info } = await sharp(path.join(root, frame))
       .ensureAlpha()
@@ -184,8 +220,35 @@ for (const animation of animations) {
         box.bottom < size - 40,
     );
     hashes.add(data.toString('base64'));
+    if (id === 'tennis-ball') {
+      const ballMask = Buffer.alloc(data.length);
+      for (let pixel = 0; pixel < data.length; pixel += 4) {
+        const [red, green, blue, alpha] = data.subarray(pixel, pixel + 4);
+        if (alpha > 128 && green > 120 && green > red + 15 && blue < 100) {
+          ballMask[pixel + 3] = 255;
+        }
+      }
+      const ball = bounds(ballMask, size, size);
+      const width = ball.right - ball.left + 1;
+      const height = ball.bottom - ball.top + 1;
+      assert(width >= 20 && width <= 100, 'Expected one compact tennis ball');
+      assert(height >= 20 && height <= 100, 'Expected one compact tennis ball');
+      ballCenters.push((ball.top + ball.bottom) / 2);
+    }
+  }
+  if (id === 'tennis-ball') {
+    assert(ballCenters[0] > ballCenters[1]);
+    assert(ballCenters[1] > ballCenters[2]);
+    assert(ballCenters[2] > ballCenters[3]);
+    assert(ballCenters[5] > ballCenters[4]);
+    assert(ballCenters[5] > ballCenters[6]);
+    assert(ballCenters[7] > ballCenters[6]);
   }
   assert(hashes.size >= 4, `${id}: expected at least four distinct poses`);
+  const sheet = await sharp(path.join(root, entry.sheet)).metadata();
+  assert.equal(sheet.width, size * 4);
+  assert.equal(sheet.height, size * 2);
+  assert(sheet.hasAlpha);
   for (const filename of [entry.gif, entry.webp]) {
     const metadata = await sharp(path.join(root, filename), {
       animated: true,
@@ -200,7 +263,13 @@ for (const animation of animations) {
   manifest.animations.push(entry);
   console.log(`${id}: 8 frames, timing, transparency, and margins verified`);
 }
-if (!process.argv.includes('--check')) {
+if (process.argv.includes('--check')) {
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(root, 'manifest.json'), 'utf8')),
+    manifest,
+    'Saved manifest must match the verified frame paths and timing',
+  );
+} else {
   await writeFile(
     path.join(root, 'manifest.json'),
     JSON.stringify(manifest, null, 2) + '\n',

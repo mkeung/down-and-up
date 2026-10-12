@@ -1,0 +1,207 @@
+{
+  "character": "01e",
+  "width": 512,
+  "height": 512,
+  "animations": [
+    {
+      "id": "reaction-01",
+      "title": "1 · Carefree",
+      "value": 1,
+      "frames": [
+        "reaction-01/frames/01.png",
+        "reaction-01/frames/02.png",
+        "reaction-01/frames/03.png",
+        "reaction-01/frames/04.png",
+        "reaction-01/frames/05.png",
+        "reaction-01/frames/06.png",
+        "reaction-01/frames/07.png",
+        "reaction-01/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-01/preview.gif",
+      "webp": "reaction-01/preview.webp",
+      "sheet": "reaction-01/sheet.png"
+    },
+    {
+      "id": "reaction-02",
+      "title": "2 · Relaxed",
+      "value": 2,
+      "frames": [
+        "reaction-02/frames/01.png",
+        "reaction-02/frames/02.png",
+        "reaction-02/frames/03.png",
+        "reaction-02/frames/04.png",
+        "reaction-02/frames/05.png",
+        "reaction-02/frames/06.png",
+        "reaction-02/frames/07.png",
+        "reaction-02/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-02/preview.gif",
+      "webp": "reaction-02/preview.webp",
+      "sheet": "reaction-02/sheet.png"
+    },
+    {
+      "id": "reaction-03",
+      "title": "3 · At ease",
+      "value": 3,
+      "frames": [
+        "reaction-03/frames/01.png",
+        "reaction-03/frames/02.png",
+        "reaction-03/frames/03.png",
+        "reaction-03/frames/04.png",
+        "reaction-03/frames/05.png",
+        "reaction-03/frames/06.png",
+        "reaction-03/frames/07.png",
+        "reaction-03/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-03/preview.gif",
+      "webp": "reaction-03/preview.webp",
+      "sheet": "reaction-03/sheet.png"
+    },
+    {
+      "id": "reaction-04",
+      "title": "4 · Alert",
+      "value": 4,
+      "frames": [
+        "reaction-04/frames/01.png",
+        "reaction-04/frames/02.png",
+        "reaction-04/frames/03.png",
+        "reaction-04/frames/04.png",
+        "reaction-04/frames/05.png",
+        "reaction-04/frames/06.png",
+        "reaction-04/frames/07.png",
+        "reaction-04/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-04/preview.gif",
+      "webp": "reaction-04/preview.webp",
+      "sheet": "reaction-04/sheet.png"
+    },
+    {
+      "id": "reaction-05",
+      "title": "5 · Uneasy",
+      "value": 5,
+      "frames": [
+        "reaction-05/frames/01.png",
+        "reaction-05/frames/02.png",
+        "reaction-05/frames/03.png",
+        "reaction-05/frames/04.png",
+        "reaction-05/frames/05.png",
+        "reaction-05/frames/06.png",
+        "reaction-05/frames/07.png",
+        "reaction-05/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-05/preview.gif",
+      "webp": "reaction-05/preview.webp",
+      "sheet": "reaction-05/sheet.png"
+    },
+    {
+      "id": "reaction-06",
+      "title": "6 · Worried",
+      "value": 6,
+      "frames": [
+        "reaction-06/frames/01.png",
+        "reaction-06/frames/02.png",
+        "reaction-06/frames/03.png",
+        "reaction-06/frames/04.png",
+        "reaction-06/frames/05.png",
+        "reaction-06/frames/06.png",
+        "reaction-06/frames/07.png",
+        "reaction-06/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-06/preview.gif",
+      "webp": "reaction-06/preview.webp",
+      "sheet": "reaction-06/sheet.png"
+    },
+    {
+      "id": "reaction-07",
+      "title": "7 · Tense",
+      "value": 7,
+      "frames": [
+        "reaction-07/frames/01.png",
+        "reaction-07/frames/02.png",
+        "reaction-07/frames/03.png",
+        "reaction-07/frames/04.png",
+        "reaction-07/frames/05.png",
+        "reaction-07/frames/06.png",
+        "reaction-07/frames/07.png",
+        "reaction-07/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-07/preview.gif",
+      "webp": "reaction-07/preview.webp",
+      "sheet": "reaction-07/sheet.png"
+    },
+    {
+      "id": "reaction-08",
+      "title": "8 · Highly anxious",
+      "value": 8,
+      "frames": [
+        "reaction-08/frames/01.png",
+        "reaction-08/frames/02.png",
+        "reaction-08/frames/03.png",
+        "reaction-08/frames/04.png",
+        "reaction-08/frames/05.png",
+        "reaction-08/frames/06.png",
+        "reaction-08/frames/07.png",
+        "reaction-08/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-08/preview.gif",
+      "webp": "reaction-08/preview.webp",
+      "sheet": "reaction-08/sheet.png"
+    },
+    {
+      "id": "reaction-09",
+      "title": "9 · Overwhelmed",
+      "value": 9,
+      "frames": [
+        "reaction-09/frames/01.png",
+        "reaction-09/frames/02.png",
+        "reaction-09/frames/03.png",
+        "reaction-09/frames/04.png",
+        "reaction-09/frames/05.png",
+        "reaction-09/frames/06.png",
+        "reaction-09/frames/07.png",
+        "reaction-09/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-09/preview.gif",
+      "webp": "reaction-09/preview.webp",
+      "sheet": "reaction-09/sheet.png"
+    },
+    {
+      "id": "reaction-10",
+      "title": "10 · Most stressed",
+      "value": 10,
+      "frames": [
+        "reaction-10/frames/01.png",
+        "reaction-10/frames/02.png",
+        "reaction-10/frames/03.png",
+        "reaction-10/frames/04.png",
+        "reaction-10/frames/05.png",
+        "reaction-10/frames/06.png",
+        "reaction-10/frames/07.png",
+        "reaction-10/frames/08.png"
+      ],
+      "durations": [300, 160, 160, 120, 120, 160, 220, 650],
+      "loop": false,
+      "gif": "reaction-10/preview.gif",
+      "webp": "reaction-10/preview.webp",
+      "sheet": "reaction-10/sheet.png"
+    }
+  ]
+}

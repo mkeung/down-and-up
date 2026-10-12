@@ -2,6 +2,8 @@
 
 A running log. Add new decisions here in the same change that makes them, and link the plan that carries the detail.
 
+- **Reaction asset review:** prepare ten 01e animation studies mapped from 1 (carefree/no stress) to 10 (most stressed), using natural coat colors and changing expressions/posture. The user chose assets and an offline keypad gallery first. Keep these separate from app behavior; mobile continues to roam independently of values. See [visual direction](visual-direction.md).
+
 - **Tapping the selected number again:** does nothing. A day's value can be changed but never cleared, and each day has at most one entry.
 - **Labels:** none. The app is for mood but stays discreet, so there is no label, prompt, or mood wording anywhere.
 - **Number layout:** phone keypad style, with 1–9 in a 3×3 grid and 10 alone, centered, on the bottom row.

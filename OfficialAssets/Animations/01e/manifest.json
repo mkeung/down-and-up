@@ -16,7 +16,7 @@
         "walking/frames/07.png",
         "walking/frames/08.png"
       ],
-      "durations": [120, 120, 120, 120, 120, 120, 120, 120],
+      "durations": [160, 160, 160, 160, 160, 160, 160, 160],
       "loop": true,
       "gif": "walking/preview.gif",
       "webp": "walking/preview.webp",
