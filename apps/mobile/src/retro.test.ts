@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ValueKeypad } from './value-keypad';
@@ -7,6 +7,8 @@ import { RetroTabBar } from './retro-tab-bar';
 import { PixelCheck, PixelFontContext } from './retro';
 
 vi.mock('react-native', () => ({
+  useWindowDimensions: () => ({ fontScale: 1 }),
+  ScrollView: 'ScrollView',
   Pressable: 'Pressable',
   Text: 'Text',
   View: 'View',
@@ -74,11 +76,13 @@ it('keeps the 3×3 + centered 10 keypad, neutral keys, and a checkmarked selecti
     expect(numeral.props.allowFontScaling).not.toBe(false);
     expect(numeral.props.adjustsFontSizeToFit).toBe(true);
     expect(Object.assign({}, ...numeral.props.style).fontFamily).toBe(
-      'PixelifySans',
+      'Silkscreen',
     );
   }
-  expect(keys[9]!.parent!.parent!.findAllByType(Pressable)).toHaveLength(1);
-  expect(keys[9]!.parent!.parent!.props.style.justifyContent).toBe('center');
+  let tenRow = keys[9]!.parent;
+  while (tenRow?.type !== View) tenRow = tenRow?.parent ?? null;
+  expect(tenRow!.findAllByType(Pressable)).toHaveLength(1);
+  expect(tenRow!.props.style.justifyContent).toBe('center');
   await act(async () => keys[6]!.props.onPress());
   expect(choose).not.toHaveBeenCalled();
   await act(async () => keys[9]!.props.onPress());

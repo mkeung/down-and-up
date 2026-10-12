@@ -8,6 +8,10 @@ import { SelectedDateProvider, useSelectedDate } from './selected-date';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), setField: vi.fn() }));
 vi.mock('react-native', () => ({
+  useWindowDimensions: () => ({ fontScale: 1 }),
+  Platform: { OS: 'ios' },
+  InputAccessoryView: 'InputAccessoryView',
+  Pressable: 'Pressable',
   ActivityIndicator: 'ActivityIndicator',
   TextInput: 'TextInput',
   Text: 'Text',

@@ -13,6 +13,8 @@ import { ThemeProvider } from '../src/theme-preference';
 import { RetroTabBar } from '../src/retro-tab-bar';
 import { PixelFontContext } from '../src/retro';
 import pixelifySans from '../assets/fonts/PixelifySans-Regular.ttf';
+import silkscreen from '../assets/fonts/Silkscreen-Regular.ttf';
+import { CerberusProvider } from '../src/cerberus-context';
 function Navigation() {
   const theme = useTheme();
   const { selectDate } = useSelectedDate();
@@ -66,6 +68,7 @@ function Navigation() {
 export default function Layout() {
   const [loaded, error] = useFonts({
     PixelifySans: pixelifySans,
+    Silkscreen: silkscreen,
   });
   if (!loaded && !error)
     return (
@@ -93,7 +96,9 @@ function Appearance() {
     <ThemeProvider store={repo}>
       <StatusBar style="auto" />
       <SelectedDateProvider>
-        <Navigation />
+        <CerberusProvider>
+          <Navigation />
+        </CerberusProvider>
       </SelectedDateProvider>
     </ThemeProvider>
   );

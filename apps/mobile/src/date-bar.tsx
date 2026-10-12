@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Modal, Platform, ScrollView, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   addDays,
@@ -11,12 +11,33 @@ import {
 import { Action, Row } from './components';
 import { useSelectedDate } from './selected-date';
 import { useTheme } from './theme';
-import { PixelChevron, PixelText } from './retro';
+import { PixelChevron, PixelPanel, PixelText } from './retro';
 
 export function DateBar() {
   const theme = useTheme();
   const { date, today, selectDate, recording } = useSelectedDate();
   const [picker, setPicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(date);
+  const ios = Platform.OS === 'ios';
+  const pickerControl = (
+    <DateTimePicker
+      accessibilityLabel="Choose date"
+      value={calendarDate(pickerDate)}
+      mode="date"
+      display={ios ? 'spinner' : 'default'}
+      maximumDate={calendarDate(today)}
+      onChange={(_event, chosen) => {
+        if (!ios) setPicker(false);
+        if (chosen) {
+          const next = todayLocal(chosen);
+          if (next <= today) {
+            if (ios) setPickerDate(next);
+            else selectDate(next);
+          }
+        }
+      }}
+    />
+  );
   // Always two single-line rows so the button never changes height.
   const relative =
     date === today ? 'Today' : date === addDays(today, -1) ? 'Yesterday' : null;
@@ -36,11 +57,15 @@ export function DateBar() {
         <Action
           label={`Choose date, ${dateLabel(date, today)}`}
           disabled={recording}
-          onPress={() => setPicker(true)}
+          onPress={() => {
+            setPickerDate(date);
+            setPicker(true);
+          }}
           style={{ flex: 1, minWidth: 100 }}
         >
           <View style={{ gap: 4, alignItems: 'center' }}>
             <PixelText
+              font="Silkscreen"
               numberOfLines={1}
               adjustsFontSizeToFit
               style={{ color: theme.text, fontSize: 18, textAlign: 'center' }}
@@ -48,6 +73,7 @@ export function DateBar() {
               {heading}
             </PixelText>
             <PixelText
+              font="Silkscreen"
               numberOfLines={1}
               adjustsFontSizeToFit
               style={{ color: theme.muted, fontSize: 15, textAlign: 'center' }}
@@ -72,21 +98,44 @@ export function DateBar() {
           <PixelChevron direction="right" color={theme.text} />
         </Action>
       </Row>
-      {picker && (
-        <DateTimePicker
-          accessibilityLabel="Choose date"
-          value={calendarDate(date)}
-          mode="date"
-          maximumDate={calendarDate(today)}
-          onChange={(_event, chosen) => {
-            setPicker(false);
-            if (chosen) {
-              const next = todayLocal(chosen);
-              if (next <= today) selectDate(next);
-            }
-          }}
-        />
-      )}
+      {picker &&
+        (ios ? (
+          <Modal
+            transparent
+            animationType="fade"
+            onRequestClose={() => setPicker(false)}
+          >
+            <ScrollView
+              style={{ flex: 1, backgroundColor: '#0008' }}
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: 'center',
+                padding: 20,
+              }}
+            >
+              <PixelPanel style={{ gap: 16 }}>
+                {pickerControl}
+                <Row>
+                  <Action
+                    label="Cancel"
+                    onPress={() => setPicker(false)}
+                    style={{ flex: 1 }}
+                  />
+                  <Action
+                    label="Done"
+                    onPress={() => {
+                      selectDate(pickerDate);
+                      setPicker(false);
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                </Row>
+              </PixelPanel>
+            </ScrollView>
+          </Modal>
+        ) : (
+          pickerControl
+        ))}
       {date < SYNC_DATE_FLOOR && (
         <Text style={{ color: theme.muted }}>
           Dates before 1900 are saved on this phone only.

@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Image } from 'react-native';
+import { Animated, Image } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CerberusArtwork } from './cerberus-artwork';
@@ -7,6 +7,8 @@ import { RetroTabBar } from './retro-tab-bar';
 
 const mocks = vi.hoisted(() => ({
   reduceMotion: false,
+  windowHeight: 874,
+  foodRequest: 0,
   query: vi.fn(),
   motionChanged: null as ((value: boolean) => void) | null,
   appChanged: null as ((value: string) => void) | null,
@@ -14,20 +16,33 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   start: vi.fn(),
   stop: vi.fn(),
-  loop: vi.fn(),
   timing: vi.fn(),
   setValue: vi.fn(),
   interpolate: vi.fn(),
   values: [] as { value: number }[],
+  movements: [] as {
+    value: { value: number };
+    config: { toValue: number; duration: number };
+    finish?: (result: { finished: boolean }) => void;
+  }[],
 }));
-vi.mock('../assets/cerberus.png', () => ({ default: 1 }));
+vi.mock('../assets/cerberus/walking.png', () => ({ default: 1 }));
+vi.mock('../assets/cerberus/sitting-idle.png', () => ({ default: 2 }));
+vi.mock('../assets/cerberus/tennis-ball.png', () => ({ default: 3 }));
+vi.mock('../assets/cerberus/yarn-ball.png', () => ({ default: 4 }));
+vi.mock('../assets/cerberus/food-can.png', () => ({ default: 5 }));
+vi.mock('./cerberus-context', () => ({
+  useCerberus: () => ({ foodRequest: mocks.foodRequest }),
+}));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({ useTheme: () => ({ background: '#f5e8ad' }) }));
 vi.mock('react-native', () => ({
+  useWindowDimensions: () => ({ height: mocks.windowHeight }),
   View: 'View',
   Pressable: 'Pressable',
   Text: 'Text',
   Image: 'Image',
+  Easing: { linear: 'linear' },
   Animated: {
     View: 'AnimatedView',
     Value: class {
@@ -40,11 +55,12 @@ vi.mock('react-native', () => ({
         this.value = value;
         mocks.setValue(value);
       }
+      stopAnimation(callback: (value: number) => void) {
+        callback(this.value);
+      }
       interpolate = mocks.interpolate;
     },
     timing: mocks.timing,
-    sequence: (animations: unknown[]) => animations,
-    loop: mocks.loop,
   },
   AccessibilityInfo: {
     isReduceMotionEnabled: mocks.query,
@@ -75,6 +91,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let renderer: ReactTestRenderer;
 const area = () =>
   renderer.root.findByProps({ testID: 'cerberus-roaming-area' });
+const sprite = () => renderer.root.findByProps({ testID: 'cerberus-sprite' });
+const image = () => renderer.root.findByType(Image);
 async function mount(width = 360) {
   await act(async () => {
     renderer = create(createElement(CerberusArtwork));
@@ -83,58 +101,167 @@ async function mount(width = 360) {
     area().props.onLayout({ nativeEvent: { layout: { width } } }),
   );
 }
+async function finishWalk() {
+  await act(async () => {
+    const movement = mocks.movements.at(-1)!;
+    movement.value.value = movement.config.toValue;
+    movement.finish!({ finished: true });
+  });
+}
+async function advance(milliseconds: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(milliseconds);
+  });
+}
 beforeEach(() => {
+  vi.useFakeTimers();
   vi.clearAllMocks();
+  vi.spyOn(Math, 'random').mockReturnValue(0.1);
   mocks.reduceMotion = false;
+  mocks.windowHeight = 874;
+  mocks.foodRequest = 0;
   mocks.keyboard.clear();
   mocks.values.length = 0;
+  mocks.movements.length = 0;
   mocks.query.mockImplementation(async () => mocks.reduceMotion);
-  mocks.loop.mockReturnValue({ start: mocks.start, stop: mocks.stop });
+  mocks.timing.mockImplementation((value, config) => {
+    const movement = { value, config } as (typeof mocks.movements)[number];
+    mocks.movements.push(movement);
+    return {
+      start: (callback: (result: { finished: boolean }) => void) => {
+        movement.finish = callback;
+        mocks.start();
+      },
+      stop: () => {
+        mocks.stop();
+        movement.finish?.({ finished: false });
+      },
+    };
+  });
   mocks.interpolate.mockReturnValue('interpolated');
 });
 afterEach(async () => {
   await act(async () => renderer?.unmount());
+  expect(vi.getTimerCount()).toBe(0);
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
-it('roams within the available width with no frame or touch/accessibility interception', async () => {
+it('shows a larger walking sprite inside the available width without intercepting touches or accessibility', async () => {
   await mount();
   expect(area().props.pointerEvents).toBe('none');
   expect(area().props.accessibilityElementsHidden).toBe(true);
   expect(area().props.style.backgroundColor).toBeUndefined();
   expect(area().props.style.borderWidth).toBeUndefined();
-  expect(renderer.root.findAllByType(Image)).toHaveLength(1);
+  expect(sprite().props.style).toMatchObject({ width: 240, height: 240 });
+  expect(image().props.source).toBe(1);
   expect(mocks.interpolate).toHaveBeenLastCalledWith({
     inputRange: [0, 1],
-    outputRange: [-80, 80],
+    outputRange: [-44, 44],
     extrapolate: 'clamp',
   });
   expect(mocks.start).toHaveBeenCalledTimes(1);
-  expect(mocks.timing.mock.calls.map((call) => call[1].toValue)).toEqual([
-    1, 0,
-  ]);
-  for (const [, config] of mocks.timing.mock.calls) {
-    expect(config.useNativeDriver).toBe(true);
-    expect(config.isInteraction).toBe(false);
-  }
+  expect(mocks.timing.mock.calls[0]![1]).toMatchObject({
+    easing: 'linear',
+    useNativeDriver: true,
+    isInteraction: false,
+  });
   await act(async () =>
-    area().props.onLayout({ nativeEvent: { layout: { width: 280 } } }),
+    area().props.onLayout({ nativeEvent: { layout: { width: 320 } } }),
   );
   expect(mocks.stop).toHaveBeenCalledTimes(1);
   expect(mocks.interpolate).toHaveBeenLastCalledWith({
     inputRange: [0, 1],
-    outputRange: [-40, 40],
+    outputRange: [-24, 24],
     extrapolate: 'clamp',
   });
 });
 
-it('stays still for Reduce Motion, including live preference changes and read failures', async () => {
+it('advances the walking sheet using its timing and loops all eight frames', async () => {
+  await mount();
+  expect(image().props.style).toMatchObject({ left: -0, top: -0 });
+  await advance(160);
+  expect(image().props.style).toMatchObject({ left: -240, top: -0 });
+  await advance(480);
+  expect(image().props.style).toMatchObject({ left: -0, top: -240 });
+  await advance(640);
+  expect(image().props.style).toMatchObject({ left: -0, top: -0 });
+});
+
+it.each([667, 402])(
+  'leaves room for controls on a short %spt screen',
+  async (height) => {
+    mocks.windowHeight = height;
+    await mount();
+    expect(sprite().props.style.width).toBe(96);
+    expect(area().props.style.height).toBeCloseTo(87.9375);
+    expect(area().props.style.height).toBeLessThan(sprite().props.style.height);
+    expect(area().props.pointerEvents).toBe('none');
+  },
+);
+
+it('keeps the lowest paw 12pt above the tabs for sitting and walking, using the transparent sheet margins', async () => {
+  await mount();
+  const position = () => renderer.root.findByType(Animated.View).props.style;
+  expect(position().bottom + (240 * 84) / 512).toBe(12);
+  await finishWalk();
+  expect(position().bottom + (240 * 71) / 512).toBe(12);
+  expect(area().props.style.height).toBeCloseTo(201.84375);
+});
+
+it.each([
+  [0.1, 2, 14000],
+  [0.7, 3, 4500],
+  [0.9, 4, 4500],
+])(
+  'stops to sit or play, retaining its right-facing orientation (choice %s)',
+  async (choice, source, duration) => {
+    await mount();
+    expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+    vi.mocked(Math.random).mockReturnValueOnce(choice).mockReturnValue(0);
+    await finishWalk();
+    expect(image().props.source).toBe(source);
+    expect(image().props.style).toMatchObject({ left: -0, top: -0 });
+    await advance(500);
+    expect(image().props.style.left).not.toBe(0);
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+    await advance(duration - 501);
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+    await advance(1);
+    expect(image().props.source).toBe(1);
+    expect(mocks.start).toHaveBeenCalledTimes(2);
+  },
+);
+
+it('keeps left-facing play unflipped and turns right at the left edge', async () => {
+  vi.mocked(Math.random).mockReturnValue(0.9);
+  await mount();
+  expect(mocks.movements[0]!.config.toValue).toBe(0);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
+  await finishWalk();
+  expect(image().props.source).toBe(4);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
+  await advance(8550);
+  expect(image().props.source).toBe(1);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+});
+
+it('freezes both movement and frame playback for Reduce Motion, including read failures', async () => {
   mocks.reduceMotion = true;
   await mount();
   expect(mocks.start).not.toHaveBeenCalled();
+  expect(image().props.source).toBe(2);
+  await advance(10000);
+  expect(image().props.style.left).toBe(-0);
   await act(async () => mocks.motionChanged!(false));
   expect(mocks.start).toHaveBeenCalledTimes(1);
+  await advance(160);
   await act(async () => mocks.motionChanged!(true));
   expect(mocks.stop).toHaveBeenCalledTimes(1);
+  const frozen = image().props.style;
+  await advance(10000);
+  expect(image().props.style).toEqual(frozen);
   await act(async () => renderer.unmount());
   mocks.start.mockClear();
   mocks.query.mockRejectedValueOnce(new Error('Unavailable'));
@@ -167,7 +294,54 @@ it('pauses when backgrounded, hidden, or editing a note and cleans up on unmount
   expect(mocks.remove).toHaveBeenCalledTimes(4);
 });
 
-it('does not start moving before the accessibility preference resolves or in a narrow space', async () => {
+it('retains the remaining seated pause, frame, and facing direction across a long background', async () => {
+  await mount();
+  vi.mocked(Math.random).mockReturnValueOnce(0).mockReturnValue(0.5);
+  await finishWalk();
+  // An ordinary seated pause lasts seven seconds with this random source.
+  await advance(2000);
+  await act(async () => mocks.appChanged!('background'));
+  const frozen = image().props.style;
+  await advance(60000);
+  expect(image().props.style).toEqual(frozen);
+  await act(async () => mocks.appChanged!('active'));
+  expect(image().props.source).toBe(2);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+  expect(image().props.style).toEqual(frozen);
+  await advance(4999);
+  expect(image().props.source).toBe(2);
+  await advance(1);
+  expect(image().props.source).toBe(1);
+});
+
+it('ignores a walking completion delivered after the app was paused', async () => {
+  await mount();
+  await act(async () => mocks.appChanged!('background'));
+  await finishWalk();
+  expect(image().props.source).toBe(1);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('plays food once after keyboard dismissal, preserving its facing and holding the final pose until completion', async () => {
+  await mount();
+  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+  await act(async () => mocks.keyboard.get('keyboardDidShow')!());
+  mocks.foodRequest = 1;
+  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  expect(renderer.toJSON()).toBeNull();
+  await act(async () => mocks.keyboard.get('keyboardDidHide')!());
+  expect(image().props.source).toBe(5);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+  await advance(1900);
+  expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+  await advance(699);
+  expect(image().props.source).toBe(5);
+  expect(image().props.style).toMatchObject({ left: -720, top: -240 });
+  await advance(1);
+  expect(image().props.source).toBe(1);
+});
+
+it('waits for the accessibility preference and stays still in a narrow space', async () => {
   let finish!: (value: boolean) => void;
   mocks.query.mockImplementationOnce(
     () =>
@@ -184,6 +358,7 @@ it('does not start moving before the accessibility preference resolves or in a n
   );
   expect(mocks.stop).toHaveBeenCalledTimes(1);
   expect(mocks.start).toHaveBeenCalledTimes(1);
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 it('keeps one animation and its current position when switching tabs, including the first visit', async () => {
@@ -238,4 +413,7 @@ it('keeps one animation and its current position when switching tabs, including 
   expect(progress.value).toBe(0.8);
   expect(mocks.setValue).not.toHaveBeenCalled();
   expect(mocks.start).toHaveBeenCalledTimes(2);
+  expect(mocks.movements.at(-1)!.config.toValue).toBe(
+    mocks.movements[0]!.config.toValue,
+  );
 });

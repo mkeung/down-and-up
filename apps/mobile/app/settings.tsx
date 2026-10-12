@@ -103,7 +103,10 @@ export default function Settings() {
     else await Share.share({ message: await app.repo.csv() });
   };
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
       <ScrollView
         contentContainerStyle={{ padding: 24, gap: 26 }}
         keyboardShouldPersistTaps="handled"

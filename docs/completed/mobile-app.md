@@ -25,7 +25,7 @@ Rate                              Pawsitive
 └─────────────────────────────┘   └─────────────────────────────┘
 ```
 
-Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. `(●)` in the top-right corner is the data status icon.
+Tap the date label to open the calendar. On iOS it opens a dismissible overlay with Cancel/Done; on Android it uses the native dialog. It never leaves a second date control in the screen layout. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. `(●)` in the top-right corner is the data status icon.
 
 ### Day selector
 
@@ -39,7 +39,7 @@ Tap the date label to open the calendar. `10` sits where the 0 key is on a phone
 ### Number buttons
 
 - **Phone keypad layout:** a 3-column grid with `1 2 3` / `4 5 6` / `7 8 9` and **`10` alone in the bottom row, centered**, where the 0 key sits on a phone keypad. The same layout is used in every orientation and on tablets, with the grid centered and its width capped on large screens.
-- The keys are large and roughly square, at least 64×64pt, sized to fill the available width up to the cap, with comfortable spacing.
+- Keys retain at least 64×64pt targets with compact vertical padding and identical neutral art. On Rate, all four rows stay together below a shared Rate/Pawsitive header. Keys 1–9 scroll inside a clipped upper-row area only when necessary, and 10 stays centered underneath with a 12pt gap and its full target visible. All keys share selection and immediate-save behavior.
 - **The selected button stays highlighted:** filled background and bold border, so the state doesn't depend on color alone.
 - **Tapping another number updates the day's value:** the highlight moves and the day's single entry is overwritten.
 - **Tapping the already-selected number does nothing:** it stays selected. Once a day has a value it can be changed but never cleared.
@@ -50,8 +50,8 @@ Tap the date label to open the calendar. `10` sits where the 0 key is on a phone
 
 ### Text note (optional)
 
-- The note field is on the Pawsitive tab, below the day selector, as a one-line "Note…" field and expands to multi-line when focused.
-- It autosaves, debounced ~1s and on blur. There is no save button.
+- The note field is on the Pawsitive tab, below the day selector, as a multi-line panel with the same scaled height as the full keypad. Both screens share header geometry, so the date does not shift between tabs.
+- It autosaves, debounced ~1s and on blur. The keyboard’s Submit control flushes the current draft, dismisses the keyboard, and plays the food-can animation once, retaining the character’s facing. iOS also shows an explicit Submit accessory button. No animation depends on note contents or numeric values.
 - Editing waits for the selected day's SQLite read. Drafts remain intact while a write is pending or fails; an older write cannot clear a newer draft.
 - Maximum 2,000 characters. Clearing the text removes the note (stored as `NULL`).
 - On small screens each tab scrolls, so the keypad never shrinks below its minimum size.
@@ -131,7 +131,7 @@ Settings has no tab. It opens from the [data status icon](data-status-icon.md), 
 
 ### Retro-pixel presentation
 
-Rate, Pawsitive, History, Settings, and privacy/consent panels use shared stepped frames and block shadows. Pixel numerals, headings, button labels, the date button, and typed notes use locally bundled Pixelify Sans; explanations and IDs retain regular text. The date button always shows two single-line rows so its height is stable across days. Font scaling stays enabled, keycaps have at least 64pt targets, and content scrolls when enlarged. The custom two-tab bar keeps its safe-area inset and shows selection with a double rim and underline. The selected numeric key also has a pixel checkmark. Both Rate and Pawsitive show the approved Cerberus character with a transparent background and no visible container, gently roaming across the bottom above navigation. A single instance in the navigation footer keeps its position and ongoing animation across Rate/Pawsitive tab changes. Its position is retained in memory while visiting Settings/History and resets on a fresh app launch. The noninteractive decoration reserves its own space below the scrollable controls, pauses for hidden tabs/background/Reduce Motion, and hides during keyboard input. Movement is independent of entries and never suggests anything about a value.
+Rate, Pawsitive, History, Settings, and privacy/consent panels use shared stepped frames and block shadows. Keypad numerals and both date-button rows use locally bundled Silkscreen; headings, other button labels, and typed notes use Pixelify Sans; explanations and IDs retain regular text. The date button always shows two single-line rows so its height is stable across days. Font scaling stays enabled, keycaps have at least 64pt targets, and content scrolls when enlarged. The custom two-tab bar keeps its safe-area inset and shows selection with a double rim and underline. The selected numeric key also has a pixel checkmark. Both Rate and Pawsitive show the approved Cerberus character with a transparent background and no visible container, gently roaming across the bottom above navigation in a 240pt viewport. Walking uses the approved eight-frame walk loop and flips horizontally when heading right. At random stops, it sits (including occasional longer rests) or plays with a tennis/yarn ball, retaining the direction it faced when the stationary animation began. The five sheets and original frame timings are bundled locally; the [visual direction](../visual-direction.md) describes timing and asset preparation. A single instance in the navigation footer keeps its position and ongoing animation across Rate/Pawsitive tab changes. Its position is retained in memory while visiting Settings/History and resets on a fresh app launch. The noninteractive decoration reserves its own space below the full keypad (and below Pawsitive’s note panel), with transparent image margins removed and a 12pt gap above navigation, so neither walking nor idle poses can cover that button. Its viewport stays 240pt on tall phones and shrinks to 96–240pt on shorter screens to leave room for controls. Settings and History apply safe-area insets only at the top and sides, since the shared tab bar already handles the bottom inset; this avoids a duplicate blank strip above navigation. It pauses both travel and frame playback for hidden tabs/background/Reduce Motion while retaining the current frame and remaining action duration, and hides during keyboard input. Movement is independent of entries and never suggests anything about a value.
 
 The icon and splash image use `OfficialAssets/10-cerberus-retro-pixel-icon.png`, resized with nearest-neighbor sampling by `scripts/icons.mjs`. That script also prepares the Pawsitive character. Platform device/accessibility checks still live in the [visual-direction plan](../visual-direction.md).
 

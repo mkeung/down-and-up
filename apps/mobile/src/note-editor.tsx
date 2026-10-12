@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, TextInput } from 'react-native';
+import {
+  AppState,
+  InputAccessoryView,
+  Keyboard,
+  Platform,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { PixelPanel, PixelText, usePixelType } from './retro';
 import { MAX_NOTE_LENGTH } from '@down-up/shared';
 import { reportError, useApp } from './app-context';
 import { useTheme } from './theme';
+import { keypadLayout } from './entry-layout';
+import { useCerberus } from './cerberus-context';
+import { Action } from './components';
 export function NoteEditor({
   date,
   note,
@@ -14,6 +25,8 @@ export function NoteEditor({
   const { repo, setNotePending } = useApp();
   const theme = useTheme();
   const pixelType = usePixelType();
+  const { fontScale } = useWindowDimensions();
+  const { playFood } = useCerberus();
   const [text, setText] = useState(note ?? '');
   const [focused, setFocused] = useState(false);
   const latest = useRef(note ?? '');
@@ -60,8 +73,17 @@ export function NoteEditor({
       setNotePending(false);
     };
   }, [flush, setNotePending]);
+  const submit = () => {
+    flush();
+    setFocused(false);
+    Keyboard.dismiss();
+    playFood();
+  };
   return (
-    <PixelPanel style={{ gap: 12 }}>
+    <PixelPanel
+      testID="note-editor-panel"
+      style={{ height: keypadLayout(fontScale).height, gap: 12 }}
+    >
       <PixelText
         accessible={false}
         accessibilityElementsHidden
@@ -76,6 +98,11 @@ export function NoteEditor({
         placeholderTextColor={theme.muted}
         value={text}
         multiline
+        returnKeyType="done"
+        returnKeyLabel="Submit"
+        submitBehavior="blurAndSubmit"
+        onSubmitEditing={submit}
+        inputAccessoryViewID={Platform.OS === 'ios' ? 'note-submit' : undefined}
         maxLength={MAX_NOTE_LENGTH}
         onFocus={() => setFocused(true)}
         onBlur={() => {
@@ -100,10 +127,21 @@ export function NoteEditor({
           borderRadius: 0,
           fontSize: 18,
           padding: 16,
-          minHeight: 156,
+          flex: 1,
+          minHeight: 64,
           textAlignVertical: 'top',
         }}
       />
+      {Platform.OS === 'ios' && (
+        <InputAccessoryView
+          nativeID="note-submit"
+          backgroundColor={theme.background}
+        >
+          <View style={{ padding: 8, alignItems: 'flex-end' }}>
+            <Action label="Submit" onPress={submit} />
+          </View>
+        </InputAccessoryView>
+      )}
     </PixelPanel>
   );
 }

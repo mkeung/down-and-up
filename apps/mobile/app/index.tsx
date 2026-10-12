@@ -8,8 +8,7 @@ import { PixelPanel, PixelText } from '../src/retro';
 import { ValueKeypad } from '../src/value-keypad';
 import { reportError, useApp } from '../src/app-context';
 import { useTheme } from '../src/theme';
-import { DateBar } from '../src/date-bar';
-import { DataStatusButton } from '../src/data-status-icon';
+import { EntryHeader } from '../src/entry-header';
 import { useEntry, useSelectedDate } from '../src/selected-date';
 import { PrivacyNotice } from '../src/privacy-notice';
 
@@ -30,32 +29,36 @@ export default function Rate() {
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: theme.background }}
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          padding: 20,
-          paddingTop: 4,
-          gap: 22,
+      <EntryHeader>
+        {app.needsIdentity && (
+          <>
+            <Text style={{ color: theme.text }}>
+              Enter your ID to keep syncing
+            </Text>
+            <Action
+              label="Enter ID"
+              onPress={() => router.navigate('/settings')}
+            />
+          </>
+        )}
+      </EntryHeader>
+      <View
+        testID="rate-keypad-area"
+        style={{
+          flex: 1,
+          paddingHorizontal: 20,
+          paddingVertical: 12,
           alignItems: 'center',
         }}
       >
-        <View style={{ width: '100%', maxWidth: 420, gap: 24 }}>
-          <DataStatusButton />
-          <DateBar />
-          <ValueKeypad value={selectedEntry?.value ?? null} onChoose={choose} />
-          {app.needsIdentity && (
-            <>
-              <Text style={{ color: theme.text }}>
-                Enter your ID to keep syncing
-              </Text>
-              <Action
-                label="Enter ID"
-                onPress={() => router.navigate('/settings')}
-              />
-            </>
-          )}
+        <View style={{ width: '100%', maxWidth: 420, flexShrink: 1 }}>
+          <ValueKeypad
+            value={selectedEntry?.value ?? null}
+            onChoose={choose}
+            scrollRows
+          />
         </View>
-      </ScrollView>
+      </View>
       <Modal
         visible={app.needsConsent && !privacyVisible}
         transparent

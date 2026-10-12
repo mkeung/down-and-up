@@ -52,7 +52,10 @@ export default function History() {
     (entry) => entry.date >= range.from && entry.date <= range.to,
   );
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
       <FlatList
         data={dates}
         keyExtractor={(date) => date}

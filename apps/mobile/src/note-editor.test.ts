@@ -4,13 +4,23 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NoteEditor } from './note-editor';
 import { PixelFontContext } from './retro';
+import { keypadLayout } from './entry-layout';
+import { Pressable } from 'react-native';
 
 const mocks = vi.hoisted(() => ({
   repo: { setField: vi.fn() },
   reportError: vi.fn(),
   setNotePending: vi.fn(),
+  fontScale: 1,
+  playFood: vi.fn(),
+  dismiss: vi.fn(),
 }));
 vi.mock('react-native', () => ({
+  useWindowDimensions: () => ({ fontScale: mocks.fontScale }),
+  InputAccessoryView: 'InputAccessoryView',
+  Pressable: 'Pressable',
+  Keyboard: { dismiss: mocks.dismiss },
+  Platform: { OS: 'ios' },
   TextInput: 'TextInput',
   Text: 'Text',
   Image: 'Image',
@@ -22,6 +32,9 @@ vi.mock('./app-context', () => ({
   reportError: mocks.reportError,
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({}) }));
+vi.mock('./cerberus-context', () => ({
+  useCerberus: () => ({ playFood: mocks.playFood }),
+}));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let renderer: ReactTestRenderer;
@@ -42,6 +55,9 @@ function deferred() {
   return { promise, resolve, reject };
 }
 beforeEach(() => {
+  mocks.fontScale = 1;
+  mocks.playFood.mockClear();
+  mocks.dismiss.mockClear();
   vi.useFakeTimers();
   mocks.repo.setField.mockReset().mockResolvedValue(true);
   mocks.reportError.mockReset();
@@ -64,6 +80,39 @@ it('types notes in the pixel font once it has loaded', async () => {
   });
   expect(input().props.style.fontFamily).toBe('PixelifySans');
 });
+
+it.each([1, 2])(
+  'matches the full keypad height at font scale %s',
+  async (scale) => {
+    mocks.fontScale = scale;
+    await mount();
+    const panel = renderer.root.findByProps({ testID: 'note-editor-panel' });
+    expect(panel.props.style.height).toBe(keypadLayout(scale).height);
+    expect(input().props.style.flex).toBe(1);
+  },
+);
+
+it.each(['keyboard', 'accessory'])(
+  'submits from the %s, saves, dismisses input, and requests the food animation once',
+  async (source) => {
+    await mount();
+    await act(async () => input().props.onChangeText('submitted note'));
+    expect(input().props.submitBehavior).toBe('blurAndSubmit');
+    await act(async () => {
+      if (source === 'keyboard') input().props.onSubmitEditing();
+      else renderer.root.findByType(Pressable).props.onPress();
+      input().props.onBlur();
+    });
+    expect(mocks.repo.setField).toHaveBeenCalledTimes(1);
+    expect(mocks.repo.setField).toHaveBeenCalledWith(
+      date,
+      'note',
+      'submitted note',
+    );
+    expect(mocks.dismiss).toHaveBeenCalledTimes(1);
+    expect(mocks.playFood).toHaveBeenCalledTimes(1);
+  },
+);
 
 describe('note autosave', () => {
   it('retains a failed blur save and retries the same draft on the next blur', async () => {

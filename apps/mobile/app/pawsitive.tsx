@@ -2,8 +2,7 @@ import { ActivityIndicator, Keyboard, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RECORDING_ENABLED } from '@down-up/shared';
 import { useTheme } from '../src/theme';
-import { DateBar } from '../src/date-bar';
-import { DataStatusButton } from '../src/data-status-icon';
+import { EntryHeader } from '../src/entry-header';
 import { useEntry, useSelectedDate } from '../src/selected-date';
 import { NoteEditor } from '../src/note-editor';
 import { AudioNote } from '../src/audio-note';
@@ -17,22 +16,21 @@ export default function Pawsitive() {
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: theme.background }}
     >
+      <EntryHeader />
       <ScrollView
+        testID="pawsitive-note-area"
         style={{ flex: 1 }}
         automaticallyAdjustKeyboardInsets
         keyboardDismissMode="on-drag"
         onScrollBeginDrag={Keyboard.dismiss}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          padding: 20,
-          paddingTop: 4,
-          gap: 22,
+          paddingHorizontal: 20,
+          paddingVertical: 12,
           alignItems: 'center',
         }}
       >
-        <View style={{ width: '100%', maxWidth: 420, gap: 24 }}>
-          <DataStatusButton />
-          <DateBar />
+        <View style={{ width: '100%', maxWidth: 420, gap: 12 }}>
           {selectedEntry === undefined ? (
             <ActivityIndicator accessibilityLabel="Loading note" />
           ) : (

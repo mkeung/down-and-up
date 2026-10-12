@@ -13,13 +13,23 @@ const pixelType = {
   fontFamily: 'PixelifySans',
   fontWeight: '400' as const,
 };
+const silkscreenType = { ...pixelType, fontFamily: 'Silkscreen' };
+type PixelFont = 'PixelifySans' | 'Silkscreen';
 
-export function usePixelType() {
-  return useContext(PixelFontContext) ? pixelType : undefined;
+export function usePixelType(font: PixelFont = 'PixelifySans') {
+  return useContext(PixelFontContext)
+    ? font === 'Silkscreen'
+      ? silkscreenType
+      : pixelType
+    : undefined;
 }
 
-export function PixelText({ style, ...props }: TextProps) {
-  return <Text {...props} style={[usePixelType(), style]} />;
+export function PixelText({
+  style,
+  font,
+  ...props
+}: TextProps & { font?: PixelFont }) {
+  return <Text {...props} style={[usePixelType(font), style]} />;
 }
 
 // Three overlapping rectangles make two square steps at every corner.
