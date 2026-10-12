@@ -3,14 +3,19 @@ import type { Tabs } from 'expo-router';
 type BottomTabBarProps = Parameters<
   NonNullable<ComponentProps<typeof Tabs>['tabBar']>
 >[0];
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { FeedbackPressable } from './feedback-pressable';
 import { useTheme } from './theme';
 import { PixelBackdrop, PixelText } from './retro';
 import { PawsitiveIcon, RateIcon } from './tab-icons';
 import { CerberusArtwork } from './cerberus-artwork';
+import { EntryCheck } from './entry-check';
+import { useEntry, useSelectedDate } from './selected-date';
 
 export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
   const theme = useTheme();
+  const { date } = useSelectedDate();
+  const entry = useEntry(date);
   const route = state.routes[state.index]?.name;
   return (
     <View style={{ backgroundColor: theme.background }}>
@@ -39,11 +44,22 @@ export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
             const selected = state.routes[state.index]?.key === route.key;
             const label = route.name === 'index' ? 'Rate' : 'Pawsitive';
             const Icon = route.name === 'index' ? RateIcon : PawsitiveIcon;
+            const hasContent =
+              route.name === 'index'
+                ? entry?.value != null
+                : Boolean(entry?.note);
             return (
-              <Pressable
+              <FeedbackPressable
                 key={route.key}
                 accessibilityRole="tab"
                 accessibilityLabel={label}
+                accessibilityHint={
+                  hasContent
+                    ? route.name === 'index'
+                      ? 'Value saved for this day'
+                      : 'Note saved for this day'
+                    : undefined
+                }
                 accessibilityState={{ selected }}
                 onPress={() => {
                   const event = navigation.emit({
@@ -57,15 +73,14 @@ export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
                 onLongPress={() =>
                   navigation.emit({ type: 'tabLongPress', target: route.key })
                 }
-                style={({ pressed }) => ({
+                style={{
                   flex: 1,
                   minHeight: 76,
                   padding: 14,
                   gap: 6,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  opacity: pressed ? 0.7 : 1,
-                })}
+                }}
               >
                 <PixelBackdrop
                   selected={selected}
@@ -91,7 +106,15 @@ export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
                     }}
                   />
                 ) : null}
-              </Pressable>
+                {hasContent ? (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: 'absolute', top: 8, right: 10 }}
+                  >
+                    <EntryCheck />
+                  </View>
+                ) : null}
+              </FeedbackPressable>
             );
           })}
       </View>

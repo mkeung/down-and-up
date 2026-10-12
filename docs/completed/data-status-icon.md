@@ -26,10 +26,11 @@ The icon describes all of the user's data, not just the selected day. When more 
 
 | State            | Color  | Shape                   | When                                                                                                                                                                                                                                                                                                 |
 | ---------------- | ------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Unsaved**      | Red    | Circle with `!`         | A change isn't on the phone yet: a note edit waiting for its ~1s autosave, a write in progress, or a local write that failed. Taps on the keypad write immediately, so red is normally brief. It stays red only if a write fails.                                                                    |
+| **Unsaved**      | Red    | Circle with `!`         | A change isn't on the phone yet: a note edit waiting for its ~1s autosave, a write in progress, or a local write that failed. The icon turns red only after this state persists continuously for 500ms; faster saves skip red. It stays red while the change remains unsaved.                        |
 | **Saved here**   | Yellow | Phone outline           | Everything is saved in SQLite, but the server doesn't have all of it: a field is still dirty, a sync is running or failed, the phone is offline, the ID needs to be entered ([identity: lifecycle](identity.md#lifecycle)), the server isn't configured, or sync is off ("Keep on this phone only"). |
 | **In the cloud** | Green  | Cloud with a check mark | Sync is on, no field is dirty, no local write is pending, and the last sync succeeded.                                                                                                                                                                                                               |
 
+- **Delay red by 500ms.** While an unsaved state is brief, retain the previous yellow/green icon. Cancel the delay as soon as the data is saved; each new unsaved period starts a fresh 500ms timer. Yellow and green changes (including recovery from red) display immediately. If no prior status exists, show yellow during the delay. The displayed glyph, color, accessibility value, and test ID all use this delayed state. One timer lives in the app provider so both tabs share it, including first visits and remounting screen consumers.
 - **Sync off stays yellow.** With "Keep on this phone only", entries really are only on the phone, so the icon is yellow for as long as sync is off.
 - **Sync errors stay yellow, not red.** The data is safe on the phone. Details go in Settings.
 - **No animation.** While a sync runs, the icon stays yellow until the server accepts the changes, then turns green. There's no spinner or pulse.
@@ -46,11 +47,12 @@ The icon describes all of the user's data, not just the selected day. When more 
 ## Changes to other screens
 
 - **Rate:** the text status line at the bottom is gone. Manual sync is "Sync now" in Settings.
-- **Settings:** opens from the icon. The tab bar stays visible, so tapping Rate or Pawsitive returns. The Sync section shows the data status in words, matching the icon, plus the last sync time and "Sync now". If the last sync failed, it says "The last sync failed. It will try again."
+- **Settings:** opens from the icon. The tab bar stays visible, so tapping Rate or Pawsitive returns. The Sync section shows the immediate underlying data status in words (the icon alone delays red for 500ms), plus the last sync time and "Sync now". If the last sync failed, it says "The last sync failed. It will try again."
 
 ## Implementation
 
 - **One source of truth:** `dataStatus()` in `apps/mobile/src/data-status.ts` turns the inputs into a state: a pending note autosave, writes in flight or failed, whether any field is dirty, whether sync is on, the server is configured, the ID is present, the phone is online, and the last sync result.
+- **Presentation timing:** `useDataStatusIndicator()` in `apps/mobile/src/data-status-indicator.ts` retains the last saved state and waits 500ms before showing unsaved. `AppProvider` publishes this as `indicatorDataStatus`, alongside the unchanged immediate `dataStatus` used by Settings and other logic. The timer resets after recovery and is cleared on unmount.
 - The note editor reports its pending autosave through the app context. The repository counts writes in flight and remembers whether the last one failed (`writeState()`, `onWriteState()`); a later successful write clears the failure.
 - The dirty check (`hasDirty()`) re-runs after every local change and every sync.
 - A sync that fails (not one that's stopped) reports "Could not sync, will retry", which keeps the icon yellow and drives the Settings message.
@@ -58,6 +60,7 @@ The icon describes all of the user's data, not just the selected day. When more 
 
 ## Tests
 
+- **Unit:** the 499/500ms boundary, quick saves skipping red, immediate yellow/green recovery, consecutive short writes not accumulating, rerenders not resetting the timer, unmount cleanup, and tab consumers sharing one presentation timer while the underlying status stays immediate.
 - **Unit:** each state, the order when several apply, sync off staying yellow, a failed sync staying yellow, and a failed local write showing red.
 - **Unit:** the repository's write tracking and dirty check, and the sync engine's failure status.
-- **Maestro** (`tests/mobile/local.yaml`): yellow with sync off, and tapping the icon opens Settings on both tabs. Red lasts only about a second after the last keystroke, so it's covered by unit tests rather than Maestro, which would be flaky. Green needs a server and is checked against staging.
+- **Maestro** (`tests/mobile/local.yaml`): yellow with sync off, and tapping the icon opens Settings on both tabs. Red is delayed by 500ms and can appear during the note autosave interval, so it's covered by unit tests rather than Maestro, which would be flaky. Green needs a server and is checked against staging.

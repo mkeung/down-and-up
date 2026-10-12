@@ -2,6 +2,8 @@
 
 Exploratory studies for Down & Up: character and icon art, UI directions, and audio. Nothing here ships in the app; official assets live in [OfficialAssets](../OfficialAssets/).
 
+Button-feedback and three-head voice candidates are in [Audio](Audio/README.md). Open the [offline listening gallery](Audio/index.html) to compare six button sounds, two small-dog barks, two larger-dog barks, and two meows; sources and licenses are preserved with the samples.
+
 Youth-oriented app UI explorations are in [UI](UI/README.md). **Retro pixel is the selected direction.** Open the [comparison gallery](UI/index.html) to review the five initial art directions and four additional retro-pixel palette/control studies. The [design note](UI/RETRO-PIXEL.md) records the selection and the new pixel app icon.
 
 PNG character and icon studies generated with the built-in image generation tool from the pet photos in `../DogsAndCat/`, including four edited versions of concept 01 and icon variants based on concept 08. Each combines the two dogs and cat into one creature with three heads and three tails; the icon variants show only the heads and a small chest.

@@ -1,4 +1,5 @@
-import { Pressable, Text, useColorScheme, View } from 'react-native';
+import { Text, useColorScheme, View } from 'react-native';
+import { FeedbackPressable } from './feedback-pressable';
 import { reportError } from './app-context';
 import { useTheme } from './theme';
 import { useThemePreference } from './theme-preference';
@@ -22,7 +23,7 @@ export function ThemePicker() {
           const preview = themeColors(id, dark);
           const selected = preference.id === id;
           return (
-            <Pressable
+            <FeedbackPressable
               key={id}
               accessibilityRole="radio"
               accessibilityLabel={`${label} theme`}
@@ -78,7 +79,7 @@ export function ThemePicker() {
                 {label}
                 {selected ? ' ✓' : ''}
               </Text>
-            </Pressable>
+            </FeedbackPressable>
           );
         })}
       </View>

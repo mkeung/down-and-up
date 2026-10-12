@@ -19,6 +19,7 @@ import { HttpTransport, apiUrl } from './transport';
 import { SyncEngine, type SyncStatus } from './sync-engine';
 import { Reminders } from './reminders';
 import { dataStatus, type DataStatus } from './data-status';
+import { useDataStatusIndicator } from './data-status-indicator';
 
 type Runtime = {
   repo: Repository;
@@ -33,6 +34,7 @@ type AppContextValue = Runtime & {
   needsIdentity: boolean;
   status: SyncStatus;
   dataStatus: DataStatus;
+  indicatorDataStatus: DataStatus;
   setNotePending: (pending: boolean) => void;
   revision: number;
   blockedNotifications: boolean;
@@ -224,6 +226,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(timer);
   }, [runtime]);
 
+  const currentDataStatus = dataStatus({
+    notePending,
+    writePending: writeState.pending,
+    writeFailed: writeState.failed,
+    dirty,
+    syncEnabled,
+    serverConfigured: !!apiUrl(),
+    needsIdentity,
+    online,
+    syncStatus: status,
+  });
+  const indicatorDataStatus = useDataStatusIndicator(currentDataStatus);
+
   if (!runtime)
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -314,17 +329,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     needsConsent,
     needsIdentity,
     status,
-    dataStatus: dataStatus({
-      notePending,
-      writePending: writeState.pending,
-      writeFailed: writeState.failed,
-      dirty,
-      syncEnabled,
-      serverConfigured: !!apiUrl(),
-      needsIdentity,
-      online,
-      syncStatus: status,
-    }),
+    dataStatus: currentDataStatus,
+    indicatorDataStatus,
     setNotePending,
     revision,
     blockedNotifications,

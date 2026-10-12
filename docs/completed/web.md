@@ -38,6 +38,8 @@
 
 ## Other web pages
 
+All buttons share a short press/release animation (2px dip and dimming), including login, range presets, pagination, sign out, and retry actions. Disabled buttons retain their disabled presentation. The browser's Reduce Motion preference keeps immediate dimming and removes movement and transitions.
+
 - `/`: the ID entry page.
 - `/settings` (session required): the **daily reminder**.
   - An on/off switch and a time picker (hour and minute, shown in 12h or 24h to match the browser's locale). Changes save on change, with a small "Saved" confirmation.

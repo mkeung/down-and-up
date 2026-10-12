@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { FeedbackPressable } from './feedback-pressable';
 import { useTheme } from './theme';
-import { PixelBackdrop, PixelCheck, PixelText } from './retro';
+import { PixelBackdrop, PixelText } from './retro';
+import { EntryCheck } from './entry-check';
 export function Action({
   label,
   onPress,
@@ -21,7 +23,7 @@ export function Action({
 }) {
   const theme = useTheme();
   return (
-    <Pressable
+    <FeedbackPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled, selected }}
@@ -54,12 +56,12 @@ export function Action({
       {selected && showSelectionMark ? (
         <View
           pointerEvents="none"
-          style={{ position: 'absolute', bottom: 12, right: 12 }}
+          style={{ position: 'absolute', bottom: 2, right: 6 }}
         >
-          <PixelCheck color={theme.text} size={12} />
+          <EntryCheck />
         </View>
       ) : null}
-    </Pressable>
+    </FeedbackPressable>
   );
 }
 export function Row({ children }: { children: ReactNode }) {

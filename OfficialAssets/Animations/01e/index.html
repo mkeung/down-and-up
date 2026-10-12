@@ -263,7 +263,7 @@
       <div class="eyebrow">Down &amp; Up / Character 01e</div>
       <h1>A little life in every pixel.</h1>
       <p class="intro">
-        Sixteen Cerberus animation studies: six character actions and ten
+        Seventeen Cerberus animation studies: seven character actions and ten
         reactions from carefree at 1 to most stressed at 10. Play, pause, or
         step through any sequence. These are review assets; mobile playback is
         unchanged.
@@ -570,6 +570,53 @@
               <a href="backflip/preview.gif" download>GIF</a
               ><a href="backflip/preview.webp" download>WebP</a
               ><a href="backflip/sheet.png">Sprite sheet ↗</a>
+            </div>
+          </article>
+          <article data-id="tug-of-war">
+            <div class="card-top">
+              <span class="number">07</span><span>Loop</span>
+            </div>
+            <div class="stage">
+              <img
+                src="tug-of-war/frames/01.png"
+                width="512"
+                height="512"
+                alt="Tug of war animation of the three-headed Cerberus character"
+              />
+            </div>
+            <h3>Tug of war</h3>
+            <p>
+              The middle head grips a rope knot while all four paws brace and
+              pull.
+            </p>
+            <div class="controls">
+              <button
+                type="button"
+                class="toggle"
+                aria-label="Play tug-of-war animation"
+              >
+                Play</button
+              ><button
+                type="button"
+                class="restart"
+                aria-label="Restart tug-of-war animation"
+              >
+                Restart</button
+              ><span class="counter" aria-hidden="true">1 / 8</span>
+            </div>
+            <label class="scrub-label"
+              >Frame<input
+                class="scrub"
+                type="range"
+                min="1"
+                max="8"
+                value="1"
+                aria-label="Tug of war frame"
+            /></label>
+            <div class="downloads">
+              <a href="tug-of-war/preview.gif" download>GIF</a
+              ><a href="tug-of-war/preview.webp" download>WebP</a
+              ><a href="tug-of-war/sheet.png">Sprite sheet ↗</a>
             </div>
           </article>
         </div>
@@ -1218,6 +1265,22 @@
           ],
           durations: [300, 180, 120, 120, 120, 120, 180, 500],
           loop: false,
+        },
+        {
+          id: 'tug-of-war',
+          title: 'Tug of war',
+          frames: [
+            'tug-of-war/frames/01.png',
+            'tug-of-war/frames/02.png',
+            'tug-of-war/frames/03.png',
+            'tug-of-war/frames/04.png',
+            'tug-of-war/frames/05.png',
+            'tug-of-war/frames/06.png',
+            'tug-of-war/frames/07.png',
+            'tug-of-war/frames/08.png',
+          ],
+          durations: [180, 140, 140, 180, 140, 140, 140, 180],
+          loop: true,
         },
         {
           id: 'reaction-01',

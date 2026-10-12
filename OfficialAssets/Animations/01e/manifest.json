@@ -116,6 +116,25 @@
       "gif": "backflip/preview.gif",
       "webp": "backflip/preview.webp",
       "sheet": "backflip/sheet.png"
+    },
+    {
+      "id": "tug-of-war",
+      "title": "Tug of war",
+      "frames": [
+        "tug-of-war/frames/01.png",
+        "tug-of-war/frames/02.png",
+        "tug-of-war/frames/03.png",
+        "tug-of-war/frames/04.png",
+        "tug-of-war/frames/05.png",
+        "tug-of-war/frames/06.png",
+        "tug-of-war/frames/07.png",
+        "tug-of-war/frames/08.png"
+      ],
+      "durations": [180, 140, 140, 180, 140, 140, 140, 180],
+      "loop": true,
+      "gif": "tug-of-war/preview.gif",
+      "webp": "tug-of-war/preview.webp",
+      "sheet": "tug-of-war/sheet.png"
     }
   ]
 }

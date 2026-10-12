@@ -35,6 +35,7 @@ export function themeColors(id: ThemeId, dark: boolean) {
           line: '#9c9184',
           selected: '#4a4540',
           accent: '#ede5d8',
+          entryCheck: { fill: '#7bc67e', ink: '#201f1e' },
           status: { unsaved: '#ff8a80', local: '#f2c94c', cloud: '#7bc67e' },
         }
       : {
@@ -44,6 +45,7 @@ export function themeColors(id: ThemeId, dark: boolean) {
           line: '#655d54',
           selected: '#ddd8ce',
           accent: '#49433d',
+          entryCheck: { fill: '#26712b', ink: '#ffffff' },
           status: { unsaved: '#b3261e', local: '#a36a00', cloud: '#2e7d32' },
         }),
   };

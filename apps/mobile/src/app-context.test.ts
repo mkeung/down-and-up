@@ -102,6 +102,35 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
+it('keeps the real status immediate while sharing the icon delay across tab consumers', async () => {
+  await act(async () => app.engine.sync());
+  expect(app.dataStatus).toBe('cloud');
+  await act(async () => app.setNotePending(true));
+  expect(app.dataStatus).toBe('unsaved');
+  expect(app.indicatorDataStatus).toBe('cloud');
+  await act(async () => {
+    vi.advanceTimersByTime(400);
+  });
+  // Replace the screen consumer without remounting the app provider.
+  await act(async () =>
+    renderer.update(
+      createElement(
+        AppProvider,
+        null,
+        createElement(Probe, { key: 'other-tab' }),
+      ),
+    ),
+  );
+  expect(app.indicatorDataStatus).toBe('cloud');
+  await act(async () => {
+    vi.advanceTimersByTime(100);
+  });
+  expect(app.indicatorDataStatus).toBe('unsaved');
+  await act(async () => app.setNotePending(false));
+  expect(app.dataStatus).toBe('cloud');
+  expect(app.indicatorDataStatus).toBe('cloud');
+});
+
 describe('failed identity operations', () => {
   it.each(['delete', 'replace'] as const)(
     'resumes sync after a failed %s request',

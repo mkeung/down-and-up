@@ -29,6 +29,7 @@ describe('theme palettes', () => {
         expect(theme.selected).toBe(neutral.selected);
         expect(theme.line).toBe(neutral.line);
         expect(theme.status).toEqual(neutral.status);
+        expect(theme.entryCheck).toEqual(neutral.entryCheck);
       }
     });
     it(`keeps text, controls and status readable in ${dark ? 'dark' : 'light'} mode`, () => {
@@ -59,6 +60,14 @@ describe('theme palettes', () => {
             `${id} status ${status}`,
           ).toBeGreaterThanOrEqual(3);
         }
+        for (const surface of [theme.surface, theme.selected, theme.chrome]) {
+          expect(
+            contrast(theme.entryCheck.fill, surface),
+          ).toBeGreaterThanOrEqual(3);
+        }
+        expect(
+          contrast(theme.entryCheck.ink, theme.entryCheck.fill),
+        ).toBeGreaterThanOrEqual(4.5);
       }
     });
   }

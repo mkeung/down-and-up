@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Down & Up · Audio concepts</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f3ec;
+        --surface: #fffef8;
+        --ink: #263a2e;
+        --muted: #687367;
+        --line: #d7dcce;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: 42px 28px 64px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+      header img {
+        width: 124px;
+        height: 124px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        border-radius: 22px;
+      }
+      h1 {
+        font:
+          normal clamp(2.2rem, 5vw, 3.5rem)/1.15 Georgia,
+          serif;
+        letter-spacing: -0.03em;
+        margin: 4px 0 12px;
+      }
+      h2 {
+        font:
+          normal 1.8rem/1.2 Georgia,
+          serif;
+        margin: 0 0 6px;
+      }
+      h3 {
+        font-size: 17px;
+        margin: 0;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      p {
+        margin: 0;
+      }
+      header p,
+      .detail {
+        color: var(--muted);
+      }
+      .toolbar {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 24px 0;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      input {
+        accent-color: var(--ink);
+        max-width: 140px;
+      }
+      button {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        padding: 8px 16px;
+        min-height: 44px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 3px;
+      }
+      a:focus-visible,
+      button:focus-visible,
+      input:focus-visible,
+      audio:focus-visible {
+        outline: 3px solid var(--ink);
+        outline-offset: 4px;
+      }
+      .reel {
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .reel audio {
+        width: 100%;
+        margin-top: 12px;
+      }
+      .reel p {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      section {
+        margin-top: 34px;
+      }
+      .detail {
+        margin-bottom: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .card {
+        padding: 20px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card.playing {
+        outline: 2px solid var(--ink);
+      }
+      .card-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .card-head span {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .card p {
+        color: var(--muted);
+        font-size: 14px;
+        flex: 1;
+      }
+      .card audio {
+        width: 100%;
+        min-width: 0;
+      }
+      .card-foot {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+      footer {
+        margin-top: 36px;
+        border-top: 1px solid var(--line);
+        padding-top: 22px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (max-width: 800px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 540px) {
+        main {
+          padding: 24px 18px 40px;
+        }
+        header {
+          align-items: flex-start;
+          gap: 16px;
+        }
+        header img {
+          width: 76px;
+          height: 76px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .toolbar {
+          gap: 16px;
+        }
+        label {
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img
+          src="../../OfficialAssets/10-cerberus-retro-pixel-icon.png"
+          alt="Three-headed Cerberus character"
+        />
+        <div>
+          <div class="eyebrow">Down & Up · concept listening room</div>
+          <h1>A little click.<br />A little character.</h1>
+          <p>Six button sounds. Two voice options for each head.</p>
+        </div>
+      </header>
+      <div class="toolbar">
+        <label for="volume"
+          >Review volume
+          <input id="volume" type="range" min="0" max="100" value="65" /><output
+            id="volume-value"
+            for="volume"
+            >65%</output
+          ></label
+        ><button id="stop" type="button">Stop all</button
+        ><a href="README.md">Sources &amp; notes</a>
+      </div>
+      <div class="reel">
+        <strong>Listen to all 12</strong>
+        <p>
+          Buttons first, then Pom, larger dog, and cat. A short pause separates
+          each clip.
+        </p>
+        <audio
+          controls
+          preload="metadata"
+          aria-label="Complete listening reel"
+          src="listening-reel.wav"
+        ></audio>
+      </div>
+      <section>
+        <h2>Button feedback</h2>
+        <p class="detail">Short tactile taps and tonal accents.</p>
+        <div class="grid">
+          <article class="card">
+            <div class="card-head">
+              <h3>Click</h3>
+              <span>0.09s</span>
+            </div>
+            <p>A quick, simple tap candidate.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Buttons: Click"
+              src="buttons/button-01-click.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="buttons/button-01-click.wav" download>Download WAV</a
+              ><a
+                href="https://kenney.nl/assets/interface-sounds"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Kenney · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Tick</h3>
+              <span>0.05s</span>
+            </div>
+            <p>A very short mechanical tap candidate.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Buttons: Tick"
+              src="buttons/button-02-tick.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="buttons/button-02-tick.wav" download>Download WAV</a
+              ><a
+                href="https://kenney.nl/assets/interface-sounds"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Kenney · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Pluck A</h3>
+              <span>0.13s</span>
+            </div>
+            <p>A short tonal alternative to a click.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Buttons: Pluck A"
+              src="buttons/button-03-pluck.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="buttons/button-03-pluck.wav" download>Download WAV</a
+              ><a
+                href="https://kenney.nl/assets/interface-sounds"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Kenney · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Pluck B</h3>
+              <span>0.18s</span>
+            </div>
+            <p>A slightly longer pluck alternative.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Buttons: Pluck B"
+              src="buttons/button-04-pluck.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="buttons/button-04-pluck.wav" download>Download WAV</a
+              ><a
+                href="https://kenney.nl/assets/interface-sounds"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Kenney · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Drop</h3>
+              <span>0.16s</span>
+            </div>
+            <p>A compact drop/pop candidate.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Buttons: Drop"
+              src="buttons/button-05-drop.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="buttons/button-05-drop.wav" download>Download WAV</a
+              ><a
+                href="https://kenney.nl/assets/interface-sounds"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Kenney · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Confirmation</h3>
+              <span>0.32s</span>
+            </div>
+            <p>A longer accent for an explicit submit.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Buttons: Confirmation"
+              src="buttons/button-06-confirm.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="buttons/button-06-confirm.wav" download>Download WAV</a
+              ><a
+                href="https://kenney.nl/assets/interface-sounds"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Kenney · CC0</a
+              >
+            </div>
+          </article>
+        </div>
+      </section>
+      <section>
+        <h2>Pom head</h2>
+        <p class="detail">Two small-dog bark candidates.</p>
+        <div class="grid">
+          <article class="card">
+            <div class="card-head">
+              <h3>Puppy bark</h3>
+              <span>1.46s</span>
+            </div>
+            <p>
+              Small-dog voice candidate; pitch-treated by the source creator.
+            </p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Pom: Puppy bark"
+              src="heads/pom-01-puppy-bark.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="heads/pom-01-puppy-bark.wav" download>Download WAV</a
+              ><a
+                href="https://freesound.org/people/AntumDeluge/sounds/583142/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >AntumDeluge · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Short bark</h3>
+              <span>0.32s</span>
+            </div>
+            <p>A very short Shih Tzu bark as an alternative small-dog voice.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Pom: Short bark"
+              src="heads/pom-02-short-bark.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="heads/pom-02-short-bark.wav" download>Download WAV</a
+              ><a
+                href="https://freesound.org/people/Glitchedtones/sounds/372524/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Glitchedtones · CC0</a
+              >
+            </div>
+          </article>
+        </div>
+      </section>
+      <section>
+        <h2>Larger dog head</h2>
+        <p class="detail">Two single-bark candidates.</p>
+        <div class="grid">
+          <article class="card">
+            <div class="card-head">
+              <h3>Single bark</h3>
+              <span>0.25s</span>
+            </div>
+            <p>A clean single bark for the larger dog head.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Dog: Single bark"
+              src="heads/dog-01-single-bark.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="heads/dog-01-single-bark.wav" download>Download WAV</a
+              ><a
+                href="https://freesound.org/people/kwahmah_02/sounds/277058/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >kwahmah_02 · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Bark alternative</h3>
+              <span>0.37s</span>
+            </div>
+            <p>A second brief dog recording for comparison.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Dog: Bark alternative"
+              src="heads/dog-02-short-bark.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="heads/dog-02-short-bark.wav" download>Download WAV</a
+              ><a
+                href="https://freesound.org/people/Sadiquecat/sounds/850824/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Sadiquecat · CC0</a
+              >
+            </div>
+          </article>
+        </div>
+      </section>
+      <section>
+        <h2>Tabby head</h2>
+        <p class="detail">Two meow candidates.</p>
+        <div class="grid">
+          <article class="card">
+            <div class="card-head">
+              <h3>Meow A</h3>
+              <span>1.57s</span>
+            </div>
+            <p>
+              A full meow; compare its length against the shorter alternative.
+            </p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Cat: Meow A"
+              src="heads/cat-01-meow.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="heads/cat-01-meow.wav" download>Download WAV</a
+              ><a
+                href="https://freesound.org/people/tuberatanka/sounds/110011/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >tuberatanka · CC0</a
+              >
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Meow B</h3>
+              <span>1.46s</span>
+            </div>
+            <p>An alternative short meow for the tabby head.</p>
+            <audio
+              controls
+              preload="metadata"
+              aria-label="Cat: Meow B"
+              src="heads/cat-02-short-meow.wav"
+            ></audio>
+            <div class="card-foot">
+              <a href="heads/cat-02-short-meow.wav" download>Download WAV</a
+              ><a
+                href="https://freesound.org/people/skymary/sounds/412017/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >skymary · CC0</a
+              >
+            </div>
+          </article>
+        </div>
+      </section>
+      <footer>
+        Concept samples · CC0 source assets · local playback only · no
+        autoplay.<br />Animal samples use HQ MP3 previews; see the source notes
+        for processing and original file details.
+      </footer>
+    </main>
+    <script>
+      const players = [...document.querySelectorAll('audio')];
+      const volume = document.getElementById('volume');
+      function updateVolume() {
+        for (const player of players)
+          player.volume = Number(volume.value) / 100;
+        document.getElementById('volume-value').value = volume.value + '%';
+      }
+      volume.addEventListener('input', updateVolume);
+      updateVolume();
+      for (const player of players) {
+        player.addEventListener('play', () => {
+          for (const other of players) if (other !== player) other.pause();
+          player.closest('.card')?.classList.add('playing');
+        });
+        for (const event of ['pause', 'ended'])
+          player.addEventListener(event, () =>
+            player.closest('.card')?.classList.remove('playing'),
+          );
+      }
+      document.getElementById('stop').addEventListener('click', () => {
+        for (const player of players) {
+          player.pause();
+          player.currentTime = 0;
+        }
+      });
+    </script>
+  </body>
+</html>

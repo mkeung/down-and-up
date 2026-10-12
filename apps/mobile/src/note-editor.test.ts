@@ -15,6 +15,10 @@ const mocks = vi.hoisted(() => ({
   playFood: vi.fn(),
   dismiss: vi.fn(),
 }));
+// Button motion is covered by feedback-pressable.test.ts.
+vi.mock('./feedback-pressable', async () => ({
+  FeedbackPressable: (await import('react-native')).Pressable,
+}));
 vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ fontScale: mocks.fontScale }),
   InputAccessoryView: 'InputAccessoryView',

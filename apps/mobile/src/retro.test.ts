@@ -5,7 +5,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { ValueKeypad } from './value-keypad';
 import { RetroTabBar } from './retro-tab-bar';
 import { PixelCheck, PixelFontContext } from './retro';
+import { EntryCheck } from './entry-check';
+import { themeColors } from './themes';
 
+// Button motion is covered by feedback-pressable.test.ts.
+vi.mock('./feedback-pressable', async () => ({
+  FeedbackPressable: (await import('react-native')).Pressable,
+}));
 vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ fontScale: 1 }),
   ScrollView: 'ScrollView',
@@ -14,16 +20,13 @@ vi.mock('react-native', () => ({
   View: 'View',
 }));
 vi.mock('./cerberus-artwork', () => ({ CerberusArtwork: () => null }));
+vi.mock('./selected-date', () => ({
+  useSelectedDate: () => ({ date: '2026-10-12' }),
+  useEntry: () => null,
+}));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({
-  useTheme: () => ({
-    text: '#252321',
-    muted: '#49443f',
-    line: '#655d54',
-    surface: '#f4f1ea',
-    selected: '#ddd8ce',
-    chrome: '#e6e3dc',
-  }),
+  useTheme: () => themeColors('neutral', false),
 }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let renderer: ReactTestRenderer;
@@ -68,6 +71,8 @@ it('keeps the 3×3 + centered 10 keypad, neutral keys, and a checkmarked selecti
     false,
   ]);
   expect(keys[6]!.findAllByType(PixelCheck)).toHaveLength(1);
+  expect(keys[6]!.findAllByType(EntryCheck)).toHaveLength(1);
+  expect(renderer.root.findAllByType(EntryCheck)).toHaveLength(1);
   for (const key of keys) {
     const style = Object.assign({}, ...key.props.style);
     expect(style.minWidth).toBeGreaterThanOrEqual(64);
@@ -87,6 +92,37 @@ it('keeps the 3×3 + centered 10 keypad, neutral keys, and a checkmarked selecti
   expect(choose).not.toHaveBeenCalled();
   await act(async () => keys[9]!.props.onPress());
   expect(choose).toHaveBeenCalledWith(10);
+});
+
+it('moves the green circle to the saved number and hides it on an empty day', async () => {
+  const choose = vi.fn();
+  await act(async () => {
+    renderer = create(
+      createElement(ValueKeypad, { value: 1, onChoose: choose }),
+    );
+  });
+  await act(async () =>
+    renderer.update(
+      createElement(ValueKeypad, { value: 10, onChoose: choose }),
+    ),
+  );
+  const keys = renderer.root.findAllByType(Pressable);
+  expect(keys[0]!.findAllByType(EntryCheck)).toHaveLength(0);
+  const badge = keys[9]!.findByType(EntryCheck).findByType(View);
+  expect(badge.props.style).toMatchObject({
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#26712b',
+  });
+  expect(badge.props.importantForAccessibility).toBe('no-hide-descendants');
+  expect(badge.props.pointerEvents).toBe('none');
+  await act(async () =>
+    renderer.update(
+      createElement(ValueKeypad, { value: null, onChoose: choose }),
+    ),
+  );
+  expect(renderer.root.findAllByType(EntryCheck)).toHaveLength(0);
 });
 
 it('keeps only two tabs, announces selection, and honors navigation event cancellation', async () => {

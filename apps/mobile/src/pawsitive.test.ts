@@ -7,6 +7,10 @@ import Pawsitive from '../app/pawsitive';
 import { SelectedDateProvider, useSelectedDate } from './selected-date';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), setField: vi.fn() }));
+// Button motion is covered by feedback-pressable.test.ts.
+vi.mock('./feedback-pressable', async () => ({
+  FeedbackPressable: (await import('react-native')).Pressable,
+}));
 vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ fontScale: 1 }),
   Platform: { OS: 'ios' },

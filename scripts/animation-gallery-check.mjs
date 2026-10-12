@@ -10,7 +10,7 @@ const actions = JSON.parse(
 const reactions = JSON.parse(
   await readFile(new URL('reactions/manifest.json', gallery), 'utf8'),
 ).animations;
-assert.equal(actions.length, 6);
+assert.equal(actions.length, 7);
 assert.equal(actions.find((action) => action.id === 'backflip')?.loop, false);
 assert.deepEqual(
   reactions.map((reaction) => reaction.value),
@@ -36,12 +36,19 @@ try {
       (img) => img.complete && img.naturalWidth === 512,
     ),
   );
-  await expect(page.locator('#everyday article')).toHaveCount(6);
+  await expect(page.locator('#everyday article')).toHaveCount(7);
   await expect(page.locator('#reactions article')).toHaveCount(10);
   for (const action of actions)
     await expect(page.locator(`[data-id="${action.id}"] .counter`)).toHaveText(
       '1 / 8',
     );
+  const tug = page.locator('[data-id="tug-of-war"]');
+  await tug.locator('.scrub').fill('8');
+  await expect(tug.locator('img')).toHaveAttribute(
+    'src',
+    'tug-of-war/frames/08.png',
+  );
+  await tug.locator('.scrub').fill('1');
   const backflip = page.locator('[data-id="backflip"]');
   for (let frame = 1; frame <= 8; frame++) {
     await backflip.locator('.scrub').fill(String(frame));
@@ -92,6 +99,7 @@ try {
   );
   await expect(page.locator('[data-id="walking"] .toggle')).toHaveText('Pause');
   await expect(page.locator('[data-id="food-can"] .toggle')).toHaveText('Play');
+  await expect(tug.locator('.toggle')).toHaveText('Pause');
   await expect(backflip.locator('.counter')).toHaveText('8 / 8');
   await expect(backflip.locator('.toggle')).toHaveText('Play');
   await expect(backflip.locator('img')).toHaveAttribute(
@@ -169,7 +177,7 @@ try {
   assert.deepEqual(errors, []);
   assert.deepEqual(network, []);
   console.log(
-    'Gallery verified: sixteen previews, ten keypad mappings, shared controls, one-shot holds, Reduce Motion, offline loading, and mobile layout.',
+    'Gallery verified: seventeen previews, ten keypad mappings, shared controls, one-shot holds, Reduce Motion, offline loading, and mobile layout.',
   );
 } finally {
   await browser.close();

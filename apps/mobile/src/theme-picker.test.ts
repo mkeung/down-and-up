@@ -11,6 +11,10 @@ const mocks = vi.hoisted(() => ({
   scheme: 'light',
   reportError: vi.fn(),
 }));
+// Button motion is covered by feedback-pressable.test.ts.
+vi.mock('./feedback-pressable', async () => ({
+  FeedbackPressable: (await import('react-native')).Pressable,
+}));
 vi.mock('react-native', () => ({
   Pressable: 'Pressable',
   Text: 'Text',

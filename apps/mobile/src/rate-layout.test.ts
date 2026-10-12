@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   playReaction: vi.fn(),
   reportError: vi.fn(),
 }));
+// Button motion is covered by feedback-pressable.test.ts.
+vi.mock('./feedback-pressable', async () => ({
+  FeedbackPressable: (await import('react-native')).Pressable,
+}));
 vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ fontScale: 1 }),
   Modal: 'Modal',
@@ -25,6 +29,7 @@ vi.mock('react-native-safe-area-context', () => ({
 }));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('expo-router', () => ({ router: { navigate: vi.fn() } }));
+vi.mock('./sounds', () => ({ playSound: vi.fn() }));
 vi.mock('expo-haptics', () => ({ selectionAsync: mocks.haptic }));
 vi.mock('./app-context', () => ({
   useApp: () => ({ repo: { setField: mocks.setField }, needsConsent: false }),
@@ -33,7 +38,12 @@ vi.mock('./app-context', () => ({
 vi.mock('./cerberus-context', () => ({
   useCerberus: () => ({ playReaction: mocks.playReaction }),
 }));
-vi.mock('./theme', () => ({ useTheme: () => ({ background: '#eee' }) }));
+vi.mock('./theme', () => ({
+  useTheme: () => ({
+    background: '#eee',
+    entryCheck: { fill: '#26712b', ink: '#ffffff' },
+  }),
+}));
 vi.mock('./selected-date', () => ({
   useSelectedDate: () => ({ date: '2026-10-12' }),
   useEntry: () => ({ value: mocks.value }),

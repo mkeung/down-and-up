@@ -6,6 +6,8 @@ import { CerberusArtwork } from './cerberus-artwork';
 import { RetroTabBar } from './retro-tab-bar';
 import type { CerberusRequest } from './cerberus-context';
 import { reactionAnimations } from './cerberus-motion';
+import { CerberusRope } from './cerberus-rope';
+import { HOLD_DELAY } from './cerberus-tug';
 
 const mocks = vi.hoisted(() => ({
   reduceMotion: false,
@@ -21,18 +23,30 @@ const mocks = vi.hoisted(() => ({
   timing: vi.fn(),
   setValue: vi.fn(),
   interpolate: vi.fn(),
+  deferStop: false,
+  stopCallbacks: [] as ((value: number) => void)[],
+  positionChanged: null as ((event: { value: number }) => void) | null,
   values: [] as { value: number }[],
+  cues: [] as string[],
+  cancelCues: vi.fn(),
   movements: [] as {
     value: { value: number };
     config: { toValue: number; duration: number };
     finish?: (result: { finished: boolean }) => void;
   }[],
 }));
+vi.mock('./sounds', () => ({
+  cueAnimationSounds: (animation: string) => {
+    mocks.cues.push(animation);
+    return mocks.cancelCues;
+  },
+}));
 vi.mock('../assets/cerberus/walking.png', () => ({ default: 1 }));
 vi.mock('../assets/cerberus/sitting-idle.png', () => ({ default: 2 }));
 vi.mock('../assets/cerberus/tennis-ball.png', () => ({ default: 3 }));
 vi.mock('../assets/cerberus/yarn-ball.png', () => ({ default: 4 }));
 vi.mock('../assets/cerberus/food-can.png', () => ({ default: 5 }));
+vi.mock('../assets/cerberus/tug-of-war.png', () => ({ default: 6 }));
 vi.mock('../assets/cerberus/reaction-01.png', () => ({ default: 11 }));
 vi.mock('../assets/cerberus/reaction-02.png', () => ({ default: 12 }));
 vi.mock('../assets/cerberus/reaction-03.png', () => ({ default: 13 }));
@@ -48,6 +62,14 @@ vi.mock('./cerberus-context', () => ({
 }));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({ useTheme: () => ({ background: '#f5e8ad' }) }));
+vi.mock('./selected-date', () => ({
+  useSelectedDate: () => ({ date: '2026-10-12' }),
+  useEntry: () => null,
+}));
+// Button motion is covered by feedback-pressable.test.ts.
+vi.mock('./feedback-pressable', async () => ({
+  FeedbackPressable: (await import('react-native')).Pressable,
+}));
 vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ height: mocks.windowHeight }),
   View: 'View',
@@ -68,7 +90,15 @@ vi.mock('react-native', () => ({
         mocks.setValue(value);
       }
       stopAnimation(callback: (value: number) => void) {
-        callback(this.value);
+        if (mocks.deferStop) mocks.stopCallbacks.push(callback);
+        else callback(this.value);
+      }
+      addListener(callback: (event: { value: number }) => void) {
+        mocks.positionChanged = callback;
+        return 'position';
+      }
+      removeListener() {
+        mocks.positionChanged = null;
       }
       interpolate = mocks.interpolate;
     },
@@ -134,7 +164,10 @@ beforeEach(() => {
   mocks.request = { sequence: 0, animation: null };
   mocks.keyboard.clear();
   mocks.values.length = 0;
+  mocks.cues.length = 0;
   mocks.movements.length = 0;
+  mocks.deferStop = false;
+  mocks.stopCallbacks.length = 0;
   mocks.query.mockImplementation(async () => mocks.reduceMotion);
   mocks.timing.mockImplementation((value, config) => {
     const movement = { value, config } as (typeof mocks.movements)[number];
@@ -159,10 +192,11 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-it('shows a larger walking sprite inside the available width without intercepting touches or accessibility', async () => {
+it('shows a larger walking sprite and exposes only its dedicated area to interaction and accessibility', async () => {
   await mount();
-  expect(area().props.pointerEvents).toBe('none');
-  expect(area().props.accessibilityElementsHidden).toBe(true);
+  expect(area().props.pointerEvents).toBe('box-only');
+  expect(area().props.accessibilityLabel).toBe('Animal area');
+  expect(sprite().props.accessibilityElementsHidden).toBe(true);
   expect(area().props.style.backgroundColor).toBeUndefined();
   expect(area().props.style.borderWidth).toBeUndefined();
   expect(sprite().props.style).toMatchObject({ width: 240, height: 240 });
@@ -208,7 +242,7 @@ it.each([667, 402])(
     expect(sprite().props.style.width).toBe(96);
     expect(area().props.style.height).toBeCloseTo(87.9375);
     expect(area().props.style.height).toBeLessThan(sprite().props.style.height);
-    expect(area().props.pointerEvents).toBe('none');
+    expect(area().props.pointerEvents).toBe('box-only');
   },
 );
 
@@ -245,6 +279,19 @@ it.each([
     expect(mocks.start).toHaveBeenCalledTimes(2);
   },
 );
+
+it('cues a play pose once, cancels it when paused, and does not repeat it on resume', async () => {
+  await mount();
+  vi.mocked(Math.random).mockReturnValueOnce(0.7).mockReturnValue(0);
+  await finishWalk();
+  const played = () => mocks.cues.filter((cue) => cue !== 'walking');
+  expect(played()).toEqual(['tennis-ball']);
+  await act(async () => mocks.appChanged!('background'));
+  expect(mocks.cancelCues).toHaveBeenCalled();
+  await act(async () => mocks.appChanged!('active'));
+  expect(image().props.source).toBe(3);
+  expect(played()).toEqual(['tennis-ball']);
+});
 
 it('keeps left-facing play unflipped and turns right at the left edge', async () => {
   vi.mocked(Math.random).mockReturnValue(0.9);
@@ -343,6 +390,7 @@ it('plays food once after keyboard dismissal, preserving its facing and holding 
   expect(renderer.toJSON()).toBeNull();
   await act(async () => mocks.keyboard.get('keyboardDidHide')!());
   expect(image().props.source).toBe(5);
+  expect(mocks.cues.filter((cue) => cue !== 'walking')).toEqual(['food-can']);
   expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
   await advance(1900);
   expect(image().props.style).toMatchObject({ left: -720, top: -240 });
@@ -474,4 +522,156 @@ it('keeps one animation and its current position when switching tabs, including 
   expect(mocks.movements.at(-1)!.config.toValue).toBe(
     mocks.movements[0]!.config.toValue,
   );
+});
+
+const touch = (x = 8, y = 60, count = 1) => ({
+  nativeEvent: {
+    locationX: x,
+    locationY: y,
+    touches: Array(count).fill({ identifier: 1 }),
+  },
+});
+const ropes = () => renderer.root.findAllByType(CerberusRope);
+async function holdRope(x = 8, y = 60) {
+  await act(async () => area().props.onResponderGrant(touch(x, y)));
+  await advance(HOLD_DELAY);
+}
+
+it('starts only after a hold, loops the braced pose with a mouth-attached rope, and resumes its interrupted walk on release', async () => {
+  await mount();
+  expect(area().props.onStartShouldSetResponder(touch())).toBe(true);
+  await act(async () => area().props.onResponderGrant(touch()));
+  await advance(HOLD_DELAY - 1);
+  expect(ropes()).toHaveLength(0);
+  const savedFrame = image().props.style;
+  await advance(1);
+  expect(image().props.source).toBe(6);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
+  expect(mocks.stop).toHaveBeenCalledTimes(1);
+  const mouth = ropes()[0]!.props.mouth;
+  expect(ropes()[0]!.props.finger).toEqual({ x: 8, y: 60 });
+  await advance(180);
+  expect(image().props.style.left).toBe(-240);
+  expect(ropes()[0]!.props.mouth).not.toEqual(mouth);
+  await advance(1060);
+  expect(image().props.source).toBe(6);
+  expect(image().props.style).toMatchObject({ left: -0, top: -0 });
+  await act(async () => area().props.onResponderRelease());
+  expect(ropes()).toHaveLength(0);
+  expect(image().props.source).toBe(1);
+  expect(image().props.style).toEqual(savedFrame);
+  expect(mocks.start).toHaveBeenCalledTimes(2);
+});
+
+it('tracks finger moves and mirrors both the animal and its rope endpoint when the finger crosses sides', async () => {
+  await mount();
+  await holdRope();
+  const leftMouth = ropes()[0]!.props.mouth;
+  await act(async () => area().props.onResponderMove(touch(352, 90)));
+  expect(ropes()[0]!.props.finger).toEqual({ x: 352, y: 90 });
+  expect(ropes()[0]!.props.mouth.x).toBeCloseTo(360 - leftMouth.x);
+  expect(ropes()[0]!.props.mouth.y).toBe(leftMouth.y);
+  expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
+});
+
+it('ignores taps, drags before the hold threshold, multiple fingers, and touches on the visible animal', async () => {
+  await mount();
+  expect(area().props.onStartShouldSetResponder(touch(180, 120))).toBe(false);
+  expect(area().props.onStartShouldSetResponder(touch(8, 60, 2))).toBe(false);
+  expect(area().props.onStartShouldSetResponder(touch(-1, 60))).toBe(false);
+  await act(async () => area().props.onResponderGrant(touch()));
+  await advance(100);
+  await act(async () => area().props.onResponderRelease());
+  await advance(HOLD_DELAY);
+  expect(ropes()).toHaveLength(0);
+  await act(async () => area().props.onResponderGrant(touch()));
+  await act(async () => area().props.onResponderMove(touch(40, 60)));
+  await advance(HOLD_DELAY);
+  expect(ropes()).toHaveLength(0);
+  expect(image().props.source).toBe(1);
+});
+
+it.each([
+  'terminate',
+  'leave',
+  'multi',
+  'background',
+  'hidden',
+  'keyboard',
+  'resize',
+  'request',
+])('removes the rope and cancels the interaction on %s', async (reason) => {
+  await mount();
+  await holdRope();
+  expect(ropes()).toHaveLength(1);
+  await act(async () => {
+    if (reason === 'terminate') area().props.onResponderTerminate();
+    if (reason === 'leave') area().props.onResponderMove(touch(8, -1));
+    if (reason === 'multi') area().props.onResponderMove(touch(8, 60, 2));
+    if (reason === 'background') mocks.appChanged!('background');
+    if (reason === 'hidden')
+      renderer.update(createElement(CerberusArtwork, { visible: false }));
+    if (reason === 'keyboard') mocks.keyboard.get('keyboardDidShow')!();
+    if (reason === 'resize')
+      area().props.onLayout({ nativeEvent: { layout: { width: 390 } } });
+    if (reason === 'request') {
+      mocks.request = { sequence: 1, animation: 'reaction-03' };
+      renderer.update(createElement(CerberusArtwork));
+    }
+  });
+  expect(ropes()).toHaveLength(0);
+  if (reason === 'request') expect(image().props.source).toBe(13);
+});
+
+it('shows a still grip under Reduce Motion and supports an accessible hold/release action', async () => {
+  mocks.reduceMotion = true;
+  await mount();
+  await act(async () =>
+    area().props.onAccessibilityAction({
+      nativeEvent: { actionName: 'toggleRope' },
+    }),
+  );
+  expect(image().props.source).toBe(6);
+  expect(ropes()).toHaveLength(1);
+  const frozen = image().props.style;
+  await advance(5000);
+  expect(image().props.style).toEqual(frozen);
+  expect(mocks.start).not.toHaveBeenCalled();
+  await act(async () =>
+    area().props.onAccessibilityAction({
+      nativeEvent: { actionName: 'toggleRope' },
+    }),
+  );
+  expect(ropes()).toHaveLength(0);
+  expect(image().props.source).toBe(2);
+});
+
+it('allows tugging in an area too narrow for roaming and cancels pending holds on lifecycle changes', async () => {
+  await mount(240);
+  await holdRope();
+  expect(image().props.source).toBe(6);
+  await advance(180);
+  expect(image().props.style.left).toBe(-240);
+  expect(mocks.start).not.toHaveBeenCalled();
+  await act(async () => area().props.onResponderRelease());
+  await act(async () => area().props.onResponderGrant(touch()));
+  await act(async () => mocks.appChanged!('background'));
+  await advance(HOLD_DELAY);
+  expect(ropes()).toHaveLength(0);
+});
+
+it('ignores a delayed native stop callback after release or unmount', async () => {
+  await mount();
+  mocks.deferStop = true;
+  await holdRope();
+  expect(ropes()).toHaveLength(1);
+  mocks.deferStop = false;
+  await act(async () => area().props.onResponderRelease());
+  expect(mocks.start).toHaveBeenCalledTimes(2);
+  await act(async () => mocks.stopCallbacks[0]!(0.8));
+  expect(ropes()).toHaveLength(0);
+  mocks.deferStop = true;
+  await holdRope();
+  await act(async () => renderer.unmount());
+  await act(async () => mocks.stopCallbacks.at(-1)!(0.8));
 });

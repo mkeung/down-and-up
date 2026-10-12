@@ -1,4 +1,5 @@
-import { Pressable, type ColorValue } from 'react-native';
+import { type ColorValue } from 'react-native';
+import { FeedbackPressable } from './feedback-pressable';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { DATA_STATUS_TEXT, type DataStatus } from './data-status';
@@ -22,10 +23,10 @@ function Glyph({ status, color }: { status: DataStatus; color: ColorValue }) {
 }
 
 export function DataStatusButton() {
-  const { dataStatus } = useApp();
+  const { indicatorDataStatus: dataStatus } = useApp();
   const theme = useTheme();
   return (
-    <Pressable
+    <FeedbackPressable
       accessibilityRole="button"
       accessibilityLabel="Settings"
       accessibilityValue={{ text: DATA_STATUS_TEXT[dataStatus] }}
@@ -41,6 +42,6 @@ export function DataStatusButton() {
       }}
     >
       <Glyph status={dataStatus} color={theme.status[dataStatus]} />
-    </Pressable>
+    </FeedbackPressable>
   );
 }

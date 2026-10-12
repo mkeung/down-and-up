@@ -34,6 +34,23 @@ input {
 }
 button {
   cursor: pointer;
+  transition:
+    transform 120ms ease-out,
+    opacity 120ms ease-out;
+}
+button:active:not(:disabled) {
+  transform: translateY(2px);
+  opacity: 0.78;
+  transition-duration: 70ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  button,
+  button:active:not(:disabled) {
+    transition: none;
+  }
+  button:active:not(:disabled) {
+    transform: none;
+  }
 }
 button:disabled {
   opacity: 0.5;

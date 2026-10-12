@@ -151,7 +151,7 @@ for (const animation of animations) {
     const buffers = [];
     await mkdir(path.join(directory, 'frames'), { recursive: true });
     for (let i = 0; i < 8; i++) {
-      const buffer = await sharp(extracted[i], {
+      let buffer = await sharp(extracted[i], {
         raw: { width: cellWidth, height: cellHeight, channels: 4 },
       })
         .extract(crop)
@@ -169,6 +169,23 @@ for (const animation of animations) {
         })
         .png()
         .toBuffer();
+      if (animation.groundAlign) {
+        const box = bounds(extracted[i], cellWidth, cellHeight);
+        const offset = Math.round(
+          ((union.bottom - box.bottom) * 416) /
+            Math.max(crop.width, crop.height),
+        );
+        if (offset > 0) {
+          const aligned = await sharp(buffer)
+            .extend({ top: offset, background: '#00000000' })
+            .png()
+            .toBuffer();
+          buffer = await sharp(aligned)
+            .extract({ left: 0, top: 0, width: size, height: size })
+            .png()
+            .toBuffer();
+        }
+      }
       await writeFile(path.join(root, frames[i]), buffer);
       buffers.push(buffer);
     }
@@ -204,6 +221,7 @@ for (const animation of animations) {
   }
 
   const hashes = new Set();
+  const groundLevels = [];
   const ballCenters = [];
   for (const frame of frames) {
     const { data, info } = await sharp(path.join(root, frame))
@@ -213,6 +231,7 @@ for (const animation of animations) {
     assert.equal(info.width, size);
     assert.equal(info.height, size);
     const box = bounds(data, size, size);
+    groundLevels.push(box.bottom);
     assert(
       box.left >= 40 &&
         box.top >= 40 &&
@@ -236,6 +255,11 @@ for (const animation of animations) {
       ballCenters.push((ball.top + ball.bottom) / 2);
     }
   }
+  if (animation.groundAlign)
+    assert(
+      Math.max(...groundLevels) - Math.min(...groundLevels) <= 1,
+      `${id}: planted paws must share a ground baseline`,
+    );
   if (id === 'tennis-ball') {
     assert(ballCenters[0] > ballCenters[1]);
     assert(ballCenters[1] > ballCenters[2]);

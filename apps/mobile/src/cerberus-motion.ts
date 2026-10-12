@@ -13,7 +13,8 @@ export const reactionAnimations = [
 ] as const;
 export type ReactionAnimation = (typeof reactionAnimations)[number];
 export type OneShotAnimation = 'food-can' | ReactionAnimation;
-export type CerberusAnimation = 'walking' | OneShotAnimation | IdleAnimation;
+export type CerberusAnimation =
+  'walking' | 'tug-of-war' | OneShotAnimation | IdleAnimation;
 
 export function reactionForValue(value: number): ReactionAnimation | undefined {
   return reactionAnimations[value - 1];

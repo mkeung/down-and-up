@@ -1,0 +1,62 @@
+[
+  {
+    "id": "button-01-click",
+    "start_seconds": 0.3,
+    "duration_ms": 93
+  },
+  {
+    "id": "button-02-tick",
+    "start_seconds": 1.093,
+    "duration_ms": 50
+  },
+  {
+    "id": "button-03-pluck",
+    "start_seconds": 1.842,
+    "duration_ms": 128
+  },
+  {
+    "id": "button-04-pluck",
+    "start_seconds": 2.67,
+    "duration_ms": 176
+  },
+  {
+    "id": "button-05-drop",
+    "start_seconds": 3.546,
+    "duration_ms": 160
+  },
+  {
+    "id": "button-06-confirm",
+    "start_seconds": 4.406,
+    "duration_ms": 318
+  },
+  {
+    "id": "pom-01-puppy-bark",
+    "start_seconds": 5.424,
+    "duration_ms": 1461
+  },
+  {
+    "id": "pom-02-short-bark",
+    "start_seconds": 7.585,
+    "duration_ms": 317
+  },
+  {
+    "id": "dog-01-single-bark",
+    "start_seconds": 8.602,
+    "duration_ms": 254
+  },
+  {
+    "id": "dog-02-short-bark",
+    "start_seconds": 9.555,
+    "duration_ms": 374
+  },
+  {
+    "id": "cat-01-meow",
+    "start_seconds": 10.63,
+    "duration_ms": 1572
+  },
+  {
+    "id": "cat-02-short-meow",
+    "start_seconds": 12.902,
+    "duration_ms": 1457
+  }
+]
