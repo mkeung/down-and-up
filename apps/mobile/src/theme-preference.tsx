@@ -1,7 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -56,7 +58,26 @@ export function ThemeProvider({
       alive = false;
     };
   }, [store]);
-  if (id === null) {
+  const choose = useCallback(
+    async (next: ThemeId) => {
+      if (pending.current || next === id) return;
+      pending.current = true;
+      setSaving(true);
+      try {
+        await store.setState(THEME_STATE_KEY, next);
+        setId(next);
+      } finally {
+        pending.current = false;
+        setSaving(false);
+      }
+    },
+    [id, store],
+  );
+  const value = useMemo(
+    () => (id === null ? null : { id, saving, choose }),
+    [id, saving, choose],
+  );
+  if (value === null) {
     const theme = themeColors('neutral', dark);
     return (
       <View
@@ -74,21 +95,7 @@ export function ThemeProvider({
       </View>
     );
   }
-  const choose = async (next: ThemeId) => {
-    if (pending.current || next === id) return;
-    pending.current = true;
-    setSaving(true);
-    try {
-      await store.setState(THEME_STATE_KEY, next);
-      setId(next);
-    } finally {
-      pending.current = false;
-      setSaving(false);
-    }
-  };
   return (
-    <ThemeContext.Provider value={{ id, saving, choose }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 }

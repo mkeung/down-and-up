@@ -6,8 +6,14 @@ import { SoundProvider, useSoundPreference } from './sound-preference';
 import { SoundSettings } from './sound-settings';
 import { parseSoundPreferences, SOUND_STATE_KEY } from './sound-preferences';
 
-const mocks = vi.hoisted(() => ({ setSoundPreferences: vi.fn() }));
-vi.mock('./sounds', () => ({ setSoundPreferences: mocks.setSoundPreferences }));
+const mocks = vi.hoisted(() => ({
+  setSoundPreferences: vi.fn(),
+  preloadSounds: vi.fn(),
+}));
+vi.mock('./sounds', () => ({
+  setSoundPreferences: mocks.setSoundPreferences,
+  preloadSounds: mocks.preloadSounds,
+}));
 vi.mock('./feedback-pressable', async () => ({
   FeedbackPressable: (await import('react-native')).Pressable,
 }));
@@ -81,6 +87,11 @@ it('waits for saved settings before making sound or exposing editable controls',
     muted: true,
     volume: 0.35,
   });
+  // Clips load once the saved setting is applied, not on the first tap.
+  expect(mocks.preloadSounds).toHaveBeenCalledTimes(1);
+  expect(mocks.preloadSounds.mock.invocationCallOrder[0]).toBeGreaterThan(
+    mocks.setSoundPreferences.mock.invocationCallOrder.at(-1)!,
+  );
 });
 
 it('mutes immediately, preserves the level, and restores both settings on restart', async () => {

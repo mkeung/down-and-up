@@ -55,10 +55,15 @@ function failureKeys(request: Request): [string, string] {
 export async function rateLimit(request: Request, id?: string): Promise<void> {
   const service = limits();
   const [ipKey, globalKey] = failureKeys(request);
-  const [ipFailures, globalFailures] = await service.redis.mget<number[]>(
-    ipKey,
-    globalKey,
-  );
+  // One concurrent round trip: the limiters already ran in parallel with each
+  // other, so reading the failure counters alongside them changes no outcome.
+  // Failure blocks are still checked first.
+  const [[ipFailures, globalFailures], ...results] = await Promise.all([
+    service.redis.mget<(number | null)[]>(ipKey, globalKey),
+    service.ip.limit(ipKey),
+    service.global.limit('all'),
+    ...(id ? [service.profile.limit(hash(id))] : []),
+  ]);
   if ((ipFailures ?? 0) >= 10)
     throw new HttpError(429, 'Please wait and try again');
   if ((globalFailures ?? 0) >= 1000) {
@@ -68,11 +73,6 @@ export async function rateLimit(request: Request, id?: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 200));
     throw new HttpError(429, 'Please wait and try again');
   }
-  const results = await Promise.all([
-    service.ip.limit(ipKey),
-    service.global.limit('all'),
-    ...(id ? [service.profile.limit(hash(id))] : []),
-  ]);
   if (results.some((result) => result.reason === 'timeout'))
     throw new HttpError(503, 'Please try again');
   if (results.some((result) => !result.success))

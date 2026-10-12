@@ -49,6 +49,9 @@ type StoredEntry = {
   note_dirty: number;
   audio_dirty: number;
 };
+export type EditEvent = { date: string; field: Field };
+// What an applied sync response touched, so callers can skip unrelated work.
+export type AppliedSync = { dates: string[]; settingsChanged: boolean };
 export type AudioFile = {
   audio_id: string;
   local_path: string | null;
@@ -130,7 +133,7 @@ export class Repository {
   private tail: Promise<unknown> = Promise.resolve();
   private listeners = new Set<() => void>();
   private syncListeners = new Set<() => void>();
-  private editListeners = new Set<() => void>();
+  private editListeners = new Set<(edit: EditEvent) => void>();
   private writeListeners = new Set<() => void>();
   private writes = 0;
   private writeFailed = false;
@@ -150,7 +153,7 @@ export class Repository {
       this.syncListeners.delete(listener);
     };
   };
-  onEdit = (listener: () => void) => {
+  onEdit = (listener: (edit: EditEvent) => void) => {
     this.editListeners.add(listener);
     return () => {
       this.editListeners.delete(listener);
@@ -230,6 +233,22 @@ export class Repository {
       )?.value ?? null
     );
   }
+  // Reads several keys in one query; missing keys map to null.
+  async states<K extends string>(
+    keys: readonly K[],
+  ): Promise<Record<K, string | null>> {
+    await this.tail;
+    const rows = keys.length
+      ? await this.db.getAllAsync<{ key: string; value: string | null }>(
+          `SELECT key, value FROM sync_state WHERE key IN (${keys.map(() => '?').join(',')})`,
+          ...keys,
+        )
+      : [];
+    const found = new Map(rows.map((row) => [row.key, row.value]));
+    return Object.fromEntries(
+      keys.map((key) => [key, found.get(key) ?? null]),
+    ) as Record<K, string | null>;
+  }
   setState(key: string, value: string | null) {
     return this.exclusive((tx) =>
       tx.runAsync(
@@ -262,7 +281,7 @@ export class Repository {
     }
     if (didEdit) {
       this.changed();
-      for (const listener of this.editListeners) listener();
+      for (const listener of this.editListeners) listener({ date, field });
     }
     return didEdit;
   }
@@ -341,23 +360,30 @@ export class Repository {
   }
   async pushBatch(): Promise<Change[]> {
     await this.tail;
-    const rows = await this.db.getAllAsync<StoredEntry>(
-      `SELECT e.* FROM entries e WHERE e.date>=? AND (e.value_dirty=1 OR e.note_dirty=1 OR
-      (e.audio_dirty=1 AND (e.audio_id IS NULL OR EXISTS(SELECT 1 FROM audio_files a WHERE a.audio_id=e.audio_id AND a.uploaded=1)))) ORDER BY e.date LIMIT 500`,
+    // One joined read: audio fields are only pushed once their file uploaded.
+    const rows = await this.db.getAllAsync<
+      StoredEntry & { audio_uploaded: number | null }
+    >(
+      `SELECT e.*, a.uploaded AS audio_uploaded FROM entries e LEFT JOIN audio_files a ON a.audio_id=e.audio_id
+      WHERE e.date>=? AND (e.value_dirty=1 OR e.note_dirty=1 OR
+      (e.audio_dirty=1 AND (e.audio_id IS NULL OR a.uploaded=1))) ORDER BY e.date LIMIT 500`,
       SYNC_DATE_FLOOR,
     );
     const changes: Change[] = [];
     for (const stored of rows) {
       const row = hydrate(stored);
-      const uploaded = row.audioId
-        ? !!(await this.audio(row.audioId))?.uploaded
-        : true;
-      const change = pendingChange(row, uploaded);
+      const change = pendingChange(
+        row,
+        row.audioId ? stored.audio_uploaded === 1 : true,
+      );
       if (change) changes.push(change);
     }
     return changes;
   }
-  async applyResponse(sent: readonly Change[], response: SyncResponse) {
+  async applyResponse(
+    sent: readonly Change[],
+    response: SyncResponse,
+  ): Promise<AppliedSync> {
     const snapshots = new Map(sent.map((change) => [change.date, change]));
     const acknowledged = new Map(
       response.applied.map((row) => [row.date, row]),
@@ -365,6 +391,7 @@ export class Repository {
     const pulled = new Map(response.changes.map((row) => [row.date, row]));
     const dates = [...new Set([...acknowledged.keys(), ...pulled.keys()])];
     let changed = false;
+    let settingsChanged = false;
     try {
       // Short transactions let queued taps run between chunks. The cursor is
       // committed last, so interruption safely replays partially applied pages.
@@ -409,6 +436,13 @@ export class Repository {
         changed = true;
       }
       await this.exclusive(async (tx) => {
+        const settings = JSON.stringify(response.settings);
+        settingsChanged =
+          (
+            await tx.getFirstAsync<{ value: string | null }>(
+              "SELECT value FROM sync_state WHERE key='reminder'",
+            )
+          )?.value !== settings;
         if (response.missingAudio.length)
           await tx.runAsync(
             `UPDATE audio_files SET uploaded=0 WHERE audio_id IN (${response.missingAudio.map(() => '?').join(',')})`,
@@ -416,7 +450,7 @@ export class Repository {
           );
         for (const [key, value] of [
           ['cursor', response.cursor],
-          ['reminder', JSON.stringify(response.settings)],
+          ['reminder', settings],
           ['last_synced_at', Date.now().toString()],
         ]) {
           await tx.runAsync(
@@ -430,6 +464,7 @@ export class Repository {
     } finally {
       if (changed) this.changed();
     }
+    return { dates: [...pulled.keys()], settingsChanged };
   }
   async resetSync(discard: boolean, preserveUploads = false) {
     await this.exclusive(async (tx) => {
@@ -449,12 +484,14 @@ export class Repository {
     this.changed();
     this.syncChanged();
   }
-  async loggedDates(): Promise<Set<string>> {
+  // Reminders only look ahead from today, so older days are never read.
+  async loggedDates(from = '0001-01-01'): Promise<Set<string>> {
     await this.tail;
     return new Set(
       (
         await this.db.getAllAsync<{ date: string }>(
-          'SELECT date FROM entries WHERE value IS NOT NULL',
+          'SELECT date FROM entries WHERE value IS NOT NULL AND date >= ?',
+          from,
         )
       ).map((row) => row.date),
     );

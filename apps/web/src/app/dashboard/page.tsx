@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import {
   addDays,
   isCalendarDate,
@@ -8,6 +9,7 @@ import {
 import { sessionProfile } from '../../server/auth';
 import { loadDashboardData } from '../../server/dashboard-data';
 import { Dashboard } from '../../components/dashboard';
+import { SignOut } from '../../components/sign-out';
 export const dynamic = 'force-dynamic';
 export default async function DashboardPage({
   searchParams,
@@ -35,7 +37,24 @@ export default async function DashboardPage({
   const data = await loadDashboardData(id, from, to);
   return (
     <Dashboard
-      history={data.history}
+      header={
+        <div className="page-top">
+          <div>
+            <p className="eyebrow">Your record</p>
+            <h1>A view over time.</h1>
+            <p className="muted">
+              {from} — {to}
+            </p>
+          </div>
+          <nav className="nav-actions" aria-label="Dashboard">
+            <Link href="/settings">Reminder</Link>
+            <SignOut />
+          </nav>
+        </div>
+      }
+      points={data.points}
+      stats={data.stats}
+      counts={data.counts}
       firstDate={data.firstDate}
       streakRuns={data.streakRuns}
       from={from}

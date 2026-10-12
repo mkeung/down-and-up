@@ -584,4 +584,129 @@ describe('sync engine', () => {
     await sync.stop();
     db.close();
   });
+  it('reads each push batch once, checks pending work cheaply, and reports what it pulled', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    await repo.setField(date, 'value', 3);
+    const server = memoryServer();
+    const pushBatch = vi.spyOn(repo, 'pushBatch');
+    const list = vi.spyOn(repo, 'list');
+    const hasDirty = vi.spyOn(repo, 'hasDirty');
+    const afterSync = vi.fn(async () => undefined);
+    const statuses: SyncStatus[] = [];
+    const sync = new SyncEngine(
+      repo,
+      server,
+      () => identity,
+      async () => undefined,
+      (status) => statuses.push(status),
+      () => undefined,
+      afterSync,
+    );
+    sync.configure(true, true);
+    await sync.sync();
+    // One read for the first batch, one that finds nothing left to push.
+    expect(pushBatch).toHaveBeenCalledTimes(2);
+    expect(list).not.toHaveBeenCalled();
+    expect(hasDirty).toHaveBeenCalledTimes(1);
+    expect(statuses.at(-1)).toBe('Synced');
+    expect(afterSync).toHaveBeenCalledExactlyOnceWith({
+      dates: [date],
+      settingsChanged: true,
+    });
+    await sync.sync();
+    expect(afterSync).toHaveBeenLastCalledWith({
+      dates: [],
+      settingsChanged: false,
+    });
+    await sync.stop();
+    db.close();
+  });
+});
+
+describe('repository reads for responsiveness', () => {
+  it('reads several sync_state keys in one query', async () => {
+    const { repo, db, adapter } = sqliteRepository();
+    await repo.initialize();
+    await repo.setState('cursor', '7');
+    await repo.setState('sync_enabled', 'true');
+    const reads = vi.spyOn(adapter, 'getAllAsync');
+    const first = vi.spyOn(adapter, 'getFirstAsync');
+    expect(
+      await repo.states(['identity_transition', 'cursor', 'sync_enabled']),
+    ).toEqual({ identity_transition: null, cursor: '7', sync_enabled: 'true' });
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+    db.close();
+  });
+  it('reports which day and field each edit changed', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    const edits = vi.fn();
+    repo.onEdit(edits);
+    await repo.setField(date, 'value', 4);
+    await repo.setField(date, 'note', 'n');
+    await repo.setField(date, 'note', 'n');
+    expect(edits.mock.calls).toEqual([
+      [{ date, field: 'value' }],
+      [{ date, field: 'note' }],
+    ]);
+    db.close();
+  });
+  it('lists logged days only from the requested day on', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    await repo.setField('2026-01-01', 'value', 4);
+    await repo.setField('2026-01-03', 'value', 5);
+    await repo.setField('2026-01-04', 'note', 'note only');
+    expect([...(await repo.loggedDates('2026-01-02'))]).toEqual(['2026-01-03']);
+    expect((await repo.loggedDates()).size).toBe(2);
+    db.close();
+  });
+  it('summarizes pulled days and whether reminder settings changed', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    const row = {
+      ...emptyEntry(date),
+      value: 5,
+      valueUpdatedAt: 1,
+      serverSeq: '1',
+    };
+    expect(await repo.applyResponse([], response([], [row]))).toEqual({
+      dates: [date],
+      settingsChanged: true,
+    });
+    expect(
+      await repo.applyResponse([], { ...response([], []), cursor: '1' }),
+    ).toEqual({ dates: [], settingsChanged: false });
+    expect(
+      await repo.applyResponse([], {
+        ...response([], []),
+        cursor: '1',
+        settings: { reminderEnabled: true, reminderTime: '20:00' },
+      }),
+    ).toEqual({ dates: [], settingsChanged: true });
+    db.close();
+  });
+  it('builds a push batch in one read and holds audio fields until uploaded', async () => {
+    const { repo, db, adapter } = sqliteRepository();
+    await repo.initialize();
+    const audioId = 'b68d4f5e-4168-4d8b-ae7e-3c4df743364c';
+    await repo.setField(date, 'value', 3);
+    await repo.setField(date, 'audio', audioId, 1000, '/test.m4a');
+    await repo.setField('2026-01-02', 'value', 6);
+    const reads = vi.spyOn(adapter, 'getAllAsync');
+    const first = vi.spyOn(adapter, 'getFirstAsync');
+    const waiting = await repo.pushBatch();
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+    expect(waiting.map((change) => change.date)).toEqual([date, '2026-01-02']);
+    expect(waiting[0]).not.toHaveProperty('audioId');
+    await repo.setAudioUploaded(audioId, true);
+    expect((await repo.pushBatch())[0]).toMatchObject({
+      audioId,
+      audioDurationMs: 1000,
+    });
+    db.close();
+  });
 });

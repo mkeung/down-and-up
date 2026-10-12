@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { Action } from './components';
 import { PixelText } from './retro';
@@ -9,20 +10,27 @@ type KeypadProps = {
   onChoose: (value: number) => void;
 };
 
-function ValueKey({
+// Keys take a boolean so a new selection re-renders only the two keys whose
+// highlight changes.
+const ValueKey = memo(function ValueKey({
   number,
-  value: selected,
+  selected,
   onChoose,
   keyHeight,
-}: KeypadProps & { number: number; keyHeight: number }) {
+}: {
+  number: number;
+  selected: boolean;
+  onChoose: (value: number) => void;
+  keyHeight: number;
+}) {
   const theme = useTheme();
   return (
     <Action
       label={String(number)}
-      selected={selected === number}
+      selected={selected}
       showSelectionMark
       onPress={() => {
-        if (selected !== number) onChoose(number);
+        if (!selected) onChoose(number);
       }}
       style={{
         width: '29%',
@@ -44,9 +52,13 @@ function ValueKey({
       </PixelText>
     </Action>
   );
-}
+});
 
-function ValueTenButton(props: KeypadProps & { keyHeight: number }) {
+function ValueTenButton({
+  value,
+  onChoose,
+  keyHeight,
+}: KeypadProps & { keyHeight: number }) {
   return (
     <View
       style={{
@@ -56,12 +68,17 @@ function ValueTenButton(props: KeypadProps & { keyHeight: number }) {
         flexShrink: 0,
       }}
     >
-      <ValueKey {...props} number={10} />
+      <ValueKey
+        number={10}
+        selected={value === 10}
+        onChoose={onChoose}
+        keyHeight={keyHeight}
+      />
     </View>
   );
 }
 
-export function ValueKeypad({
+export const ValueKeypad = memo(function ValueKeypad({
   value,
   onChoose,
   scrollRows = false,
@@ -85,7 +102,7 @@ export function ValueKeypad({
             <ValueKey
               key={number}
               number={number}
-              value={value}
+              selected={value === number}
               onChoose={onChoose}
               keyHeight={layout.keyHeight}
             />
@@ -122,4 +139,4 @@ export function ValueKeypad({
       />
     </View>
   );
-}
+});

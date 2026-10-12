@@ -1,7 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -13,7 +15,7 @@ import {
   SOUND_STATE_KEY,
   type SoundPreferences,
 } from './sound-preferences';
-import { setSoundPreferences } from './sounds';
+import { preloadSounds, setSoundPreferences } from './sounds';
 
 type SoundPreference = SoundPreferences & {
   ready: boolean;
@@ -57,6 +59,7 @@ export function SoundProvider({
       current.current = next;
       loaded.current = true;
       setSoundPreferences(next);
+      preloadSounds();
       setPreference(next);
       setReady(true);
     };
@@ -77,7 +80,9 @@ export function SoundProvider({
     };
   }, [store]);
 
-  const save = () => {
+  // Callbacks only read refs, so the context value changes with the preference
+  // itself and not on every render of the provider.
+  const save = useCallback(() => {
     clearTimeout(timer.current);
     if (!loaded.current) return;
     const snapshot = JSON.stringify(current.current);
@@ -93,8 +98,8 @@ export function SoundProvider({
           if (alive.current && revision.current === version) setError(true);
         },
       );
-  };
-  const update = (next: SoundPreferences) => {
+  }, [store]);
+  const update = useCallback((next: SoundPreferences) => {
     if (!loaded.current) return false;
     if (
       next.muted === current.current.muted &&
@@ -103,34 +108,35 @@ export function SoundProvider({
       return false;
     current.current = next;
     setSoundPreferences(next);
+    preloadSounds();
     setPreference(next);
     return true;
-  };
+  }, []);
+  const value = useMemo<SoundPreference>(
+    () => ({
+      ...preference,
+      ready,
+      error,
+      save,
+      setMuted: (muted) => {
+        if (update({ ...current.current, muted })) save();
+      },
+      setVolume: (volume) => {
+        if (!Number.isFinite(volume)) return;
+        if (
+          update({
+            ...current.current,
+            volume: Math.round(Math.max(0, Math.min(1, volume)) * 100) / 100,
+          })
+        ) {
+          clearTimeout(timer.current);
+          timer.current = setTimeout(save, 250);
+        }
+      },
+    }),
+    [preference, ready, error, save, update],
+  );
   return (
-    <SoundContext.Provider
-      value={{
-        ...preference,
-        ready,
-        error,
-        save,
-        setMuted: (muted) => {
-          if (update({ ...current.current, muted })) save();
-        },
-        setVolume: (volume) => {
-          if (!Number.isFinite(volume)) return;
-          if (
-            update({
-              ...current.current,
-              volume: Math.round(Math.max(0, Math.min(1, volume)) * 100) / 100,
-            })
-          ) {
-            clearTimeout(timer.current);
-            timer.current = setTimeout(save, 250);
-          }
-        },
-      }}
-    >
-      {children}
-    </SoundContext.Provider>
+    <SoundContext.Provider value={value}>{children}</SoundContext.Provider>
   );
 }

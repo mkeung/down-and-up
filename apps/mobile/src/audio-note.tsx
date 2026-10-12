@@ -18,7 +18,7 @@ import {
   type Entry,
 } from '@down-up/shared';
 import { Action, Row } from './components';
-import { reportError, useApp } from './app-context';
+import { reportError, useAppRuntime } from './app-context';
 import { useTheme } from './theme';
 import { withDeadline } from './deadline';
 const options = {
@@ -44,7 +44,7 @@ export function AudioNote({
   entry: Entry | null;
   onRecording: (active: boolean) => void;
 }) {
-  const { repo, recordingPath } = useApp();
+  const { repo, recordingPath } = useAppRuntime();
   const theme = useTheme();
   const finishRef = useRef<(finished?: boolean) => Promise<void>>(
     async () => undefined,

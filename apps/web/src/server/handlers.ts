@@ -17,9 +17,11 @@ import {
 } from '@down-up/shared';
 import {
   authenticate,
+  authenticateWithBody,
   assertOrigin,
   bearerId,
   COOKIE_NAME,
+  lookupFailure,
   rawBearer,
   sessionProfile,
 } from './auth';
@@ -54,13 +56,25 @@ import {
   signSession,
   verifySession,
 } from './security';
-import {
-  lockNamespace,
-  lockProfile,
-  queueAudio,
-  serialize,
-  syncProfile,
-} from './sync';
+import { lockNamespace, lockProfile, serialize, syncProfile } from './sync';
+import type { Transaction } from './db';
+const COPY_CONCURRENCY = 16;
+// Queues every recording a profile references, in one statement. Keys match
+// audioKey(): audio/<namespace>/<lowercase audio ID>.m4a.
+async function queueProfileAudio(tx: Transaction, id: string) {
+  const namespace = hash(id);
+  await tx.execute(sql`
+    INSERT INTO ${audioDeletions}
+      (${sql.identifier(audioDeletions.objectKey.name)},
+       ${sql.identifier(audioDeletions.namespace.name)},
+       ${sql.identifier(audioDeletions.deleteAfter.name)})
+    SELECT ${`audio/${namespace}/`} || lower(${entries.audioId}::text) || '.m4a',
+      ${namespace}, ${new Date().toISOString()}::timestamptz
+    FROM ${entries}
+    WHERE ${entries.profileId} = ${id} AND ${entries.audioId} IS NOT NULL
+    ON CONFLICT DO NOTHING
+  `);
+}
 
 export const register = route(async (request) => {
   const id = await bearerId(request);
@@ -91,22 +105,34 @@ export const verify = route(async (request) => {
   return json({ exists: true });
 });
 export const sync = route(async (request) => {
-  const { id } = await authenticate(request, { bearerOnly: true });
-  return json(
-    await syncProfile(id, await body(request, serverSyncRequestSchema())),
+  // The profile lookup happens under the sync lock instead of separately.
+  const { id, input } = await authenticateWithBody(
+    request,
+    serverSyncRequestSchema(),
+    { bearerOnly: true, deferLookup: true },
   );
+  try {
+    return json(await syncProfile(id, input));
+  } catch (error) {
+    return lookupFailure(request, error);
+  }
 });
 export const createSession = route(async (request) => {
   assertOrigin(request);
-  const { id } = await authenticate(request, { bearerOnly: true });
+  const { id } = await authenticate(request, {
+    bearerOnly: true,
+    deferLookup: true,
+  });
   const sessionId = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60_000);
-  await getDb().transaction(async (tx) => {
-    await lockProfile(tx, id);
-    await tx
-      .insert(sessions)
-      .values({ id: sessionId, profileId: id, expiresAt });
-  });
+  await getDb()
+    .transaction(async (tx) => {
+      await lockProfile(tx, id);
+      await tx
+        .insert(sessions)
+        .values({ id: sessionId, profileId: id, expiresAt });
+    })
+    .catch((error: unknown) => lookupFailure(request, error));
   const response = json({ ok: true });
   response.cookies.set(COOKIE_NAME, signSession(sessionId), {
     httpOnly: true,
@@ -145,8 +171,9 @@ export const getSettings = route(async (request) => {
   return json(config);
 });
 export const putSettings = route(async (request) => {
-  const { id } = await authenticate(request, { sessionOnly: true });
-  const input = await body(request, settingsSchema);
+  const { id, input } = await authenticateWithBody(request, settingsSchema, {
+    sessionOnly: true,
+  });
   await getDb().transaction(async (tx) => {
     await lockProfile(tx, id);
     await tx
@@ -191,17 +218,20 @@ export const getEntries = route(async (request) => {
   });
 });
 export const audioUpload = route(async (request) => {
-  const { id } = await authenticate(request, { bearerOnly: true });
-  const input = await body(request, uploadSchema);
-  return getDb().transaction(async (tx) => {
-    await lockProfile(tx, id);
-    const key = audioKey(id, input.audioId);
-    const head = await audioHead(key);
-    if (validAudio(head)) return json({ uploaded: true });
-    if (head) throw new HttpError(409, 'Recording is unavailable');
-    // Missing referenced files can be repaired; the signed If-None-Match prevents overwrites.
-    return json(await uploadUrl(key, input.size));
+  const { id, input } = await authenticateWithBody(request, uploadSchema, {
+    bearerOnly: true,
   });
+  // No profile lock: this answer is advisory. Sync HEADs the object again under
+  // the lock before accepting audio fields, and the signed If-None-Match
+  // prevents overwrites. A grant that races ID replacement or deletion can only
+  // leave an unreferenced object, which the orphan sweep removes; holding the
+  // lock here never prevented that, because the upload happens after it.
+  const key = audioKey(id, input.audioId);
+  const head = await audioHead(key);
+  if (validAudio(head)) return json({ uploaded: true });
+  if (head) throw new HttpError(409, 'Recording is unavailable');
+  // Missing referenced files can be repaired; the signed If-None-Match prevents overwrites.
+  return json(await uploadUrl(key, input.size));
 });
 export const audioDownload = route(async (request) => {
   const { id } = await authenticate(request);
@@ -233,12 +263,7 @@ export const deleteData = route(async (request) => {
   const { id } = await authenticate(request);
   await getDb().transaction(async (tx) => {
     await lockProfile(tx, id);
-    const recordings = await tx
-      .select({ audioId: entries.audioId })
-      .from(entries)
-      .where(and(eq(entries.profileId, id), isNotNull(entries.audioId)));
-    for (const recording of recordings)
-      await queueAudio(tx, id, recording.audioId!);
+    await queueProfileAudio(tx, id);
     await tx.delete(profiles).where(eq(profiles.id, id));
   });
   const response = json({ deleted: true });
@@ -299,17 +324,30 @@ export const replaceId = route(async (request) => {
     }
     // The random new namespace has no live owner. Registration for it waits on this advisory lock.
     await lockNamespace(tx, hash(next.id));
+    // Copies stay under the lock: the recording list must be complete (a
+    // concurrent sync could add one), the new ID is only chosen here, and
+    // copying earlier would strand objects whenever this transaction fails or
+    // is a retry. Copies finish before any row moves.
     const recordings = await tx
       .select({ audioId: entries.audioId })
       .from(entries)
       .where(and(eq(entries.profileId, id), isNotNull(entries.audioId)));
-    for (let offset = 0; offset < recordings.length; offset += 10)
-      await Promise.all(
-        recordings.slice(offset, offset + 10).map(async ({ audioId }) => {
-          await copyAudio(audioKey(id, audioId!), audioKey(next.id, audioId!));
-          await queueAudio(tx, id, audioId!);
-        }),
-      );
+    let nextCopy = 0;
+    await Promise.all(
+      Array.from(
+        { length: Math.min(COPY_CONCURRENCY, recordings.length) },
+        async () => {
+          while (nextCopy < recordings.length) {
+            const { audioId } = recordings[nextCopy++]!;
+            await copyAudio(
+              audioKey(id, audioId!),
+              audioKey(next.id, audioId!),
+            );
+          }
+        },
+      ),
+    );
+    await queueProfileAudio(tx, id);
     await tx.insert(profiles).values({
       id: next.id,
       secretHash: hash(next.secret!),
@@ -318,21 +356,25 @@ export const replaceId = route(async (request) => {
       createdAt: profile.createdAt,
       lastSeen: new Date(),
     });
-    const moving = await tx
-      .select({ date: entries.date })
-      .from(entries)
-      .where(eq(entries.profileId, id))
-      .orderBy(asc(entries.serverSeq));
-    let sequence = 0n;
-    for (const row of moving)
-      await tx
-        .update(entries)
-        .set({ profileId: next.id, serverSeq: ++sequence })
-        .where(and(eq(entries.profileId, id), eq(entries.date, row.date)));
-    await tx
-      .update(profiles)
-      .set({ seq: sequence })
-      .where(eq(profiles.id, next.id));
+    // Move every row in one statement, renumbering server_seq 1..n in the old
+    // order, and leave the new profile's seq equal to the highest assigned.
+    await tx.execute(sql`
+      WITH numbered AS (
+        SELECT ${entries.date} AS date,
+          row_number() OVER (ORDER BY ${entries.serverSeq}, ${entries.date}) AS seq
+        FROM ${entries} WHERE ${entries.profileId} = ${id}
+      ), moved AS (
+        UPDATE ${entries}
+        SET ${sql.identifier(entries.profileId.name)} = ${next.id},
+          ${sql.identifier(entries.serverSeq.name)} = numbered.seq
+        FROM numbered
+        WHERE ${entries.profileId} = ${id} AND ${entries.date} = numbered.date
+        RETURNING numbered.seq
+      )
+      UPDATE ${profiles}
+      SET ${sql.identifier(profiles.seq.name)} = (SELECT coalesce(max(seq), 0) FROM moved)
+      WHERE ${profiles.id} = ${next.id}
+    `);
     await tx
       .update(clampedWrites)
       .set({ profileId: next.id })

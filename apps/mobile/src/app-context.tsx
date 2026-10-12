@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -27,17 +28,10 @@ type Runtime = {
   engine: SyncEngine;
   reminders: Reminders;
 };
-type AppContextValue = Runtime & {
-  identity: Identity | null;
-  syncEnabled: boolean;
-  needsConsent: boolean;
-  needsIdentity: boolean;
-  status: SyncStatus;
-  dataStatus: DataStatus;
-  indicatorDataStatus: DataStatus;
+// Stable for the life of the app: components that only save or read data use
+// this and skip the re-renders caused by sync and write status changes.
+type AppRuntime = Runtime & {
   setNotePending: (pending: boolean) => void;
-  revision: number;
-  blockedNotifications: boolean;
   consent: (sync: boolean) => Promise<void>;
   setSync: (sync: boolean) => Promise<void>;
   adoptId: (id: string, discard: boolean) => Promise<void>;
@@ -46,12 +40,32 @@ type AppContextValue = Runtime & {
   replaceId: () => Promise<void>;
   recordingPath: (audioId: string) => Promise<string>;
 };
+type AppContextValue = AppRuntime & {
+  identity: Identity | null;
+  syncEnabled: boolean;
+  needsConsent: boolean;
+  needsIdentity: boolean;
+  status: SyncStatus;
+  dataStatus: DataStatus;
+  indicatorDataStatus: DataStatus;
+  revision: number;
+  blockedNotifications: boolean;
+};
 const Context = createContext<AppContextValue | null>(null);
+const RuntimeContext = createContext<AppRuntime | null>(null);
+const RevisionContext = createContext(0);
 export function useApp() {
   const value = useContext(Context);
   if (!value) throw new Error('App is starting');
   return value;
 }
+export function useAppRuntime() {
+  const value = useContext(RuntimeContext);
+  if (!value) throw new Error('App is starting');
+  return value;
+}
+// Changes after every local edit or applied sync that touched entries.
+export const useRevision = () => useContext(RevisionContext);
 export function reportError(error: unknown) {
   Alert.alert(
     'Could not finish',
@@ -73,10 +87,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [notePending, setNotePending] = useState(false);
-  const [writeState, setWriteState] = useState({
+  const [writeState, setWriteState] = useState(() => ({
     pending: false,
     failed: false,
-  });
+  }));
   const [startupError, setStartupError] = useState(false);
   const identityRef = useRef<Identity | null>(null);
   const enabledRef = useRef(false);
@@ -95,19 +109,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let disposeNet: (() => void) | undefined;
     let disposeApp: (() => void) | undefined;
     void (async () => {
+      // Secure storage and SQLite open independently, so read both at once.
+      const identityRead = readIdentity();
+      identityRead.catch(() => undefined);
       const repo = new Repository(await SQLite.openDatabaseAsync('down-up.db'));
       await repo.initialize();
-      let stored = await readIdentity();
-      const transition = await repo.state('identity_transition');
+      const [identityStored, saved] = await Promise.all([
+        identityRead,
+        repo.states(['identity_transition', 'cursor', 'sync_enabled']),
+      ]);
+      let stored = identityStored;
+      const transition = saved.identity_transition;
       if (transition)
         await repo.resetSync(
           transition === 'discard',
           transition === 'replace',
         );
-      const cursor = await repo.state('cursor');
+      // Resetting sync clears the cursor.
+      const cursor = transition ? null : saved.cursor;
+      const consent = saved.sync_enabled;
       const hasEntries = await repo.hasEntries();
       if (!stored && cursor !== null) setNeedsIdentity(true);
-      else if (!stored && (await repo.state('sync_enabled')) !== 'false') {
+      else if (!stored && consent !== 'false') {
         stored = newIdentity();
         await saveIdentity(stored);
       }
@@ -120,7 +143,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       identityRef.current = stored;
       setIdentity(stored);
-      const consent = await repo.state('sync_enabled');
       enabledRef.current = consent === 'true';
       setEnabled(enabledRef.current);
       setNeedsConsent(consent === null);
@@ -137,7 +159,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         saveIdentity,
         setStatus,
         () => setNeedsIdentity(true),
-        () => reminders.rebuild(true),
+        // Only new settings or pulled days from today on change reminders.
+        async (applied) => {
+          if (
+            applied.settingsChanged ||
+            applied.dates.some((date) => reminders.affects(date))
+          )
+            await reminders.rebuild(true);
+        },
         async () => {
           const replacement = newIdentity();
           await repo.setState('identity_transition', 'merge');
@@ -152,12 +181,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       disposeRepo = repo.subscribe(() => setRevision((value) => value + 1));
-      disposeEdit = repo.onEdit(() => {
+      disposeEdit = repo.onEdit(({ date, field }) => {
         setStatus('Saved on device, will sync');
         engine.schedule();
         if (!enabledRef.current)
           void transport.cleanup(true).catch(reportError);
-        void reminders.rebuild().catch(reportError);
+        // Notes and recordings never affect which days get a reminder.
+        if (field === 'value') void reminders.logged(date).catch(reportError);
       });
       disposeNet = NetInfo.addEventListener((state) => {
         onlineRef.current =
@@ -196,9 +226,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [saveIdentity]);
   useEffect(() => {
     if (!runtime) return;
-    return runtime.repo.onWriteState(() =>
-      setWriteState(runtime.repo.writeState()),
-    );
+    return runtime.repo.onWriteState(() => {
+      const next = runtime.repo.writeState();
+      setWriteState((previous) =>
+        previous.pending === next.pending && previous.failed === next.failed
+          ? previous
+          : next,
+      );
+    });
   }, [runtime]);
   useEffect(() => {
     if (!runtime) return;
@@ -239,7 +274,215 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const indicatorDataStatus = useDataStatusIndicator(currentDataStatus);
 
-  if (!runtime)
+  // Actions only close over refs and stable setters, so they are created once
+  // per runtime and never invalidate consumers on their own.
+  const appRuntime = useMemo<AppRuntime | null>(() => {
+    if (!runtime) return null;
+    const { repo, engine, transport, reminders } = runtime;
+    const resumeSync = () =>
+      engine.configure(
+        enabledRef.current && !!apiUrl(),
+        onlineRef.current,
+        AppState.currentState === 'active',
+      );
+    const stop = async () => {
+      operations.current.abort();
+      operations.current = new AbortController();
+      await engine.stop();
+    };
+    const enable = async (value: boolean) => {
+      enabledRef.current = value;
+      setEnabled(value);
+      await repo.setState('sync_enabled', String(value));
+      engine.configure(
+        value && !!apiUrl(),
+        onlineRef.current,
+        AppState.currentState === 'active',
+      );
+      await reminders.rebuild(true);
+      if (!value) await runtime.transport.cleanup(true);
+    };
+    const transition = async (
+      next: Identity | null,
+      discard: boolean,
+      preserveUploads = false,
+    ) => {
+      await stop();
+      await repo.setState(
+        'identity_transition',
+        discard ? 'discard' : preserveUploads ? 'replace' : 'merge',
+      );
+      await saveIdentity(next);
+      await repo.resetSync(discard, preserveUploads);
+      if (discard)
+        await Promise.all([
+          FileSystem.deleteAsync(`${FileSystem.documentDirectory}recordings`, {
+            idempotent: true,
+          }),
+          FileSystem.deleteAsync(
+            `${FileSystem.cacheDirectory}down-and-up.csv`,
+            {
+              idempotent: true,
+            },
+          ),
+          FileSystem.deleteAsync(
+            `${FileSystem.cacheDirectory}down-and-up-recordings.zip`,
+            { idempotent: true },
+          ),
+        ]);
+      setNeedsIdentity(false);
+      setStatus('Saved on device, will sync');
+    };
+    const recordingPath = async (audioId: string) => {
+      const local = await repo.audio(audioId);
+      if (
+        local?.local_path &&
+        (await FileSystem.getInfoAsync(local.local_path)).exists
+      )
+        return local.local_path;
+      if (!enabledRef.current || !identityRef.current)
+        throw new Error(
+          'This recording is not saved on this phone. Turn on sync to download it.',
+        );
+      return transport.download(
+        audioId,
+        identityRef.current,
+        operations.current.signal,
+      );
+    };
+    const cacheRecordings = async () => {
+      for (const row of await repo.list())
+        if (row.audioId) await recordingPath(row.audioId);
+    };
+    return {
+      ...runtime,
+      setNotePending,
+      async consent(sync) {
+        await repo.setState('sync_enabled', String(sync));
+        setNeedsConsent(false);
+        await enable(sync);
+      },
+      async setSync(sync) {
+        if (!sync) {
+          enabledRef.current = false;
+          await stop();
+          await enable(false);
+        } else {
+          if (!identityRef.current) await transition(newIdentity(), false);
+          await enable(true);
+        }
+      },
+      async startNew() {
+        await transition(newIdentity(), false);
+        await enable(true);
+      },
+      async adoptId(id, discard) {
+        const normalized = normalizeId(id);
+        identitySchema.shape.id.parse(normalized);
+        const previousEnabled = enabledRef.current;
+        await stop();
+        enabledRef.current = true;
+        setEnabled(true);
+        await repo.setState('sync_enabled', 'true');
+        try {
+          const next: Identity = {
+            id: normalized,
+            secret: null,
+            registered: true,
+          };
+          await transport.request(
+            '/api/ids/verify',
+            next,
+            'POST',
+            {},
+            operations.current.signal,
+          );
+          if (!discard) await cacheRecordings();
+          await transition(next, discard);
+          await enable(true);
+        } catch (error) {
+          await enable(previousEnabled);
+          throw error;
+        }
+      },
+      async deleteData(discard) {
+        if (!identityRef.current || !enabledRef.current)
+          throw new Error('Turn on sync to delete server data');
+        await stop();
+        try {
+          await transport.request(
+            '/api/data',
+            identityRef.current,
+            'DELETE',
+            undefined,
+            operations.current.signal,
+          );
+        } catch (error) {
+          resumeSync();
+          throw error;
+        }
+        enabledRef.current = false;
+        await enable(false);
+        await transition(discard ? newIdentity() : null, discard);
+        if (discard) await enable(true);
+      },
+      async replaceId() {
+        if (!identityRef.current || !enabledRef.current)
+          throw new Error('Turn on sync first');
+        await stop();
+        let next: Identity;
+        try {
+          const operationId =
+            (await repo.state('replace_operation')) ?? Crypto.randomUUID();
+          await repo.setState('replace_operation', operationId);
+          const response = await transport.request(
+            '/api/ids/replace',
+            identityRef.current,
+            'POST',
+            { operationId },
+            operations.current.signal,
+          );
+          next = identitySchema.parse(response);
+        } catch (error) {
+          resumeSync();
+          throw error;
+        }
+        await transition(next, false, true);
+        await repo.setState('replace_operation', null);
+        await enable(true);
+      },
+      recordingPath,
+    };
+  }, [runtime, saveIdentity]);
+  const value = useMemo<AppContextValue | null>(
+    () =>
+      appRuntime && {
+        ...appRuntime,
+        identity,
+        syncEnabled,
+        needsConsent,
+        needsIdentity,
+        status,
+        dataStatus: currentDataStatus,
+        indicatorDataStatus,
+        revision,
+        blockedNotifications,
+      },
+    [
+      appRuntime,
+      identity,
+      syncEnabled,
+      needsConsent,
+      needsIdentity,
+      status,
+      currentDataStatus,
+      indicatorDataStatus,
+      revision,
+      blockedNotifications,
+    ],
+  );
+
+  if (!appRuntime || !value)
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         {startupError ? (
@@ -249,186 +492,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         )}
       </View>
     );
-  const { repo, engine, transport, reminders } = runtime;
-  const resumeSync = () =>
-    engine.configure(
-      enabledRef.current && !!apiUrl(),
-      onlineRef.current,
-      AppState.currentState === 'active',
-    );
-  const stop = async () => {
-    operations.current.abort();
-    operations.current = new AbortController();
-    await engine.stop();
-  };
-  const enable = async (value: boolean) => {
-    enabledRef.current = value;
-    setEnabled(value);
-    await repo.setState('sync_enabled', String(value));
-    engine.configure(
-      value && !!apiUrl(),
-      onlineRef.current,
-      AppState.currentState === 'active',
-    );
-    await reminders.rebuild(true);
-    if (!value) await runtime.transport.cleanup(true);
-  };
-  const transition = async (
-    next: Identity | null,
-    discard: boolean,
-    preserveUploads = false,
-  ) => {
-    await stop();
-    await repo.setState(
-      'identity_transition',
-      discard ? 'discard' : preserveUploads ? 'replace' : 'merge',
-    );
-    await saveIdentity(next);
-    await repo.resetSync(discard, preserveUploads);
-    if (discard)
-      await Promise.all([
-        FileSystem.deleteAsync(`${FileSystem.documentDirectory}recordings`, {
-          idempotent: true,
-        }),
-        FileSystem.deleteAsync(`${FileSystem.cacheDirectory}down-and-up.csv`, {
-          idempotent: true,
-        }),
-        FileSystem.deleteAsync(
-          `${FileSystem.cacheDirectory}down-and-up-recordings.zip`,
-          { idempotent: true },
-        ),
-      ]);
-    setNeedsIdentity(false);
-    setStatus('Saved on device, will sync');
-  };
-  const recordingPath = async (audioId: string) => {
-    const local = await repo.audio(audioId);
-    if (
-      local?.local_path &&
-      (await FileSystem.getInfoAsync(local.local_path)).exists
-    )
-      return local.local_path;
-    if (!enabledRef.current || !identityRef.current)
-      throw new Error(
-        'This recording is not saved on this phone. Turn on sync to download it.',
-      );
-    return transport.download(
-      audioId,
-      identityRef.current,
-      operations.current.signal,
-    );
-  };
-  const cacheRecordings = async () => {
-    for (const row of await repo.list())
-      if (row.audioId) await recordingPath(row.audioId);
-  };
-  const value: AppContextValue = {
-    ...runtime,
-    identity,
-    syncEnabled,
-    needsConsent,
-    needsIdentity,
-    status,
-    dataStatus: currentDataStatus,
-    indicatorDataStatus,
-    setNotePending,
-    revision,
-    blockedNotifications,
-    async consent(sync) {
-      await repo.setState('sync_enabled', String(sync));
-      setNeedsConsent(false);
-      await enable(sync);
-    },
-    async setSync(sync) {
-      if (!sync) {
-        enabledRef.current = false;
-        await stop();
-        await enable(false);
-      } else {
-        if (!identityRef.current) await transition(newIdentity(), false);
-        await enable(true);
-      }
-    },
-    async startNew() {
-      await transition(newIdentity(), false);
-      await enable(true);
-    },
-    async adoptId(id, discard) {
-      const normalized = normalizeId(id);
-      identitySchema.shape.id.parse(normalized);
-      const previousEnabled = enabledRef.current;
-      await stop();
-      enabledRef.current = true;
-      setEnabled(true);
-      await repo.setState('sync_enabled', 'true');
-      try {
-        const next: Identity = {
-          id: normalized,
-          secret: null,
-          registered: true,
-        };
-        await transport.request(
-          '/api/ids/verify',
-          next,
-          'POST',
-          {},
-          operations.current.signal,
-        );
-        if (!discard) await cacheRecordings();
-        await transition(next, discard);
-        await enable(true);
-      } catch (error) {
-        await enable(previousEnabled);
-        throw error;
-      }
-    },
-    async deleteData(discard) {
-      if (!identityRef.current || !enabledRef.current)
-        throw new Error('Turn on sync to delete server data');
-      await stop();
-      try {
-        await transport.request(
-          '/api/data',
-          identityRef.current,
-          'DELETE',
-          undefined,
-          operations.current.signal,
-        );
-      } catch (error) {
-        resumeSync();
-        throw error;
-      }
-      enabledRef.current = false;
-      await enable(false);
-      await transition(discard ? newIdentity() : null, discard);
-      if (discard) await enable(true);
-    },
-    async replaceId() {
-      if (!identityRef.current || !enabledRef.current)
-        throw new Error('Turn on sync first');
-      await stop();
-      let next: Identity;
-      try {
-        const operationId =
-          (await repo.state('replace_operation')) ?? Crypto.randomUUID();
-        await repo.setState('replace_operation', operationId);
-        const response = await transport.request(
-          '/api/ids/replace',
-          identityRef.current,
-          'POST',
-          { operationId },
-          operations.current.signal,
-        );
-        next = identitySchema.parse(response);
-      } catch (error) {
-        resumeSync();
-        throw error;
-      }
-      await transition(next, false, true);
-      await repo.setState('replace_operation', null);
-      await enable(true);
-    },
-    recordingPath,
-  };
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+  return (
+    <RuntimeContext.Provider value={appRuntime}>
+      <RevisionContext.Provider value={revision}>
+        <Context.Provider value={value}>{children}</Context.Provider>
+      </RevisionContext.Provider>
+    </RuntimeContext.Provider>
+  );
 }

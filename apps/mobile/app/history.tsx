@@ -65,6 +65,59 @@ export default function History() {
     () => new Map(entries.map((entry) => [entry.date, entry])),
     [entries],
   );
+  // Rebuilt only when what it shows changes, so list scrolls and sync status
+  // updates do not re-render the chart.
+  const header = useMemo(
+    () => (
+      <View style={{ gap: 16, paddingBottom: 24 }}>
+        <PixelText style={{ fontSize: 28, color: theme.text }}>
+          History
+        </PixelText>
+        <Row>
+          {RANGE_PRESETS.map((rangePreset) => (
+            <Action
+              key={rangePreset}
+              label={rangePreset}
+              selected={preset === rangePreset}
+              onPress={() => setPreset(rangePreset)}
+            />
+          ))}
+        </Row>
+        <Text style={{ color: theme.text, fontSize: 18 }}>
+          avg {stats.average?.toFixed(1) ?? '—'} · min {stats.min ?? '—'} · max{' '}
+          {stats.max ?? '—'}
+        </Text>
+        <Text style={{ color: theme.muted }}>
+          {stats.logged} of {stats.days} days
+        </Text>
+        {entries.length ? (
+          <>
+            <HistoryChart
+              entries={entries}
+              from={range.from}
+              to={range.to}
+              counts={counts}
+            />
+            <Row>
+              <Action
+                label="Chart"
+                selected={!counts}
+                onPress={() => setCounts(false)}
+              />
+              <Action
+                label="Counts"
+                selected={counts}
+                onPress={() => setCounts(true)}
+              />
+            </Row>
+          </>
+        ) : (
+          <Text style={{ color: theme.muted }}>Nothing recorded yet</Text>
+        )}
+      </View>
+    ),
+    [theme, preset, stats, entries, range.from, range.to, counts],
+  );
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -82,54 +135,7 @@ export default function History() {
           reload();
           void app.engine.sync();
         }}
-        ListHeaderComponent={
-          <View style={{ gap: 16, paddingBottom: 24 }}>
-            <PixelText style={{ fontSize: 28, color: theme.text }}>
-              History
-            </PixelText>
-            <Row>
-              {RANGE_PRESETS.map((rangePreset) => (
-                <Action
-                  key={rangePreset}
-                  label={rangePreset}
-                  selected={preset === rangePreset}
-                  onPress={() => setPreset(rangePreset)}
-                />
-              ))}
-            </Row>
-            <Text style={{ color: theme.text, fontSize: 18 }}>
-              avg {stats.average?.toFixed(1) ?? '—'} · min {stats.min ?? '—'} ·
-              max {stats.max ?? '—'}
-            </Text>
-            <Text style={{ color: theme.muted }}>
-              {stats.logged} of {stats.days} days
-            </Text>
-            {entries.length ? (
-              <>
-                <HistoryChart
-                  entries={entries}
-                  from={range.from}
-                  to={range.to}
-                  counts={counts}
-                />
-                <Row>
-                  <Action
-                    label="Chart"
-                    selected={!counts}
-                    onPress={() => setCounts(false)}
-                  />
-                  <Action
-                    label="Counts"
-                    selected={counts}
-                    onPress={() => setCounts(true)}
-                  />
-                </Row>
-              </>
-            ) : (
-              <Text style={{ color: theme.muted }}>Nothing recorded yet</Text>
-            )}
-          </View>
-        }
+        ListHeaderComponent={header}
         renderItem={({ item: date }) => {
           const row = byDate.get(date);
           return (

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   revision: 0,
   focused: true,
   sync: vi.fn(),
+  status: 'Synced',
 }));
 vi.mock('react-native', () => ({
   Text: 'Text',
@@ -28,6 +29,7 @@ vi.mock('./app-context', () => ({
   useApp: () => ({
     repo: mocks,
     revision: mocks.revision,
+    status: mocks.status,
     engine: { sync: mocks.sync },
   }),
   reportError: vi.fn(),
@@ -35,7 +37,8 @@ vi.mock('./app-context', () => ({
 vi.mock('./selected-date', () => ({
   useSelectedDate: () => ({ selectDate: vi.fn() }),
 }));
-vi.mock('./theme', () => ({ useTheme: () => ({}) }));
+const theme = {};
+vi.mock('./theme', () => ({ useTheme: () => theme }));
 vi.mock('./retro', () => ({ PixelText: 'PixelText' }));
 vi.mock('./components', () => ({ Action: 'Action', Row: 'Row' }));
 vi.mock('./history-chart', () => ({ HistoryChart: () => null }));
@@ -44,6 +47,7 @@ let renderer: ReactTestRenderer;
 beforeEach(async () => {
   mocks.revision = 0;
   mocks.focused = true;
+  mocks.status = 'Synced';
   mocks.list.mockReset().mockResolvedValue([]);
   mocks.firstDate.mockReset().mockResolvedValue('1800-01-01');
   mocks.sync.mockReset().mockResolvedValue(undefined);
@@ -98,4 +102,17 @@ it('ignores a late refresh after switching to another range', async () => {
   expect(
     renderer.root.findByProps({ testID: 'history-list' }).props.data.from,
   ).toBe(addDays(todayLocal(), -6));
+});
+
+it('keeps the list header and chart untouched when only the sync status changes', async () => {
+  const header = () =>
+    renderer.root.findByProps({ testID: 'history-list' }).props
+      .ListHeaderComponent;
+  const before = header();
+  mocks.status = 'Syncing…';
+  await act(async () => renderer.update(createElement(History)));
+  expect(
+    renderer.root.findByProps({ testID: 'history-list' }).props.refreshing,
+  ).toBe(true);
+  expect(header()).toBe(before);
 });

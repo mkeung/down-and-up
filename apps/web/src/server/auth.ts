@@ -1,11 +1,12 @@
 import { cookies, headers } from 'next/headers';
 import { and, eq, gt } from 'drizzle-orm';
+import type { z } from 'zod';
 import { idSchema } from '@down-up/shared';
 import { getDb } from './db';
 import { profiles, sessions } from './schema';
 import { verifySession } from './security';
 import { appOrigin } from './env';
-import { HttpError } from './http';
+import { HttpError, parseBody, readBody, UnknownProfile } from './http';
 import { failedLookup, rateLimit } from './rate-limit';
 export const COOKIE_NAME = 'du_session';
 export function assertOrigin(request: Request): void {
@@ -52,18 +53,28 @@ export async function sessionProfile(
     throw new Error('Could not check this session');
   }
 }
+async function requireProfile(request: Request, id: string): Promise<void> {
+  const [profile] = await getDb()
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.id, id))
+    .limit(1);
+  if (!profile) return failedLookup(request);
+}
+type AuthOptions = {
+  sessionOnly?: boolean;
+  bearerOnly?: boolean;
+  // Skip the bearer profile lookup because the handler's lockProfile query
+  // repeats it. The handler must pass its errors through lookupFailure.
+  deferLookup?: boolean;
+};
 export async function authenticate(
   request: Request,
-  options: { sessionOnly?: boolean; bearerOnly?: boolean } = {},
+  options: AuthOptions = {},
 ): Promise<{ id: string; via: 'bearer' | 'cookie' }> {
   if (!options.sessionOnly && request.headers.has('authorization')) {
     const id = await bearerId(request);
-    const [profile] = await getDb()
-      .select({ id: profiles.id })
-      .from(profiles)
-      .where(eq(profiles.id, id))
-      .limit(1);
-    if (!profile) return failedLookup(request);
+    if (!options.deferLookup) await requireProfile(request, id);
     return { id, via: 'bearer' };
   }
   if (options.bearerOnly) {
@@ -75,4 +86,33 @@ export async function authenticate(
   const id = await sessionProfile(true);
   if (!id) throw new HttpError(401, 'Enter your ID');
   return { id, via: 'cookie' };
+}
+// Counts a profile missing under a deferred lookup exactly like authenticate would.
+export async function lookupFailure(
+  request: Request,
+  error: unknown,
+): Promise<never> {
+  if (error instanceof UnknownProfile) return failedLookup(request);
+  throw error;
+}
+// Reads the body while authenticating. Authentication errors take precedence,
+// and an unknown ID is still a failed lookup when the body is also invalid.
+export async function authenticateWithBody<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+  options: AuthOptions = {},
+): Promise<{ id: string; via: 'bearer' | 'cookie'; input: T }> {
+  const [auth, raw] = await Promise.allSettled([
+    authenticate(request, options),
+    readBody(request),
+  ]);
+  if (auth.status === 'rejected') throw auth.reason;
+  try {
+    if (raw.status === 'rejected') throw raw.reason;
+    return { ...auth.value, input: parseBody(raw.value, schema) };
+  } catch (error) {
+    if (options.deferLookup && auth.value.via === 'bearer')
+      await requireProfile(request, auth.value.id);
+    throw error;
+  }
 }

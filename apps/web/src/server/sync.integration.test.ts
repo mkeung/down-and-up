@@ -22,6 +22,7 @@ import {
   audioUpload,
   orphanSweepCron,
   replaceId,
+  sync,
   verify,
 } from './handlers';
 import { queueAudio } from './sync';
@@ -33,11 +34,12 @@ const audio = vi.hoisted(() => ({
   invalid: new Set<string>(),
   orphans: new Set<string>(),
   failures: new Set<string>(),
+  heads: 0,
 }));
 vi.mock('./audio', async (original) => ({
   ...(await original<typeof import('./audio')>()),
   audioHead: async (key: string) =>
-    audio.exists.has(key)
+    ++audio.heads && audio.exists.has(key)
       ? {
           size: 1000,
           type: audio.invalid.has(key) ? 'text/plain' : 'audio/mp4',
@@ -152,7 +154,8 @@ run('Postgres transactions and API handlers', () => {
         { cursor: null, changes },
         1000,
       );
-      expect(queries).toBe(8);
+      // Advisory lock, profile+settings lock, rows, insert, update, and pull.
+      expect(queries).toBe(7);
       expect(first.applied).toHaveLength(500);
       expect(first.cursor).toBe('500');
       expect(first.applied.map((row) => row.serverSeq)).toEqual(
@@ -164,7 +167,7 @@ run('Postgres transactions and API handlers', () => {
         { cursor: null, changes },
         1000,
       );
-      expect(queries).toBe(7);
+      expect(queries).toBe(6);
       expect(retry).toEqual(first);
     } finally {
       spy.mockRestore();
@@ -244,6 +247,166 @@ run('Postgres transactions and API handlers', () => {
     ]);
     expect(await drainDeletions()).toBe(1);
   });
+  it('checks storage only for audio changes that could win the merge', async () => {
+    const profileId = 'PERF52345678';
+    await register(
+      request('/api/ids/register', profileId, { secret: 'a'.repeat(32) }),
+    );
+    const [x, y, z] = [
+      '33333333-3333-4333-8333-333333333333',
+      '44444444-4444-4444-8444-444444444444',
+      '55555555-5555-4555-8555-555555555555',
+    ];
+    for (const audioId of [x, y])
+      audio.exists.add(`audio/${hash(profileId)}/${audioId}.m4a`);
+    const push = (audioId: string, audioUpdatedAt: number) =>
+      syncProfile(
+        profileId,
+        {
+          cursor: null,
+          changes: [{ date, audioId, audioDurationMs: 1000, audioUpdatedAt }],
+        },
+        1000,
+      );
+    audio.heads = 0;
+    expect((await push(x, 100)).applied[0]?.audioId).toBe(x);
+    expect(audio.heads).toBe(1);
+    // A retried push and an older change cannot win, so neither is checked.
+    audio.heads = 0;
+    expect((await push(x, 100)).missingAudio).toEqual([]);
+    const older = await push(y, 50);
+    expect(older.applied[0]?.audioId).toBe(x);
+    expect(older.missingAudio).toEqual([]);
+    expect(audio.heads).toBe(0);
+    // A newer change is checked and reported missing when its object is absent.
+    const missing = await push(z, 200);
+    expect(audio.heads).toBe(1);
+    expect(missing.missingAudio).toEqual([z]);
+    expect(missing.applied[0]?.audioId).toBe(x);
+    // Fast clocks are clamped before comparing, exactly as the merge does.
+    audio.heads = 0;
+    expect((await push(y, 10_000_000)).applied[0]?.audioId).toBe(y);
+    expect(audio.heads).toBe(1);
+    await deleteData(request('/api/data', profileId, undefined, 'DELETE'));
+    await drainDeletions();
+  });
+  it('moves rows, sequence numbers, recordings, and settings in set-based statements on ID replacement', async () => {
+    const profileId = 'PERF62345678';
+    await register(
+      request('/api/ids/register', profileId, { secret: 'a'.repeat(32) }),
+    );
+    const recordings = [
+      '66666666-6666-4666-8666-666666666666',
+      '77777777-7777-4777-8777-777777777777',
+    ];
+    for (const audioId of recordings)
+      audio.exists.add(`audio/${hash(profileId)}/${audioId}.m4a`);
+    await syncProfile(
+      profileId,
+      {
+        cursor: null,
+        changes: [
+          { date: '2026-01-01', value: 1, valueUpdatedAt: 100 },
+          { date: '2026-01-02', value: 2, valueUpdatedAt: 100 },
+          ...recordings.map((audioId, index) => ({
+            date: `2026-01-0${index + 3}`,
+            audioId,
+            audioDurationMs: 1000,
+            audioUpdatedAt: 100,
+          })),
+          { date: '2026-01-01', note: 'updated last', noteUpdatedAt: 200 },
+        ],
+      },
+      1000,
+    );
+    const before = await getDb()
+      .select()
+      .from(entries)
+      .where(eq(entries.profileId, profileId))
+      .orderBy(entries.serverSeq);
+    expect(before.map((row) => row.serverSeq)).toEqual([2n, 3n, 4n, 5n]);
+    const response = await replaceId(
+      request('/api/ids/replace', profileId, {
+        operationId: '22222222-2222-4222-8222-222222222222',
+      }),
+    );
+    const next = (await response.json()) as { id: string };
+    const moved = await getDb()
+      .select()
+      .from(entries)
+      .where(eq(entries.profileId, next.id))
+      .orderBy(entries.serverSeq);
+    expect(moved.map((row) => [row.date, row.serverSeq])).toEqual([
+      ['2026-01-02', 1n],
+      ['2026-01-03', 2n],
+      ['2026-01-04', 3n],
+      ['2026-01-01', 4n],
+    ]);
+    expect(moved.at(-1)?.note).toBe('updated last');
+    const [profile] = await getDb()
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, next.id));
+    expect(profile?.seq).toBe(4n);
+    for (const audioId of recordings)
+      expect(audio.exists.has(`audio/${hash(next.id)}/${audioId}.m4a`)).toBe(
+        true,
+      );
+    const queued = await getDb()
+      .select({ objectKey: audioDeletions.objectKey })
+      .from(audioDeletions)
+      .where(eq(audioDeletions.namespace, hash(profileId)))
+      .orderBy(audioDeletions.objectKey);
+    expect(queued.map((row) => row.objectKey)).toEqual(
+      recordings.map((audioId) => `audio/${hash(profileId)}/${audioId}.m4a`),
+    );
+    // The next sync continues the sequence from the moved maximum.
+    const synced = await syncProfile(
+      next.id,
+      {
+        cursor: '4',
+        changes: [{ date: '2026-01-05', value: 5, valueUpdatedAt: 100 }],
+      },
+      1000,
+    );
+    expect(synced.applied[0]?.serverSeq).toBe('5');
+    expect(synced.settings).toEqual({
+      reminderEnabled: false,
+      reminderTime: '20:00',
+    });
+    expect(await drainDeletions()).toBe(2);
+    await deleteData(request('/api/data', next.id, undefined, 'DELETE'));
+    const deletions = await getDb()
+      .select({ objectKey: audioDeletions.objectKey })
+      .from(audioDeletions)
+      .where(eq(audioDeletions.namespace, hash(next.id)))
+      .orderBy(audioDeletions.objectKey);
+    expect(deletions.map((row) => row.objectKey)).toEqual(
+      recordings.map((audioId) => `audio/${hash(next.id)}/${audioId}.m4a`),
+    );
+    expect(await drainDeletions()).toBe(2);
+  });
+  it('reports unknown IDs on deferred lookups as failed lookups', async () => {
+    const unknown = 'ZZZZZZZZZZZZ';
+    const response = await sync(
+      request('/api/sync', unknown, { cursor: null, changes: [] }),
+    );
+    expect(response.status).toBe(401);
+    const invalid = await sync(request('/api/sync', unknown, { cursor: 5 }));
+    expect(invalid.status).toBe(401);
+    const known = 'PERF72345678';
+    await register(
+      request('/api/ids/register', known, { secret: 'a'.repeat(32) }),
+    );
+    expect(
+      (await sync(request('/api/sync', known, { cursor: 5 }))).status,
+    ).toBe(400);
+    const ok = await sync(
+      request('/api/sync', known, { cursor: null, changes: [] }),
+    );
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).cursor).toBe('0');
+  });
   it('loads only the chart range and lookback while keeping lifetime All and streak metadata', async () => {
     const profileId = 'PERF42345678';
     await register(
@@ -265,16 +428,56 @@ run('Postgres transactions and API handlers', () => {
       },
       1000,
     );
+    await syncProfile(
+      profileId,
+      {
+        cursor: null,
+        changes: [
+          { date: today, note: 'x'.repeat(100), noteUpdatedAt: 200 },
+          { date: addDays(today, -10), note: 'earlier', noteUpdatedAt: 200 },
+        ],
+      },
+      1000,
+    );
     const result = await loadDashboardData(
       profileId,
       addDays(today, -2),
       today,
     );
     expect(result.firstDate).toBe('2000-01-01');
-    expect(result.history).toHaveLength(9);
-    expect(result.history[0]?.date).toBe(addDays(today, -8));
-    expect(result.history.at(-1)?.date).toBe(today);
+    // Three daily points; each rolling average uses the six-day lookback.
+    expect(result.points).toEqual([
+      { date: addDays(today, -2), value: 5, count: 1, rolling: 5 },
+      { date: addDays(today, -1), value: 5, count: 1, rolling: 5 },
+      {
+        date: today,
+        value: 5,
+        count: 1,
+        rolling: 5,
+        notePreview: 'x'.repeat(80),
+      },
+    ]);
+    expect(result.stats).toEqual({
+      average: 5,
+      min: 5,
+      max: 5,
+      logged: 3,
+      days: 3,
+    });
+    expect(result.counts[4]).toEqual({ value: 5, count: 3 });
     expect(result.rows).toHaveLength(3);
+    // Bucketed ranges never attach a single day's note to a point.
+    const weekly = await loadDashboardData(
+      profileId,
+      addDays(today, -120),
+      today,
+    );
+    expect(weekly.points.length).toBeLessThanOrEqual(19);
+    expect(
+      weekly.points.some((point) => 'notePreview' in point || 'audio' in point),
+    ).toBe(false);
+    expect(weekly.stats.logged).toBe(13);
+    expect(weekly.points.at(-1)?.rolling).toBe(5);
     expect(currentStreakFromRuns(result.streakRuns, today)).toBe(13);
     expect(currentStreakFromRuns(result.streakRuns, addDays(today, -1))).toBe(
       12,
@@ -287,7 +490,8 @@ run('Postgres transactions and API handlers', () => {
       '1999-01-01',
       '1999-01-07',
     );
-    expect(empty.history).toEqual([]);
+    expect(empty.points.every((point) => point.value === null)).toBe(true);
+    expect(empty.stats.logged).toBe(0);
     expect(empty.firstDate).toBe('2000-01-01');
     expect(currentStreakFromRuns(empty.streakRuns, today)).toBe(13);
   });

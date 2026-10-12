@@ -64,15 +64,24 @@ export function dailyPoints(
   }));
 }
 
+export type ChartGranularity = 'daily' | 'weekly' | 'monthly';
+
+export function chartGranularity(from: string, to: string): ChartGranularity {
+  const days = daysInRange(from, to);
+  return days <= 90 ? 'daily' : days <= 730 ? 'weekly' : 'monthly';
+}
+
 export function chartPoints(
   entries: readonly StatEntry[],
   from: string,
   to: string,
 ): ChartPoint[] {
-  const days = daysInRange(from, to);
-  if (days <= 90) return dailyPoints(entries, from, to);
-  const key =
-    days <= 730 ? isoWeekStart : (date: string) => `${date.slice(0, 7)}-01`;
+  const granularity = chartGranularity(from, to);
+  if (granularity === 'daily') return dailyPoints(entries, from, to);
+  const weekly = granularity === 'weekly';
+  const key = weekly
+    ? isoWeekStart
+    : (date: string) => `${date.slice(0, 7)}-01`;
   const buckets = new Map<string, { sum: number; count: number }>();
   const start = calendarDate(key(from));
   for (
@@ -81,7 +90,7 @@ export function chartPoints(
     date = localDate(start)
   ) {
     buckets.set(date, { sum: 0, count: 0 });
-    if (days <= 730) start.setDate(start.getDate() + 7);
+    if (weekly) start.setDate(start.getDate() + 7);
     else start.setMonth(start.getMonth() + 1);
   }
   for (const row of entries) {
@@ -126,6 +135,22 @@ export function rollingAverage(
       points.push({ date, value: count >= 4 ? sum / count : null, count });
   }
   return points;
+}
+
+export type SeriesPoint = ChartPoint & { rolling: number | null };
+
+// Chart points with the bucketed 7-day rolling average alongside each point.
+// `entries` should include the six days before `from` for the rolling lookback.
+export function chartSeries(
+  entries: readonly StatEntry[],
+  from: string,
+  to: string,
+): SeriesPoint[] {
+  const averages = chartPoints(rollingAverage(entries, from, to), from, to);
+  return chartPoints(entries, from, to).map((point, index) => ({
+    ...point,
+    rolling: averages[index]?.value ?? null,
+  }));
 }
 
 export function currentStreak(

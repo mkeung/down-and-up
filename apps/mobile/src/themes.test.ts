@@ -72,3 +72,8 @@ describe('theme palettes', () => {
     });
   }
 });
+
+it('returns one shared palette object so theme consumers can memoize', () => {
+  expect(themeColors('mint', true)).toBe(themeColors('mint', true));
+  expect(themeColors('mint', true)).not.toBe(themeColors('mint', false));
+});

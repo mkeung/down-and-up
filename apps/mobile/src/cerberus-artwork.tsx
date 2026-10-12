@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -35,7 +35,8 @@ import {
   nextWalk,
   type CerberusBehavior,
 } from './cerberus-motion';
-import { useCerberus } from './cerberus-context';
+import { useCerberusRequest } from './cerberus-context';
+import { prefetchImages } from './image-prefetch';
 import { cueAnimationSounds } from './sounds';
 import { CerberusRope } from './cerberus-rope';
 import {
@@ -66,6 +67,16 @@ const sheets = {
   'reaction-09': reaction09,
   'reaction-10': reaction10,
 };
+// Reactions and tricks are shown on demand, so the app loads them shortly
+// after startup instead of on the tap that first needs them. The opening poses
+// load with the first render.
+export function prefetchCerberusSheets() {
+  return prefetchImages(
+    Object.entries(sheets)
+      .filter(([name]) => name !== 'walking' && name !== 'sitting-idle')
+      .map(([, source]) => source),
+  );
+}
 // Empty rows below the visible artwork in each 512px frame sequence.
 const bottomPadding = {
   walking: 84,
@@ -98,8 +109,14 @@ const tugMouths: Point[] = [
   { x: 119, y: 286 },
 ];
 
-export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
-  const { request } = useCerberus();
+// Memoized: frame steps re-render only this component, and parents re-render
+// it only when `visible` changes.
+export const CerberusArtwork = memo(function CerberusArtwork({
+  visible = true,
+}: {
+  visible?: boolean;
+}) {
+  const request = useCerberusRequest();
   const handledRequest = useRef(0);
   const { height } = useWindowDimensions();
   const size = Math.min(240, Math.max(96, height - 620));
@@ -137,6 +154,15 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
   const displayPose = tug
     ? { animation: 'tug-of-war' as const, facingRight: tug.facingRight }
     : pose;
+  const translateX = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-travel / 2, travel / 2],
+        extrapolate: 'clamp',
+      }),
+    [progress, travel],
+  );
   const origin = spriteOrigin(
     width,
     areaHeight,
@@ -479,15 +505,7 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
           left: '50%',
           marginLeft: -size / 2,
           bottom: 12 - (size * bottomPadding[displayPose.animation]) / 512,
-          transform: [
-            {
-              translateX: progress.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-travel / 2, travel / 2],
-                extrapolate: 'clamp',
-              }),
-            },
-          ],
+          transform: [{ translateX }],
         }}
       >
         <View
@@ -535,4 +553,4 @@ export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
       ) : null}
     </View>
   );
-}
+});

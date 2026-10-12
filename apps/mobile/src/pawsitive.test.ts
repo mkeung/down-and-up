@@ -29,7 +29,8 @@ vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: 'SafeAreaView',
 }));
 vi.mock('./app-context', () => ({
-  useApp: () => ({ repo: mocks, revision: 0, setNotePending: () => undefined }),
+  useAppRuntime: () => ({ repo: mocks, setNotePending: () => undefined }),
+  useRevision: () => 0,
   reportError: vi.fn(),
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({}) }));

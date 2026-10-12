@@ -32,12 +32,15 @@ vi.mock('react-native', () => ({
   AppState: { addEventListener: () => ({ remove() {} }) },
 }));
 vi.mock('./app-context', () => ({
-  useApp: () => ({ repo: mocks.repo, setNotePending: mocks.setNotePending }),
+  useAppRuntime: () => ({
+    repo: mocks.repo,
+    setNotePending: mocks.setNotePending,
+  }),
   reportError: mocks.reportError,
 }));
 vi.mock('./theme', () => ({ useTheme: () => ({}) }));
 vi.mock('./cerberus-context', () => ({
-  useCerberus: () => ({ playNoteSubmit: mocks.playNoteSubmit }),
+  useCerberusActions: () => ({ playNoteSubmit: mocks.playNoteSubmit }),
 }));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

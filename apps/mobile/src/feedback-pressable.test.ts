@@ -195,3 +195,29 @@ it('gives all ten keys feedback while a selected key remains a no-op', async () 
   await act(async () => keys[9]!.props.onPress());
   expect(choose).toHaveBeenCalledExactlyOnceWith(10);
 });
+
+it('reuses press interpolations across renders and re-renders only keys whose selection changed', async () => {
+  await mount();
+  const pressedStyle = () => button().props.style[1];
+  const before = pressedStyle();
+  await act(async () => button().props.onPressIn(event));
+  expect(pressedStyle().opacity).toBe(before.opacity);
+  expect(pressedStyle().transform.at(-1).translateY).toBe(
+    before.transform.at(-1).translateY,
+  );
+  await act(async () => renderer.unmount());
+
+  const onChoose = vi.fn();
+  await act(async () => {
+    renderer = create(createElement(ValueKeypad, { value: 3, onChoose }));
+  });
+  const keys = () => renderer.root.findAllByType(Pressable);
+  const styles = keys().map((key) => key.props.style);
+  await act(async () =>
+    renderer.update(createElement(ValueKeypad, { value: 4, onChoose })),
+  );
+  const changed = keys()
+    .map((key, index) => key.props.style !== styles[index])
+    .flatMap((different, index) => (different ? [index + 1] : []));
+  expect(changed).toEqual([3, 4]);
+});

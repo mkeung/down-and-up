@@ -36,7 +36,7 @@ vi.mock('./app-context', () => ({
   reportError: mocks.reportError,
 }));
 vi.mock('./cerberus-context', () => ({
-  useCerberus: () => ({ playReaction: mocks.playReaction }),
+  useCerberusActions: () => ({ playReaction: mocks.playReaction }),
 }));
 vi.mock('./theme', () => ({
   useTheme: () => ({
@@ -44,9 +44,15 @@ vi.mock('./theme', () => ({
     entryCheck: { fill: '#26712b', ink: '#ffffff' },
   }),
 }));
+// Optimistic selection is covered by selected-date.test.ts.
 vi.mock('./selected-date', () => ({
   useSelectedDate: () => ({ date: '2026-10-12' }),
-  useEntry: () => ({ value: mocks.value }),
+  useSelectedEntry: () => ({
+    entry: { value: mocks.value },
+    value: mocks.value,
+    chooseValue: (value: number) =>
+      mocks.setField('2026-10-12', 'value', value),
+  }),
 }));
 vi.mock('./date-bar', () => ({ DateBar: () => null }));
 vi.mock('./data-status-icon', () => ({ DataStatusButton: () => null }));

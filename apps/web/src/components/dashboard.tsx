@@ -1,33 +1,40 @@
 'use client';
-import { useEffect, useMemo, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
-  chartPoints,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from 'react';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import {
+  chartGranularity,
   currentStreakFromRuns,
-  daysInRange,
   isCalendarDate,
   presetRange,
   RANGE_PRESETS,
-  rollingAverage,
-  summary,
   todayLocal,
-  valueCounts,
   type RangePreset,
   type ServerEntry,
   type StreakRun,
 } from '@down-up/shared';
-import { Charts } from './charts';
+import type { DashboardPoint } from '../server/dashboard-data';
 import { EntriesTable } from './entries-table';
-import { SignOut } from './sign-out';
-export type ChartEntry = {
-  date: string;
-  value: number | null;
-  notePreview: string | null;
-  audio: boolean;
-};
+// Recharts loads after hydration; fixed-height frames below prevent layout shift.
+const Charts = dynamic(() => import('./charts').then((mod) => mod.Charts), {
+  ssr: false,
+});
+const GRANULARITY_LABELS = {
+  daily: 'Daily values',
+  weekly: 'Weekly averages',
+  monthly: 'Monthly averages',
+} as const;
 export function Dashboard({
-  history,
+  header,
+  points,
+  stats,
+  counts,
   firstDate,
   streakRuns,
   from,
@@ -36,7 +43,16 @@ export function Dashboard({
   initialHasMore,
   hasRange,
 }: {
-  history: ChartEntry[];
+  header: ReactNode;
+  points: DashboardPoint[];
+  stats: {
+    average: number | null;
+    min: number | null;
+    max: number | null;
+    logged: number;
+    days: number;
+  };
+  counts: { value: number; count: number }[];
   firstDate: string | null;
   streakRuns: StreakRun[];
   from: string;
@@ -56,35 +72,19 @@ export function Dashboard({
     const local = todayLocal();
     setToday(local);
     if (!hasRange) {
+      // The server rendered its UTC 30D default; only refetch if the local range differs.
       const range = presetRange('30D', local);
-      router.replace(`/dashboard?from=${range.from}&to=${range.to}`);
+      if (range.from !== from || range.to !== to)
+        router.replace(`/dashboard?from=${range.from}&to=${range.to}`);
     }
-  }, [hasRange, router]);
+  }, [hasRange, from, to, router]);
   useEffect(() => {
     setCustomFrom(from);
     setCustomTo(to);
   }, [from, to]);
-  const stats = useMemo(() => summary(history, from, to), [history, from, to]);
   const streak = useMemo(
     () => currentStreakFromRuns(streakRuns, today),
     [streakRuns, today],
-  );
-  const points = useMemo(() => {
-    const chart = chartPoints(history, from, to);
-    const averages = rolling
-      ? chartPoints(rollingAverage(history, from, to), from, to)
-      : [];
-    const byDate = new Map(history.map((row) => [row.date, row]));
-    return chart.map((point, index) => ({
-      ...point,
-      rolling: averages[index]?.value ?? null,
-      notePreview: byDate.get(point.date)?.notePreview ?? null,
-      audio: byDate.get(point.date)?.audio ?? false,
-    }));
-  }, [history, from, to, rolling]);
-  const counts = useMemo(
-    () => valueCounts(history, from, to),
-    [history, from, to],
   );
   function changeRange(nextFrom: string, nextTo: string) {
     if (
@@ -108,27 +108,10 @@ export function Dashboard({
     const range = presetRange(preset, today, firstDate);
     changeRange(range.from, range.to);
   }
-  const granularity =
-    daysInRange(from, to) <= 90
-      ? 'Daily values'
-      : daysInRange(from, to) <= 730
-        ? 'Weekly averages'
-        : 'Monthly averages';
+  const granularity = GRANULARITY_LABELS[chartGranularity(from, to)];
   return (
     <main aria-busy={pending}>
-      <div className="page-top">
-        <div>
-          <p className="eyebrow">Your record</p>
-          <h1>A view over time.</h1>
-          <p className="muted">
-            {from} — {to}
-          </p>
-        </div>
-        <nav className="nav-actions" aria-label="Dashboard">
-          <Link href="/settings">Reminder</Link>
-          <SignOut />
-        </nav>
-      </div>
+      {header}
       <div className="range-controls">
         <div className="presets">
           {RANGE_PRESETS.map((item) => {
@@ -233,19 +216,28 @@ export function Dashboard({
           </label>
         </div>
         {stats.logged ? (
-          <Charts
-            points={points}
-            counts={counts}
-            rolling={rolling}
-            kind="line"
-          />
+          <div style={{ height: 310 }}>
+            <Charts
+              points={points}
+              counts={counts}
+              rolling={rolling}
+              kind="line"
+            />
+          </div>
         ) : (
           <p className="empty">Nothing recorded yet</p>
         )}
       </section>
       <section className="chart-card">
         <h2>Value counts</h2>
-        <Charts points={points} counts={counts} rolling={false} kind="counts" />
+        <div style={{ height: 200 }}>
+          <Charts
+            points={points}
+            counts={counts}
+            rolling={false}
+            kind="counts"
+          />
+        </div>
       </section>
       <EntriesTable
         key={`${from}:${to}`}

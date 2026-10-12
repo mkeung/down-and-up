@@ -1,6 +1,7 @@
 import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
 import {
   DEFAULT_SETTINGS,
+  clampTimestamp,
   FIELDS,
   fieldTimestamp,
   MAX_BATCH,
@@ -21,7 +22,7 @@ import {
 } from './schema';
 import { audioHead, audioKey, validAudio } from './audio';
 import { hash } from './security';
-import { HttpError } from './http';
+import { HttpError, UnknownProfile } from './http';
 export async function lockNamespace(tx: Transaction, namespace: string) {
   await tx.execute(
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${namespace}, 0))`,
@@ -34,9 +35,42 @@ export async function lockProfile(tx: Transaction, id: string) {
     .from(profiles)
     .where(eq(profiles.id, id))
     .for('update');
-  if (!profile) throw new HttpError(401, 'ID not found');
+  if (!profile) throw new UnknownProfile();
   return profile;
 }
+// Locks the profile and reads its reminder settings in the same query.
+async function lockProfileSettings(tx: Transaction, id: string) {
+  await lockNamespace(tx, hash(id));
+  const [locked] = await tx
+    .select({
+      seq: profiles.seq,
+      reminderEnabled: settings.reminderEnabled,
+      reminderTime: settings.reminderTime,
+    })
+    .from(profiles)
+    .leftJoin(settings, eq(settings.profileId, profiles.id))
+    .where(eq(profiles.id, id))
+    .for('update', { of: profiles });
+  if (!locked) throw new UnknownProfile();
+  return locked;
+}
+// Whether an incoming audio change could win mergeServer against `existing`.
+// Field timestamps only increase during a push, so a change that cannot win
+// against the stored row cannot win later in the same request either. Only
+// winning changes need their object confirmed with HEAD.
+export function audioCouldWin(
+  existing: Entry | null,
+  change: Change,
+  now: number,
+): boolean {
+  return (
+    !!change.audioId &&
+    change.audioUpdatedAt != null &&
+    clampTimestamp(change.audioUpdatedAt, now) >
+      (existing?.audioUpdatedAt ?? -1)
+  );
+}
+const HEAD_CONCURRENCY = 32;
 export function serialize(row: typeof entries.$inferSelect): ServerEntry {
   return {
     date: row.date,
@@ -86,7 +120,7 @@ export async function syncProfile(
   now = Date.now(),
 ): Promise<SyncResponse> {
   return getDb().transaction(async (tx) => {
-    const profile = await lockProfile(tx, id);
+    const profile = await lockProfileSettings(tx, id);
     let seq = profile.seq;
     if (request.cursor !== null && BigInt(request.cursor) > seq)
       throw new HttpError(400, 'Reset the sync cursor');
@@ -138,18 +172,22 @@ export async function syncProfile(
     const audioIds = [
       ...new Set(
         request.changes.flatMap((change) =>
-          change.audioId ? [change.audioId] : [],
+          audioCouldWin(byDate.get(change.date) ?? null, change, now)
+            ? [change.audioId!]
+            : [],
         ),
       ),
     ];
-    for (let offset = 0; offset < audioIds.length; offset += 8)
+    for (let offset = 0; offset < audioIds.length; offset += HEAD_CONCURRENCY)
       await Promise.all(
-        audioIds.slice(offset, offset + 8).map(async (audioId) => {
-          audioExists.set(
-            audioId,
-            validAudio(await audioHead(audioKey(id, audioId))),
-          );
-        }),
+        audioIds
+          .slice(offset, offset + HEAD_CONCURRENCY)
+          .map(async (audioId) => {
+            audioExists.set(
+              audioId,
+              validAudio(await audioHead(audioKey(id, audioId))),
+            );
+          }),
       );
     const applied: ServerEntry[] = [];
     const missingAudio: string[] = [];
@@ -173,7 +211,8 @@ export async function syncProfile(
         existing,
         fresh,
         now,
-        change.audioId ? audioExists.get(change.audioId)! : true,
+        // Unchecked IDs cannot win the merge; if one somehow did, it reports missing.
+        change.audioId ? (audioExists.get(change.audioId) ?? false) : true,
       );
       for (const field of FIELDS) {
         const timestamp = fieldTimestamp(fresh, field);
@@ -270,21 +309,19 @@ export async function syncProfile(
       .orderBy(asc(entries.serverSeq))
       .limit(MAX_BATCH + 1);
     const page = pulled.slice(0, MAX_BATCH);
-    const [config] = await tx
-      .select({
-        reminderEnabled: settings.reminderEnabled,
-        reminderTime: settings.reminderTime,
-      })
-      .from(settings)
-      .where(eq(settings.profileId, id))
-      .limit(1);
     return {
       applied,
       changes: page.map(serialize),
       cursor: page.at(-1)?.serverSeq.toString() ?? request.cursor ?? '0',
       hasMore: pulled.length > MAX_BATCH,
       missingAudio,
-      settings: config ?? DEFAULT_SETTINGS,
+      settings:
+        profile.reminderEnabled === null || profile.reminderTime === null
+          ? DEFAULT_SETTINGS
+          : {
+              reminderEnabled: profile.reminderEnabled,
+              reminderTime: profile.reminderTime,
+            },
     };
   });
 }

@@ -24,7 +24,6 @@ const volumes: Record<SoundName, number> = {
 const players: Partial<Record<SoundName, AudioPlayer>> = {};
 let configured = false;
 let preferences: SoundPreferences | null = null;
-let playbackVersion = 0;
 const pendingCues = new Set<ReturnType<typeof setTimeout>>();
 
 const masterVolume = () =>
@@ -34,7 +33,6 @@ export function setSoundPreferences(next: SoundPreferences | null) {
   preferences = next;
   const volume = masterVolume();
   if (volume === 0) {
-    playbackVersion++;
     pendingCues.forEach(clearTimeout);
     pendingCues.clear();
   }
@@ -69,19 +67,28 @@ function player(name: SoundName) {
   return existing;
 }
 
+// Loads every clip ahead of the first tap so it plays without a decode delay.
+export function preloadSounds() {
+  if (masterVolume() === 0) return;
+  for (const name of Object.keys(sources) as SoundName[]) {
+    try {
+      player(name);
+    } catch {
+      /* A clip that cannot load is created again when played. */
+    }
+  }
+}
+
 export function playSound(name: SoundName) {
   if (masterVolume() === 0) return;
-  const version = playbackVersion;
   try {
     const sound = player(name);
-    void sound
-      .seekTo(0)
-      .then(() => {
-        if (version === playbackVersion && masterVolume() > 0) sound.play();
-      })
-      .catch(() => {
-        /* Sound is decoration; a failed clip is skipped. */
-      });
+    // Rewind and play in the same tick; the native player applies the seek
+    // before resuming, so a repeat tap restarts without waiting a round trip.
+    void sound.seekTo(0).catch(() => {
+      /* Sound is decoration; a failed rewind still plays from where it is. */
+    });
+    sound.play();
   } catch {
     /* Sound is decoration; a failed clip is skipped. */
   }

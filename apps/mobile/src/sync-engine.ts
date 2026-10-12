@@ -3,7 +3,7 @@ import {
   type Identity,
   type SyncResponse,
 } from '@down-up/shared';
-import type { AudioFile, Repository } from './repository';
+import type { AppliedSync, AudioFile, Repository } from './repository';
 
 export class ApiError extends Error {
   constructor(public readonly status: number) {
@@ -50,7 +50,7 @@ export class SyncEngine {
     private readonly saveIdentity: (identity: Identity) => Promise<void>,
     private readonly onStatus: (status: SyncStatus) => void,
     private readonly onUnauthorized: () => void,
-    private readonly afterSync: () => Promise<void>,
+    private readonly afterSync: (applied: AppliedSync) => Promise<void>,
     private readonly onCollision?: () => Promise<Identity>,
   ) {}
   configure(enabled: boolean, online: boolean, foreground = true) {
@@ -150,9 +150,11 @@ export class SyncEngine {
       }
       let hasMore = false;
       let missing = false;
+      const applied: AppliedSync = { dates: [], settingsChanged: false };
+      // Each batch is read once: the loop condition's read is the next push.
+      let changes = await this.repo.pushBatch();
       do {
         assertActive();
-        const changes = hasMore ? [] : await this.repo.pushBatch();
         const cursor = await this.repo.state('cursor');
         const response: SyncResponse = syncResponseSchema.parse(
           await this.transport.request(
@@ -169,16 +171,17 @@ export class SyncEngine {
           (!response.changes.length || response.cursor === cursor)
         )
           throw new Error('Sync cursor did not advance');
-        await this.repo.applyResponse(changes, response);
+        const result = await this.repo.applyResponse(changes, response);
+        applied.dates.push(...result.dates);
+        applied.settingsChanged ||= result.settingsChanged;
         hasMore = response.hasMore;
         if (response.missingAudio.length) missing = true;
-      } while (hasMore || (await this.repo.pushBatch()).length > 0);
+        changes = hasMore ? [] : await this.repo.pushBatch();
+      } while (hasMore || changes.length > 0);
       assertActive();
       await this.transport.cleanup();
-      await this.afterSync();
-      const pending = (await this.repo.list()).some((row) =>
-        Object.values(row.dirtyFields).some(Boolean),
-      );
+      await this.afterSync(applied);
+      const pending = await this.repo.hasDirty();
       this.onStatus(pending ? 'Saved on device, will sync' : 'Synced');
       if (uploadFailed || missing) {
         this.failures++;
@@ -186,8 +189,9 @@ export class SyncEngine {
           Math.min(300_000, 2000 * 2 ** Math.min(this.failures, 8)),
         );
       } else {
+        // The loop ended on an empty batch, so remaining dirty rows are waiting
+        // on something else; edits made since then queue their own sync.
         this.failures = 0;
-        if (pending && (await this.repo.pushBatch()).length) this.schedule();
       }
     } catch (error) {
       this.onStatus('Saved on device, will sync');

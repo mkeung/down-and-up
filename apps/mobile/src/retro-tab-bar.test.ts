@@ -27,7 +27,8 @@ vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./cerberus-artwork', () => ({ CerberusArtwork: () => null }));
 vi.mock('./theme', () => ({ useTheme: () => themeColors('neutral', false) }));
 vi.mock('./app-context', () => ({
-  useApp: () => mocks,
+  useAppRuntime: () => mocks,
+  useRevision: () => mocks.revision,
   reportError: mocks.reportError,
 }));
 

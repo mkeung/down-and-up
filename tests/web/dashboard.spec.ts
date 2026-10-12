@@ -68,12 +68,22 @@ test('complete ID, history, range, hidden recording, reminder and sign-out flow'
   await expect(
     page.getByRole('heading', { name: 'Your history, here.' }),
   ).toBeVisible();
+  const dashboardLoads: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/dashboard')
+      dashboardLoads.push(request.url());
+  });
   await page.getByLabel('Enter your ID').fill(id.toLowerCase());
   await page.getByRole('button', { name: 'View', exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\?from=/);
   await expect(
     page.getByRole('heading', { name: 'Daily values' }),
   ).toBeVisible();
+  // Login goes straight to the local 30D range: one render, no refresh or redirect.
+  expect(dashboardLoads).toHaveLength(1);
+  expect(dashboardLoads[0]).toContain(
+    `from=${addDays(today, -29)}&to=${today}`,
+  );
   await expect(page.getByText('A quiet walk', { exact: true })).toBeVisible();
   expect(page.url()).not.toContain(id);
   const cookies = await page.context().cookies();

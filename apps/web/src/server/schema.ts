@@ -101,11 +101,16 @@ export const sessions = pgTable(
   },
   (table) => [index('session_expiration').on(table.expiresAt)],
 );
-export const audioDeletions = pgTable('audio_deletions', {
-  objectKey: text('object_key').primaryKey(),
-  namespace: text('namespace').notNull(),
-  deleteAfter: timestamp('delete_after', { withTimezone: true }).notNull(),
-});
+export const audioDeletions = pgTable(
+  'audio_deletions',
+  {
+    objectKey: text('object_key').primaryKey(),
+    namespace: text('namespace').notNull(),
+    deleteAfter: timestamp('delete_after', { withTimezone: true }).notNull(),
+  },
+  // drainDeletions reads due jobs in delete_after order.
+  (table) => [index('audio_deletions_due').on(table.deleteAfter)],
+);
 export const replacementReceipts = pgTable(
   'replacement_receipts',
   {

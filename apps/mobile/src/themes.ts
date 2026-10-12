@@ -21,7 +21,19 @@ const palettes = {
   yellow: { light: ['#f5e8ad', '#e5cf82'], dark: ['#2c2715', '#443b21'] },
 } as const;
 
+// One shared object per palette keeps `useTheme()` referentially stable, so
+// memoized components and values that depend on it are not rebuilt.
+const built = new Map<string, ReturnType<typeof buildThemeColors>>();
 export function themeColors(id: ThemeId, dark: boolean) {
+  const key = `${id}:${dark}`;
+  let colors = built.get(key);
+  if (!colors) {
+    colors = buildThemeColors(id, dark);
+    built.set(key, colors);
+  }
+  return colors;
+}
+function buildThemeColors(id: ThemeId, dark: boolean) {
   const [background, chrome] = palettes[id][dark ? 'dark' : 'light'];
   return {
     background,

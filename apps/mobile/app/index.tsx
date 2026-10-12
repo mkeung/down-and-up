@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Modal, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,29 +9,31 @@ import { ValueKeypad } from '../src/value-keypad';
 import { reportError, useApp } from '../src/app-context';
 import { useTheme } from '../src/theme';
 import { EntryHeader } from '../src/entry-header';
-import { useEntry, useSelectedDate } from '../src/selected-date';
+import { useSelectedEntry } from '../src/selected-date';
 import { PrivacyNotice } from '../src/privacy-notice';
-import { useCerberus } from '../src/cerberus-context';
+import { useCerberusActions } from '../src/cerberus-context';
 
 export default function Rate() {
   const app = useApp();
   const theme = useTheme();
-  const { date } = useSelectedDate();
-  const selectedEntry = useEntry(date);
+  // The keypad highlights the tapped value at once; it reverts if saving fails.
+  const { value, chooseValue } = useSelectedEntry();
   const [privacyVisible, setPrivacyVisible] = useState(false);
-  const { playReaction } = useCerberus();
+  const { playReaction } = useCerberusActions();
   const latestChoice = useRef(0);
-  const choose = (value: number) => {
-    const choice = ++latestChoice.current;
-    void app.repo
-      .setField(date, 'value', value)
-      .then((changed) => {
-        if (!changed) return;
-        if (choice === latestChoice.current) playReaction(value);
-        return Haptics.selectionAsync();
-      })
-      .catch(reportError);
-  };
+  const choose = useCallback(
+    (next: number) => {
+      const choice = ++latestChoice.current;
+      void chooseValue(next)
+        .then((changed) => {
+          if (!changed) return;
+          if (choice === latestChoice.current) playReaction(next);
+          return Haptics.selectionAsync();
+        })
+        .catch(reportError);
+    },
+    [chooseValue, playReaction],
+  );
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -60,11 +62,7 @@ export default function Rate() {
         }}
       >
         <View style={{ width: '100%', maxWidth: 420, flexShrink: 1 }}>
-          <ValueKeypad
-            value={selectedEntry?.value ?? null}
-            onChoose={choose}
-            scrollRows
-          />
+          <ValueKeypad value={value} onChoose={choose} scrollRows />
         </View>
       </View>
       <Modal

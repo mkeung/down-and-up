@@ -1,9 +1,10 @@
-import { createElement } from 'react';
+import { createElement, type Context } from 'react';
 import { Animated, Image } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { CerberusArtwork } from './cerberus-artwork';
+import { CerberusArtwork, prefetchCerberusSheets } from './cerberus-artwork';
 import { RetroTabBar } from './retro-tab-bar';
+import * as cerberusContext from './cerberus-context';
 import type { CerberusRequest } from './cerberus-context';
 import { reactionAnimations } from './cerberus-motion';
 import { CerberusRope } from './cerberus-rope';
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   timing: vi.fn(),
   setValue: vi.fn(),
   interpolate: vi.fn(),
+  prefetch: vi.fn(),
   deferStop: false,
   stopCallbacks: [] as ((value: number) => void)[],
   positionChanged: null as ((event: { value: number }) => void) | null,
@@ -59,14 +61,19 @@ vi.mock('../assets/cerberus/reaction-07.png', () => ({ default: 17 }));
 vi.mock('../assets/cerberus/reaction-08.png', () => ({ default: 18 }));
 vi.mock('../assets/cerberus/reaction-09.png', () => ({ default: 19 }));
 vi.mock('../assets/cerberus/reaction-10.png', () => ({ default: 20 }));
-vi.mock('./cerberus-context', () => ({
-  useCerberus: () => ({ request: mocks.request }),
-}));
+vi.mock('./cerberus-context', async () => {
+  const { createContext, useContext } = await import('react');
+  const TestRequest = createContext<CerberusRequest | null>(null);
+  return {
+    TestRequest,
+    useCerberusRequest: () => useContext(TestRequest) ?? mocks.request,
+  };
+});
+vi.mock('./image-prefetch', () => ({ prefetchImages: mocks.prefetch }));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({ useTheme: () => ({ background: '#f5e8ad' }) }));
 vi.mock('./selected-date', () => ({
-  useSelectedDate: () => ({ date: '2026-10-12' }),
-  useEntry: () => null,
+  useSelectedEntry: () => ({ entry: null, value: null }),
 }));
 // Button motion is covered by feedback-pressable.test.ts.
 vi.mock('./feedback-pressable', async () => ({
@@ -132,6 +139,17 @@ vi.mock('react-native', () => ({
   },
 }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+// The artwork is memoized, so a new request reaches it through context the
+// way it does in the app.
+const { TestRequest } = cerberusContext as unknown as {
+  TestRequest: Context<CerberusRequest | null>;
+};
+const artwork = (props: { visible?: boolean } = {}) =>
+  createElement(
+    TestRequest.Provider,
+    { value: mocks.request },
+    createElement(CerberusArtwork, props),
+  );
 let renderer: ReactTestRenderer;
 const area = () =>
   renderer.root.findByProps({ testID: 'cerberus-roaming-area' });
@@ -139,7 +157,7 @@ const sprite = () => renderer.root.findByProps({ testID: 'cerberus-sprite' });
 const image = () => renderer.root.findByType(Image);
 async function mount(width = 360) {
   await act(async () => {
-    renderer = create(createElement(CerberusArtwork));
+    renderer = create(artwork());
   });
   await act(async () =>
     area().props.onLayout({ nativeEvent: { layout: { width } } }),
@@ -336,13 +354,9 @@ it('pauses when backgrounded, hidden, or editing a note and cleans up on unmount
   expect(mocks.stop).toHaveBeenCalledTimes(1);
   await act(async () => mocks.appChanged!('active'));
   expect(mocks.start).toHaveBeenCalledTimes(2);
-  await act(async () =>
-    renderer.update(createElement(CerberusArtwork, { visible: false })),
-  );
+  await act(async () => renderer.update(artwork({ visible: false })));
   expect(mocks.stop).toHaveBeenCalledTimes(2);
-  await act(async () =>
-    renderer.update(createElement(CerberusArtwork, { visible: true })),
-  );
+  await act(async () => renderer.update(artwork({ visible: true })));
   expect(mocks.start).toHaveBeenCalledTimes(3);
   await act(async () => mocks.keyboard.get('keyboardDidShow')!());
   expect(renderer.toJSON()).toBeNull();
@@ -390,7 +404,7 @@ it.each(['food-can', 'backflip'] as const)(
     expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
     await act(async () => mocks.keyboard.get('keyboardDidShow')!());
     mocks.request = { sequence: 1, animation };
-    await act(async () => renderer.update(createElement(CerberusArtwork)));
+    await act(async () => renderer.update(artwork()));
     expect(renderer.toJSON()).toBeNull();
     await act(async () => mocks.keyboard.get('keyboardDidHide')!());
     const source = animation === 'food-can' ? 5 : 7;
@@ -414,7 +428,7 @@ it('shows the backflip recovery pose without animation for Reduce Motion', async
   mocks.reduceMotion = true;
   await mount();
   mocks.request = { sequence: 1, animation: 'backflip' };
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () => renderer.update(artwork()));
   expect(image().props.source).toBe(7);
   expect(image().props.style).toMatchObject({ left: -720, top: -240 });
   expect(mocks.start).not.toHaveBeenCalled();
@@ -427,7 +441,7 @@ it('pauses a backflip in the background and resumes without restarting', async (
   const progress = mocks.values[0]!;
   progress.value = 0.7;
   mocks.request = { sequence: 1, animation: 'backflip' };
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () => renderer.update(artwork()));
   expect(progress.value).toBe(0.7);
   expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
   await advance(400);
@@ -450,7 +464,7 @@ it.each(reactionAnimations)(
     const progress = mocks.values[0]!;
     progress.value = 0.7;
     mocks.request = { sequence: 1, animation };
-    await act(async () => renderer.update(createElement(CerberusArtwork)));
+    await act(async () => renderer.update(artwork()));
     const source = 11 + reactionAnimations.indexOf(animation);
     expect(image().props.source).toBe(source);
     expect(progress.value).toBe(0.7);
@@ -469,10 +483,10 @@ it('replaces a playing reaction with the latest request without changing its lef
   vi.mocked(Math.random).mockReturnValue(0.9);
   await mount();
   mocks.request = { sequence: 1, animation: 'reaction-01' };
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () => renderer.update(artwork()));
   await advance(460);
   mocks.request = { sequence: 2, animation: 'reaction-10' };
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () => renderer.update(artwork()));
   expect(image().props.source).toBe(20);
   expect(image().props.style).toMatchObject({ left: -0, top: -0 });
   expect(sprite().props.style.transform).toEqual([{ scaleX: 1 }]);
@@ -482,7 +496,7 @@ it('shows the final reaction pose without animation for Reduce Motion', async ()
   mocks.reduceMotion = true;
   await mount();
   mocks.request = { sequence: 1, animation: 'reaction-10' };
-  await act(async () => renderer.update(createElement(CerberusArtwork)));
+  await act(async () => renderer.update(artwork()));
   expect(image().props.source).toBe(20);
   expect(image().props.style).toMatchObject({ left: -720, top: -240 });
   expect(mocks.start).not.toHaveBeenCalled();
@@ -538,7 +552,8 @@ it('keeps one animation and its current position when switching tabs, including 
   // Simulate the native driver moving the animal partway across the screen.
   progress.value = 0.8;
   for (const index of [1, 0, 1]) {
-    props.state.index = index;
+    // The navigator passes a new state object on every route change.
+    props.state = { ...props.state, index };
     await act(async () => renderer.update(tree()));
     expect(mocks.values).toHaveLength(1);
     expect(mocks.values[0]).toBe(progress);
@@ -548,13 +563,13 @@ it('keeps one animation and its current position when switching tabs, including 
     expect(mocks.stop).not.toHaveBeenCalled();
   }
   // Hidden routes pause the same animal; returning keeps its last position.
-  props.state.index = 2;
+  props.state = { ...props.state, index: 2 };
   await act(async () => renderer.update(tree()));
   expect(
     renderer.root.findAllByProps({ testID: 'cerberus-roaming-area' }),
   ).toHaveLength(0);
   expect(mocks.stop).toHaveBeenCalledTimes(1);
-  props.state.index = 0;
+  props.state = { ...props.state, index: 0 };
   await act(async () => renderer.update(tree()));
   expect(area()).toBeDefined();
   expect(mocks.values).toHaveLength(1);
@@ -651,14 +666,13 @@ it.each([
     if (reason === 'leave') area().props.onResponderMove(touch(8, -1));
     if (reason === 'multi') area().props.onResponderMove(touch(8, 60, 2));
     if (reason === 'background') mocks.appChanged!('background');
-    if (reason === 'hidden')
-      renderer.update(createElement(CerberusArtwork, { visible: false }));
+    if (reason === 'hidden') renderer.update(artwork({ visible: false }));
     if (reason === 'keyboard') mocks.keyboard.get('keyboardDidShow')!();
     if (reason === 'resize')
       area().props.onLayout({ nativeEvent: { layout: { width: 390 } } });
     if (reason === 'request') {
       mocks.request = { sequence: 1, animation: 'reaction-03' };
-      renderer.update(createElement(CerberusArtwork));
+      renderer.update(artwork());
     }
   });
   expect(ropes()).toHaveLength(0);
@@ -716,4 +730,25 @@ it('ignores a delayed native stop callback after release or unmount', async () =
   await holdRope();
   await act(async () => renderer.unmount());
   await act(async () => mocks.stopCallbacks.at(-1)!(0.8));
+});
+
+it('steps frames without rebuilding its position interpolation', async () => {
+  await mount();
+  const built = mocks.interpolate.mock.calls.length;
+  const source = image().props.style.left;
+  await advance(timings.walking[0]!);
+  expect(image().props.style.left).not.toBe(source);
+  expect(mocks.interpolate).toHaveBeenCalledTimes(built);
+});
+
+it('prefetches only the sheets that are shown on demand', async () => {
+  mocks.prefetch.mockResolvedValue([]);
+  await prefetchCerberusSheets();
+  expect(mocks.prefetch).toHaveBeenCalledTimes(1);
+  const sources = mocks.prefetch.mock.calls[0]![0] as number[];
+  expect(sources).not.toContain(1);
+  expect(sources).not.toContain(2);
+  expect([...sources].sort((a, b) => a - b)).toEqual([
+    3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+  ]);
 });

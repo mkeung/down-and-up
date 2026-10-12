@@ -28,12 +28,15 @@
   - Days without a value show as **gaps** and are not interpolated to zero.
   - Optional toggle for a **7-day rolling average** overlay.
   - Long ranges switch to weekly or monthly averages, following the [shared rules](stats.md) (identical to the app).
-  - Tooltip shows the date, the value, and a short note preview, if any. Points for days with a note get a small marker.
+  - Tooltip shows the date, the value, and a short note preview, if any. Points for days with a note get a small marker. Weekly and monthly points show their average and day count only, never a single day's note.
 - **Secondary chart: distribution bar chart** showing how many days each value (1–10) was recorded in the range.
 - **Entries table** below the charts, sorted newest first and paginated.
   - Columns: date, value, and note (full text, wrapped).
 - Responsive layout so the dashboard also works on a phone browser.
-- Chart data includes only the selected range and its six-day rolling-average lookback. The earliest entry date and the three most recent consecutive logged-day runs are fetched separately as compact metadata, preserving All and the browser-local current streak even when the chart shows a short or empty historical range. Runs include the UTC + 1 day margin needed for other phones' local dates; future days never extend today's streak.
+- The server computes the summary, value counts, chart points, and the bucketed 7-day rolling average series with the shared helpers (`chartSeries`, `summary`, `valueCounts`) and sends only those bounded results; the browser never receives the range's raw rows. Note previews (80 characters) are attached only to daily (≤ 90-day) points. The rolling toggle only shows or hides the precomputed series.
+- Login navigates straight to `/dashboard` with the browser-local 30D range (no extra refresh). Without a range in the URL, the server renders its UTC 30D default and the browser replaces the URL only when its local range differs.
+- Recharts loads after hydration (`next/dynamic`, no SSR) inside fixed-height frames, so it stays out of the initial bundle without layout shift. The static page header and navigation render on the server.
+- Chart data includes only the selected range and its six-day rolling-average lookback. The earliest entry date and the three most recent consecutive logged-day runs are fetched separately, in one query, as compact metadata, preserving All and the browser-local current streak even when the chart shows a short or empty historical range. Runs include the UTC + 1 day margin needed for other phones' local dates; future days never extend today's streak.
 - Use neutral wording throughout: "value" or no label at all, never "mood". Page titles and the browser tab title stay generic.
 - Entries are read-only on the web in v1. Editing them can come later, using the same per-field upsert. The only thing editable on the web is the reminder ([other web pages](#other-web-pages)).
 

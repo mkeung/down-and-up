@@ -69,7 +69,12 @@ it('skips a clip that fails instead of throwing', async () => {
   mocks.created[0]!.seekTo.mockRejectedValue(new Error('Unloaded'));
   expect(() => playSound('dogBark')).not.toThrow();
   await vi.runAllTimersAsync();
-  expect(mocks.created[0]!.play).toHaveBeenCalledTimes(1);
+  // A failed rewind is swallowed; the clip still plays from where it is.
+  expect(mocks.created[0]!.play).toHaveBeenCalledTimes(2);
+  mocks.created[0]!.play.mockImplementation(() => {
+    throw new Error('Released');
+  });
+  expect(() => playSound('dogBark')).not.toThrow();
 });
 
 it('barks for the tennis ball, meows for the yarn, and uses both for food', async () => {
@@ -172,21 +177,30 @@ it('mute pauses active clips and cancels outstanding animation cues', async () =
   expect(mocks.created[0]!.play).toHaveBeenCalledTimes(1);
 });
 
-it('does not play a pending seek that was muted, even after unmuting', async () => {
-  const { playSound, setSoundPreferences } = await load();
+it('starts playback in the same tick as the rewind instead of awaiting it', async () => {
+  const { playSound } = await load();
   playSound('click');
-  await vi.runAllTimersAsync();
   const clip = mocks.created[0]!;
-  let finish!: () => void;
-  clip.seekTo.mockReturnValueOnce(
-    new Promise<void>((resolve) => {
-      finish = resolve;
-    }),
-  );
+  clip.seekTo.mockReturnValueOnce(new Promise<void>(() => {}));
   playSound('click');
+  expect(clip.seekTo).toHaveBeenCalledTimes(2);
+  expect(clip.play).toHaveBeenCalledTimes(2);
+  expect(clip.seekTo.mock.invocationCallOrder[1]).toBeLessThan(
+    clip.play.mock.invocationCallOrder[1]!,
+  );
+});
+
+it('preloads every clip only while sound is on', async () => {
+  const { preloadSounds, setSoundPreferences } = await load();
   setSoundPreferences({ muted: true, volume: 1 });
-  setSoundPreferences({ muted: false, volume: 1 });
-  finish();
-  await vi.runAllTimersAsync();
-  expect(clip.play).toHaveBeenCalledTimes(1);
+  preloadSounds();
+  expect(mocks.created).toHaveLength(0);
+  setSoundPreferences({ muted: false, volume: 0.5 });
+  preloadSounds();
+  expect(mocks.created.map((player) => player.source)).toEqual([1, 2, 3, 4, 5]);
+  expect(
+    mocks.created.every((player) => player.play.mock.calls.length === 0),
+  ).toBe(true);
+  preloadSounds();
+  expect(mocks.created).toHaveLength(5);
 });

@@ -11,14 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { RECORDING_ENABLED } from '@down-up/shared';
-type Point = {
-  date: string;
-  value: number | null;
-  count: number;
-  rolling: number | null;
-  notePreview: string | null;
-  audio: boolean;
-};
+import type { DashboardPoint as Point } from '../server/dashboard-data';
 export function Charts({
   points,
   counts,

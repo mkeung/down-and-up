@@ -8,6 +8,13 @@ export class HttpError extends Error {
     super(message);
   }
 }
+// The profile row was missing under the profile lock. Handlers that defer the
+// authentication lookup to that lock report it as a failed lookup.
+export class UnknownProfile extends HttpError {
+  constructor() {
+    super(401, 'ID not found');
+  }
+}
 export const json = (value: unknown, status = 200) =>
   NextResponse.json(value, {
     status,
@@ -30,10 +37,8 @@ export function route(handler: (request: Request) => Promise<Response>) {
     }
   };
 }
-export async function body<T>(
-  request: Request,
-  schema: z.ZodType<T>,
-): Promise<T> {
+// Reads the raw JSON body (size-capped) so it can overlap with authentication.
+export async function readBody(request: Request): Promise<Buffer> {
   if (
     !(request.headers.get('content-type') ?? '').startsWith('application/json')
   )
@@ -53,13 +58,24 @@ export async function body<T>(
       }
       chunks.push(result.value);
     }
-    const parsed = schema.safeParse(
-      JSON.parse(Buffer.concat(chunks).toString('utf8')),
-    );
-    if (!parsed.success) throw new HttpError(400, 'Check the submitted data');
-    return parsed.data;
+    return Buffer.concat(chunks);
   } catch (error) {
     if (error instanceof HttpError) throw error;
     throw new HttpError(400, 'Check the submitted data');
   }
+}
+export function parseBody<T>(raw: Buffer, schema: z.ZodType<T>): T {
+  try {
+    const parsed = schema.safeParse(JSON.parse(raw.toString('utf8')));
+    if (parsed.success) return parsed.data;
+  } catch {
+    /* invalid JSON */
+  }
+  throw new HttpError(400, 'Check the submitted data');
+}
+export async function body<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+): Promise<T> {
+  return parseBody(await readBody(request), schema);
 }

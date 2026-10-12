@@ -4,7 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
-import { AppProvider, useApp } from '../src/app-context';
+import { AppProvider, useAppRuntime } from '../src/app-context';
 import { useTheme } from '../src/theme';
 import { todayLocal } from '@down-up/shared';
 import { SelectedDateProvider, useSelectedDate } from '../src/selected-date';
@@ -15,6 +15,7 @@ import { PixelFontContext } from '../src/retro';
 import pixelifySans from '../assets/fonts/PixelifySans-Regular.ttf';
 import silkscreen from '../assets/fonts/Silkscreen-Regular.ttf';
 import { CerberusProvider } from '../src/cerberus-context';
+import { prefetchCerberusSheets } from '../src/cerberus-artwork';
 import { SoundProvider } from '../src/sound-preference';
 function Navigation() {
   const theme = useTheme();
@@ -71,28 +72,36 @@ export default function Layout() {
     PixelifySans: pixelifySans,
     Silkscreen: silkscreen,
   });
-  if (!loaded && !error)
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          backgroundColor: '#f4f3ee',
-        }}
-      >
-        <ActivityIndicator accessibilityLabel="Loading" />
-      </View>
-    );
+  // Saved data opens while the fonts load instead of after them.
   return (
-    <PixelFontContext.Provider value={loaded}>
-      <AppProvider>
-        <Appearance />
-      </AppProvider>
-    </PixelFontContext.Provider>
+    <AppProvider>
+      {!loaded && !error ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            backgroundColor: '#f4f3ee',
+          }}
+        >
+          <ActivityIndicator accessibilityLabel="Loading" />
+        </View>
+      ) : (
+        <PixelFontContext.Provider value={loaded}>
+          <Appearance />
+        </PixelFontContext.Provider>
+      )}
+    </AppProvider>
   );
 }
+// Reads only the stable runtime, so sync and save status changes never
+// re-render the providers and navigator below it.
 function Appearance() {
-  const { repo } = useApp();
+  const { repo } = useAppRuntime();
+  useEffect(() => {
+    // After the first screen settles, so it never competes with startup.
+    const timer = setTimeout(() => void prefetchCerberusSheets(), 1500);
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <ThemeProvider store={repo}>
       <StatusBar style="auto" />

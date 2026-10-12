@@ -1,15 +1,18 @@
 'use client';
 import { useState } from 'react';
-import { z } from 'zod';
-import {
-  RECORDING_ENABLED,
-  serverEntrySchema,
-  type ServerEntry,
-} from '@down-up/shared';
-const pageSchema = z.object({
-  entries: z.array(serverEntrySchema),
-  hasMore: z.boolean(),
-});
+import { RECORDING_ENABLED, type ServerEntry } from '@down-up/shared';
+type Page = { entries: ServerEntry[]; hasMore: boolean };
+// The response comes from this app's own validated API; check only its shape.
+function isPage(data: unknown): data is Page {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'entries' in data &&
+    Array.isArray(data.entries) &&
+    'hasMore' in data &&
+    typeof data.hasMore === 'boolean'
+  );
+}
 export function EntriesTable({
   from,
   to,
@@ -34,7 +37,8 @@ export function EntriesTable({
         `/api/entries?from=${from}&to=${to}&page=${next}`,
       );
       if (!response.ok) throw new Error();
-      const data = pageSchema.parse(await response.json());
+      const data: unknown = await response.json();
+      if (!isPage(data)) throw new Error();
       setRows(data.entries);
       setHasMore(data.hasMore);
       setPage(next);

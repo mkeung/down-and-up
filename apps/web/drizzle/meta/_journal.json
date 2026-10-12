@@ -15,6 +15,13 @@
       "when": 1791686716928,
       "tag": "0001_slimy_iron_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791846430971,
+      "tag": "0002_luxuriant_mattie_franklin",
+      "breakpoints": true
     }
   ]
 }

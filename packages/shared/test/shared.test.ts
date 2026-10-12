@@ -4,7 +4,9 @@ import {
   applyAcknowledgment,
   applyPull,
   changeSchema,
+  chartGranularity,
   chartPoints,
+  chartSeries,
   cleanFields,
   currentStreak,
   currentStreakFromRuns,
@@ -212,6 +214,38 @@ describe('shared statistics', () => {
       count: 4,
     });
     expect(chartPoints([], '9997-01-01', '9999-12-31')).toHaveLength(36);
+  });
+  it('classifies chart granularity at the 90 and 730 day thresholds', () => {
+    const from = '2026-01-01';
+    expect(chartGranularity(from, addDays(from, 89))).toBe('daily');
+    expect(chartGranularity(from, addDays(from, 90))).toBe('weekly');
+    expect(chartGranularity(from, addDays(from, 729))).toBe('weekly');
+    expect(chartGranularity(from, addDays(from, 730))).toBe('monthly');
+  });
+  it('pairs chart points with the bucketed rolling average series', () => {
+    const rows = Array.from({ length: 400 }, (_, index) => ({
+      date: addDays('2025-01-01', index),
+      value: index % 3 === 0 ? null : (index % 10) + 1,
+    }));
+    for (const [from, to] of [
+      ['2025-01-10', '2025-02-20'],
+      ['2025-01-10', '2026-01-20'],
+      ['2023-01-10', '2026-01-20'],
+    ] as const) {
+      const series = chartSeries(rows, from, to);
+      const averages = chartPoints(rollingAverage(rows, from, to), from, to);
+      expect(
+        series.map(({ date, value, count }) => ({ date, value, count })),
+      ).toEqual(chartPoints(rows, from, to));
+      expect(series.map((point) => point.rolling)).toEqual(
+        averages.map((point) => point.value),
+      );
+    }
+    expect(chartSeries([], '2026-01-01', '2026-01-03')).toEqual([
+      { date: '2026-01-01', value: null, count: 0, rolling: null },
+      { date: '2026-01-02', value: null, count: 0, rolling: null },
+      { date: '2026-01-03', value: null, count: 0, rolling: null },
+    ]);
   });
   it('resolves compact streak runs for local today, yesterday, and future entries', () => {
     const runs = [

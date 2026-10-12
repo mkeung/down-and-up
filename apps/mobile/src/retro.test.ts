@@ -21,8 +21,7 @@ vi.mock('react-native', () => ({
 }));
 vi.mock('./cerberus-artwork', () => ({ CerberusArtwork: () => null }));
 vi.mock('./selected-date', () => ({
-  useSelectedDate: () => ({ date: '2026-10-12' }),
-  useEntry: () => null,
+  useSelectedEntry: () => ({ entry: null, value: null }),
 }));
 vi.mock('react-native-svg', () => ({ default: 'Svg', Path: 'Path' }));
 vi.mock('./theme', () => ({

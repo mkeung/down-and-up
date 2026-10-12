@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppProvider, useApp } from './app-context';
+import { AppProvider, useApp, useAppRuntime } from './app-context';
 
 const mocks = vi.hoisted(() => ({
   state: new Map<string, string>(),
@@ -11,6 +11,14 @@ const mocks = vi.hoisted(() => ({
   rebuild: vi.fn(),
   cleanup: vi.fn(),
   hasEntries: vi.fn(),
+  states: vi.fn(),
+  logged: vi.fn(),
+  applyResponse: vi.fn(),
+  edit: null as
+    | ((edit: { date: string; field: 'value' | 'note' | 'audio' }) => void)
+    | null,
+  writeState: { pending: false, failed: false },
+  writeListener: null as (() => void) | null,
 }));
 vi.mock('react-native', () => ({
   View: 'View',
@@ -47,6 +55,7 @@ vi.mock('./repository', () => ({
   Repository: class {
     initialize = async () => undefined;
     state = async (key: string) => mocks.state.get(key) ?? null;
+    states = mocks.states;
     setState = async (key: string, value: string | null) => {
       if (value === null) mocks.state.delete(key);
       else mocks.state.set(key, value);
@@ -55,13 +64,24 @@ vi.mock('./repository', () => ({
     list = async () => [];
     hasEntries = mocks.hasEntries;
     subscribe = () => () => undefined;
-    onEdit = () => () => undefined;
-    onWriteState = () => () => undefined;
-    writeState = () => ({ pending: false, failed: false });
+    onEdit = (
+      listener: (edit: {
+        date: string;
+        field: 'value' | 'note' | 'audio';
+      }) => void,
+    ) => {
+      mocks.edit = listener;
+      return () => undefined;
+    };
+    onWriteState = (listener: () => void) => {
+      mocks.writeListener = listener;
+      return () => undefined;
+    };
+    writeState = () => ({ ...mocks.writeState });
     hasDirty = async () => false;
     uploads = async () => [];
     pushBatch = async () => [];
-    applyResponse = async () => undefined;
+    applyResponse = mocks.applyResponse;
   },
 }));
 vi.mock('./transport', () => ({
@@ -74,6 +94,8 @@ vi.mock('./transport', () => ({
 vi.mock('./reminders', () => ({
   Reminders: class {
     rebuild = mocks.rebuild;
+    logged = mocks.logged;
+    affects = (date: string) => date >= '2026-10-12';
     foreground = async () => undefined;
   },
 }));
@@ -81,8 +103,10 @@ vi.mock('./reminders', () => ({
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let renderer: ReactTestRenderer;
 let app: ReturnType<typeof useApp>;
+let runtime: ReturnType<typeof useAppRuntime>;
 function Probe() {
   app = useApp();
+  runtime = useAppRuntime();
   return null;
 }
 beforeEach(async () => {
@@ -90,8 +114,20 @@ beforeEach(async () => {
   mocks.state.clear();
   mocks.state.set('sync_enabled', 'true');
   mocks.rebuild.mockReset().mockResolvedValue(undefined);
+  mocks.logged.mockReset().mockResolvedValue(undefined);
+  mocks.applyResponse
+    .mockReset()
+    .mockResolvedValue({ dates: [], settingsChanged: false });
+  mocks.writeState = { pending: false, failed: false };
   mocks.cleanup.mockReset().mockResolvedValue(undefined);
   mocks.hasEntries.mockReset().mockResolvedValue(false);
+  mocks.states
+    .mockReset()
+    .mockImplementation(async (keys: string[]) =>
+      Object.fromEntries(
+        keys.map((key) => [key, mocks.state.get(key) ?? null]),
+      ),
+    );
   mocks.request.mockReset().mockResolvedValue({
     applied: [],
     changes: [],
@@ -229,5 +265,60 @@ describe('failed identity operations', () => {
     expect(app.identity).toBeNull();
     await act(async () => app.engine.sync());
     expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('responsiveness', () => {
+  it('reads startup sync state in one query', async () => {
+    expect(mocks.states).toHaveBeenCalledExactlyOnceWith([
+      'identity_transition',
+      'cursor',
+      'sync_enabled',
+    ]);
+  });
+
+  it('keeps the runtime and its actions stable across status changes', async () => {
+    const first = runtime;
+    const firstApp = app;
+    await act(async () => app.setNotePending(true));
+    expect(app).not.toBe(firstApp);
+    expect(runtime).toBe(first);
+    expect(app.setSync).toBe(first.setSync);
+    const settled = app;
+    await act(async () => mocks.writeListener!());
+    // An unchanged write state does not publish a new context value.
+    expect(app).toBe(settled);
+  });
+
+  it("updates reminders only for value edits, cancelling just that day's", async () => {
+    mocks.rebuild.mockClear();
+    await act(async () => mocks.edit!({ date: '2026-10-12', field: 'note' }));
+    await act(async () => mocks.edit!({ date: '2026-10-12', field: 'audio' }));
+    expect(mocks.logged).not.toHaveBeenCalled();
+    await act(async () => mocks.edit!({ date: '2026-10-12', field: 'value' }));
+    expect(mocks.logged).toHaveBeenCalledExactlyOnceWith('2026-10-12');
+    expect(mocks.rebuild).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds reminders after sync only for new settings or pulled days from today on', async () => {
+    mocks.rebuild.mockClear();
+    mocks.applyResponse.mockResolvedValueOnce({
+      dates: ['2026-10-01'],
+      settingsChanged: false,
+    });
+    await act(async () => app.engine.sync());
+    expect(mocks.rebuild).not.toHaveBeenCalled();
+    mocks.applyResponse.mockResolvedValueOnce({
+      dates: ['2026-10-12'],
+      settingsChanged: false,
+    });
+    await act(async () => app.engine.sync());
+    expect(mocks.rebuild).toHaveBeenCalledExactlyOnceWith(true);
+    mocks.applyResponse.mockResolvedValueOnce({
+      dates: [],
+      settingsChanged: true,
+    });
+    await act(async () => app.engine.sync());
+    expect(mocks.rebuild).toHaveBeenCalledTimes(2);
   });
 });

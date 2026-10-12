@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { memo, type ComponentProps } from 'react';
 import type { Tabs } from 'expo-router';
 type BottomTabBarProps = Parameters<
   NonNullable<ComponentProps<typeof Tabs>['tabBar']>
@@ -10,12 +10,17 @@ import { PixelBackdrop, PixelText } from './retro';
 import { PawsitiveIcon, RateIcon } from './tab-icons';
 import { CerberusArtwork } from './cerberus-artwork';
 import { EntryCheck } from './entry-check';
-import { useEntry, useSelectedDate } from './selected-date';
+import { useSelectedEntry } from './selected-date';
 
-export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
+// Memoized so it re-renders for navigation, theme, or entry changes only, not
+// whenever the navigator re-renders with equal props.
+export const RetroTabBar = memo(function RetroTabBar({
+  state,
+  navigation,
+  insets,
+}: BottomTabBarProps) {
   const theme = useTheme();
-  const { date } = useSelectedDate();
-  const entry = useEntry(date);
+  const { entry, value } = useSelectedEntry();
   const route = state.routes[state.index]?.name;
   return (
     <View style={{ backgroundColor: theme.background }}>
@@ -45,9 +50,7 @@ export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
             const label = route.name === 'index' ? 'Rate' : 'Pawsitive';
             const Icon = route.name === 'index' ? RateIcon : PawsitiveIcon;
             const hasContent =
-              route.name === 'index'
-                ? entry?.value != null
-                : Boolean(entry?.note);
+              route.name === 'index' ? value != null : Boolean(entry?.note);
             return (
               <FeedbackPressable
                 key={route.key}
@@ -120,4 +123,4 @@ export function RetroTabBar({ state, navigation, insets }: BottomTabBarProps) {
       </View>
     </View>
   );
-}
+});

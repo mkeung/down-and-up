@@ -1,7 +1,7 @@
 'use client';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { normalizeId } from '@down-up/shared';
+import { normalizeId, presetRange, todayLocal } from '@down-up/shared';
 export function LoginForm() {
   const [id, setId] = useState('');
   const [pending, setPending] = useState(false);
@@ -26,8 +26,10 @@ export function LoginForm() {
         return;
       }
       setId('');
-      router.replace('/dashboard');
-      router.refresh();
+      // The dashboard is dynamic, so it renders with the new session cookie
+      // without a refresh. Go straight to the local 30D range.
+      const range = presetRange('30D', todayLocal());
+      router.replace(`/dashboard?from=${range.from}&to=${range.to}`);
     } catch {
       setError('Could not connect. Try again.');
     } finally {

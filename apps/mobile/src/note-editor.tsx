@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import { PixelPanel, PixelText, usePixelType } from './retro';
 import { MAX_NOTE_LENGTH } from '@down-up/shared';
-import { reportError, useApp } from './app-context';
+import { reportError, useAppRuntime } from './app-context';
 import { useTheme } from './theme';
 import { keypadLayout } from './entry-layout';
-import { useCerberus } from './cerberus-context';
+import { useCerberusActions } from './cerberus-context';
 import { Action } from './components';
 export function NoteEditor({
   date,
@@ -22,11 +22,11 @@ export function NoteEditor({
   date: string;
   note: string | null;
 }) {
-  const { repo, setNotePending } = useApp();
+  const { repo, setNotePending } = useAppRuntime();
   const theme = useTheme();
   const pixelType = usePixelType();
   const { fontScale } = useWindowDimensions();
-  const { playNoteSubmit } = useCerberus();
+  const { playNoteSubmit } = useCerberusActions();
   const [text, setText] = useState(note ?? '');
   const [focused, setFocused] = useState(false);
   const latest = useRef(note ?? '');

@@ -3,14 +3,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RECORDING_ENABLED } from '@down-up/shared';
 import { useTheme } from '../src/theme';
 import { EntryHeader } from '../src/entry-header';
-import { useEntry, useSelectedDate } from '../src/selected-date';
+import { useSelectedDate, useSelectedEntry } from '../src/selected-date';
 import { NoteEditor } from '../src/note-editor';
 import { AudioNote } from '../src/audio-note';
 
 export default function Pawsitive() {
   const theme = useTheme();
   const { date, setRecording } = useSelectedDate();
-  const selectedEntry = useEntry(date);
+  const { entry: selectedEntry } = useSelectedEntry();
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}

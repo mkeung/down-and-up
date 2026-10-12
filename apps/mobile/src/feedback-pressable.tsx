@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -63,9 +63,26 @@ export function FeedbackPressable({
     return () => animation.stop();
   }, [disabled, pressed, progress, reduceMotion]);
 
-  const baseStyle = StyleSheet.flatten(style);
+  // Interpolations are native-driven nodes; rebuild them only when their
+  // inputs change rather than on every parent render.
+  const baseStyle = useMemo(() => StyleSheet.flatten(style), [style]);
   const opacity =
     typeof baseStyle?.opacity === 'number' ? baseStyle.opacity : 1;
+  const pressedOpacity = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [opacity, opacity * 0.78],
+      }),
+    [progress, opacity],
+  );
+  const translateY = useMemo(
+    () =>
+      reduceMotion
+        ? 0
+        : progress.interpolate({ inputRange: [0, 1], outputRange: [0, 2] }),
+    [progress, reduceMotion],
+  );
   return (
     <AnimatedPressable
       {...props}
@@ -89,20 +106,10 @@ export function FeedbackPressable({
       style={[
         style,
         {
-          opacity: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [opacity, opacity * 0.78],
-          }),
+          opacity: pressedOpacity,
           transform: [
             ...(Array.isArray(baseStyle?.transform) ? baseStyle.transform : []),
-            {
-              translateY: reduceMotion
-                ? 0
-                : progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 2],
-                  }),
-            },
+            { translateY },
           ],
         },
       ]}

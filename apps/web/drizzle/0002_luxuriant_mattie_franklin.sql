@@ -1,0 +1,1 @@
+CREATE INDEX "audio_deletions_due" ON "audio_deletions" USING btree ("delete_after");
