@@ -64,7 +64,7 @@ Style/medium: restrained neo-brutalist editorial UI with thick black outlines, c
 
 ### 03-retro-pixel.png
 
-Mascot reference: `../../ConceptArt/01d-cerberus-pixel-low-fidelity.png` (identity only).
+Mascot reference: `../../Concepts/01d-cerberus-pixel-low-fidelity.png` (identity only).
 
 ```text
 Use case: ui-mockup.

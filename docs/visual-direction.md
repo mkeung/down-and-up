@@ -4,14 +4,14 @@
 
 ## Direction
 
-Use retro pixel, based on [`ConceptArt/UI/03-retro-pixel.png`](../ConceptArt/UI/03-retro-pixel.png):
+Use retro pixel, based on [`Concepts/UI/03-retro-pixel.png`](../Concepts/UI/03-retro-pixel.png):
 
 - crisp stepped panel edges,
 - readable pixel numerals,
 - neutral keycaps,
 - custom grid and paw tab art for Rate and Pawsitive.
 
-Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIXEL.md`](../ConceptArt/UI/RETRO-PIXEL.md) (mint cartridge, midnight blue, peach tickets, plum stickers). Settings now offers Neutral, Mint, Blue, Peach, Plum, and Yellow color presets. All six presets share stepped controls and custom pixel tabs; the different control treatments in the boards remain reference studies.
+Additional palette and control-art alternatives are in [`Concepts/UI/RETRO-PIXEL.md`](../Concepts/UI/RETRO-PIXEL.md) (mint cartridge, midnight blue, peach tickets, plum stickers). Settings now offers Neutral, Mint, Blue, Peach, Plum, and Yellow color presets. All six presets share stepped controls and custom pixel tabs; the different control treatments in the boards remain reference studies.
 
 ## Rules the theme must keep
 
@@ -32,8 +32,8 @@ Additional palette and control-art alternatives are in [`ConceptArt/UI/RETRO-PIX
   Walking now uses eight individually drawn poses with staggered front/hind footfalls and visible movement in both golden hind legs, following gait review. The 1.28 s loop and preserved original source are documented in [gait notes](../OfficialAssets/Animations/01e/walking/gait.md).
   Tail revisions add broader wags to all three walking tails, both dog tails in the tennis-ball loop, and only the cat tail in the yarn-ball loop. The revised sheets retain the gait/prop actions; preceding sources and exact generation prompts remain available.
 
-- **App icon:** `OfficialAssets/10-cerberus-retro-pixel-icon.png` is the master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. Earlier icons 09b (opaque) and 09c (transparent) live in `ConceptArt/` as reference studies; 10 is the only official icon master.
-- **Character artwork:** `OfficialAssets/01e-cerberus-retro-pixel-character.png` is a full-body retro-pixel variant of 01c, matching icon 10. It retains three heads, three tails, tabby front legs, golden rear legs, and no collars. The original 01c is preserved in `ConceptArt/` as a reference study. The exact prompt is in [concept art](../ConceptArt/README.md#01e-cerberus-retro-pixel-characterpng).
+- **App icon:** `OfficialAssets/10-cerberus-retro-pixel-icon.png` is the master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. Earlier icons 09b (opaque) and 09c (transparent) live in `Concepts/` as reference studies; 10 is the only official icon master.
+- **Character artwork:** `OfficialAssets/01e-cerberus-retro-pixel-character.png` is a full-body retro-pixel variant of 01c, matching icon 10. It retains three heads, three tails, tabby front legs, golden rear legs, and no collars. The original 01c is preserved in `Concepts/` as a reference study. The exact prompt is in [concepts](../Concepts/README.md#01e-cerberus-retro-pixel-characterpng).
 - **Theme color picker:** Settings offers six labeled swatches with a checkmark and selected border. The choice is saved locally in SQLite, applies across mobile screens and tabs, survives restarts and ID changes, and works with sync off. Light/dark appearance follows the phone. Neutral key surfaces and fixed status colors remain independent of the palette. Details are in [mobile app](completed/mobile-app.md#theme-colors).
 
 - **Mobile controls:** Rate keeps all four keypad rows in one area below a shared Rate/Pawsitive header. The 10 key stays centered below 7–9 with a 12pt gap and a minimum 64×64pt target. The upper three rows scroll only within their own clipped area when height or text scaling requires it, so header content never pushes those rows behind 10. The shared header fixes the date position between tabs; Pawsitive’s note panel uses the same scaled height as the full keypad. Compact vertical key padding preserves full touch targets while reclaiming space. Settings and History omit bottom safe-area padding because navigation already includes it, removing the blank strip above the tabs. Shared stepped frames with block shadows, double selection rims, pixel chevrons, a two-line Today/date panel, and a framed note editor. Keypad labels remain just the numbers; the selected key has a pixel checkmark and tapping it does nothing. All keycaps have the same neutral art. Keys grow vertically with text; 1–9 scroll within the keypad while 10 remains fully visible.

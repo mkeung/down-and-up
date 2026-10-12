@@ -1,10 +1,12 @@
-# Cerberus concept art
+# Concepts
+
+Exploratory studies for Down & Up: character and icon art, UI directions, and audio. Nothing here ships in the app; official assets live in [OfficialAssets](../OfficialAssets/).
 
 Youth-oriented app UI explorations are in [UI](UI/README.md). **Retro pixel is the selected direction.** Open the [comparison gallery](UI/index.html) to review the five initial art directions and four additional retro-pixel palette/control studies. The [design note](UI/RETRO-PIXEL.md) records the selection and the new pixel app icon.
 
 PNG character and icon studies generated with the built-in image generation tool from the pet photos in `../DogsAndCat/`, including four edited versions of concept 01 and icon variants based on concept 08. Each combines the two dogs and cat into one creature with three heads and three tails; the icon variants show only the heads and a small chest.
 
-The official retro-pixel character (**01e**) and icon (**10**) live in [OfficialAssets](../OfficialAssets/). Original character **01c** and earlier icon versions **09b** and **09c** live in `ConceptArt/` as reference studies. The new icon prompt is in [UI/RETRO-PIXEL.md](UI/RETRO-PIXEL.md); the original character and icon prompts are preserved below.
+The official retro-pixel character (**01e**) and icon (**10**) live in [OfficialAssets](../OfficialAssets/). Original character **01c** and earlier icon versions **09b** and **09c** live in `Concepts/` as reference studies. The new icon prompt is in [UI/RETRO-PIXEL.md](UI/RETRO-PIXEL.md); the original character and icon prompts are preserved below.
 
 Start with **06–08** for the lowest-detail options. **01d** simplifies the standing character from 01c while retaining the tabby front legs and no collars. **01e** redraws 01c in the same chunky retro-pixel style as official icon 10. **01–05** retain more of the pets' appearance and explore different media. **10** is the current opaque retro-pixel app-icon master with two front paws and hidden legs. **09b** and its transparent companion **09c** preserve the previous illustrated icon. All other images have an opaque light background.
 
@@ -35,7 +37,7 @@ The images have been visually checked for one body or connected portrait, three 
 
 ### 01e-cerberus-retro-pixel-character.png
 
-Built-in image generation edit of original character 01c, with official icon 10 as the style reference. Saved to `OfficialAssets/01e-cerberus-retro-pixel-character.png`. Visually checked for three heads, three separate tails, two tabby front legs, two golden rear legs, no collars, and uncropped extremities. Original 01c is preserved in `ConceptArt/`.
+Built-in image generation edit of original character 01c, with official icon 10 as the style reference. Saved to `OfficialAssets/01e-cerberus-retro-pixel-character.png`. Visually checked for three heads, three separate tails, two tabby front legs, two golden rear legs, no collars, and uncropped extremities. Original 01c is preserved in `Concepts/`.
 
 ```text
 Use case: style-transfer.

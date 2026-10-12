@@ -15,7 +15,7 @@ Color belongs to the overall surfaces and chrome, never to the numeric scale. Al
 
 ## Icon
 
-[Official retro-pixel icon](../../OfficialAssets/10-cerberus-retro-pixel-icon.png). `scripts/icons.mjs` prepares the 1024×1024 native asset from this master. The earlier icon studies 09b and 09c live in `ConceptArt/` for reference. [Retro-pixel character 01e](../../OfficialAssets/01e-cerberus-retro-pixel-character.png) redraws the full-body 01c character in the same style as official icon 10.
+[Official retro-pixel icon](../../OfficialAssets/10-cerberus-retro-pixel-icon.png). `scripts/icons.mjs` prepares the 1024×1024 native asset from this master. The earlier icon studies 09b and 09c live in `Concepts/` for reference. [Retro-pixel character 01e](../../OfficialAssets/01e-cerberus-retro-pixel-character.png) redraws the full-body 01c character in the same style as official icon 10.
 
 ## Exact prompts
 
@@ -25,7 +25,7 @@ All assets use the built-in image generation tool. Input paths below are relativ
 
 Destination: `OfficialAssets/10-cerberus-retro-pixel-icon.png`.
 
-References: `ConceptArt/09b-cerberus-app-icon-front-paws.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
+References: `Concepts/09b-cerberus-app-icon-front-paws.png`, `Concepts/01d-cerberus-pixel-low-fidelity.png`.
 
 ```text
 Use case: style-transfer.
@@ -38,9 +38,9 @@ Background solid warm ivory, edge to edge, completely opaque. Character occupies
 
 ### 06-retro-mint-cartridge.png
 
-Destination: `ConceptArt/UI/06-retro-mint-cartridge.png`.
+Destination: `Concepts/UI/06-retro-mint-cartridge.png`.
 
-References: `ConceptArt/UI/03-retro-pixel.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
+References: `Concepts/UI/03-retro-pixel.png`, `Concepts/01d-cerberus-pixel-low-fidelity.png`.
 
 ```text
 Use case: ui-mockup.
@@ -58,9 +58,9 @@ Global palette: muted mint/sage console-like screen surround, creamy ivory typog
 
 ### 07-retro-midnight-blue.png
 
-Destination: `ConceptArt/UI/07-retro-midnight-blue.png`.
+Destination: `Concepts/UI/07-retro-midnight-blue.png`.
 
-References: `ConceptArt/UI/03-retro-pixel.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
+References: `Concepts/UI/03-retro-pixel.png`, `Concepts/01d-cerberus-pixel-low-fidelity.png`.
 
 ```text
 Use case: ui-mockup.
@@ -78,9 +78,9 @@ Global palette: deep navy blue canvas, slate-blue chrome panels, ivory text. ALL
 
 ### 08-retro-peach-tickets.png
 
-Destination: `ConceptArt/UI/08-retro-peach-tickets.png`.
+Destination: `Concepts/UI/08-retro-peach-tickets.png`.
 
-References: `ConceptArt/UI/03-retro-pixel.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
+References: `Concepts/UI/03-retro-pixel.png`, `Concepts/01d-cerberus-pixel-low-fidelity.png`.
 
 ```text
 Use case: ui-mockup.
@@ -98,9 +98,9 @@ Global palette: soft muted peach/coral canvas with warm ivory chrome and dark br
 
 ### 09-retro-plum-stickers.png
 
-Destination: `ConceptArt/UI/09-retro-plum-stickers.png`.
+Destination: `Concepts/UI/09-retro-plum-stickers.png`.
 
-References: `ConceptArt/UI/03-retro-pixel.png`, `ConceptArt/01d-cerberus-pixel-low-fidelity.png`.
+References: `Concepts/UI/03-retro-pixel.png`, `Concepts/01d-cerberus-pixel-low-fidelity.png`.
 
 ```text
 Use case: ui-mockup.
