@@ -25,7 +25,7 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-sqlite',
     'expo-notifications',
-    // Recording is deferred (PLAN.md §8, Phase 6), so no microphone access.
+    // Recording is deferred (docs/voice-recording.md), so no microphone access.
     ['expo-audio', { microphonePermission: false, recordAudioAndroid: false }],
     [
       'expo-splash-screen',

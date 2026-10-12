@@ -1,0 +1,32 @@
+# Decisions made
+
+A running log. Add new decisions here in the same change that makes them, and link the plan that carries the detail.
+
+- **Tapping the selected number again:** does nothing. A day's value can be changed but never cleared, and each day has at most one entry.
+- **Labels:** none. The app is for mood but stays discreet, so there is no label, prompt, or mood wording anywhere.
+- **Number layout:** phone keypad style, with 1–9 in a 3×3 grid and 10 alone, centered, on the bottom row.
+- **Name:** keep "Down & Up".
+- **Visual direction:** use retro pixel, based on `ConceptArt/UI/03-retro-pixel.png`: crisp stepped panel edges, readable pixel numerals, neutral keycaps, and custom grid/paw tab art. Additional palette and control-art alternatives are in `ConceptArt/UI/RETRO-PIXEL.md`; their colors and treatments remain exploratory. All ten keys keep one neutral color family, with selection shown by a bold neutral border and checkmark. Mobile UI implementation is tracked in [visual direction](visual-direction.md).
+- **Official artwork:** keep the Cerberus character version 01c and use `OfficialAssets/10-cerberus-retro-pixel-icon.png` as the app-icon master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it. The icon is a chunky pixel portrait with three heads, three tails, and two small tabby front paws with the legs hidden. Preserve earlier icons 09b (opaque) and 09c (transparent) as reference studies. Exploratory UI studies and generation prompts stay in `ConceptArt/`.
+- **App lock:** none.
+- **In-app history:** a History screen with a list of values by day and charts, read from local data so it works offline.
+- **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note, plus recording once it ships), sharing one selected day. History and Settings stay as screens without a tab. Settings opens from the [data status icon](data-status-icon.md). History has no visible entry point for now and opens through `down-up://history`.
+- **Data status icon:** a red, yellow, or green icon in the top-right corner of Rate and Pawsitive shows whether entries are unsaved, saved on the phone, or saved to the cloud, and opens Settings. Each state also has its own shape. These status colors are the only colors outside the neutral palette and never relate to the value ([data status icon](data-status-icon.md)).
+- **Notes:** an optional text note (≤2,000 chars) for any day. An optional audio recording (≤5 min, one per day) comes later.
+- **Voice recording deferred:** the first release ships without recording. The audio design (the recording UI, audio transfer, the audio routes, R2, and the cleanup cron jobs) is kept in [voice recording](voice-recording.md). The SQLite and Postgres audio columns and the audio field group in the sync protocol stay in place and empty, so turning recording on later needs no migration or protocol change.
+- **Plan documents:** the plan lives in focused files under `docs/`, indexed by [`docs/README.md`](README.md). Fully completed plans move to `docs/completed/` and describe the app as built; active plans describe only what they change.
+- **Past dates:** no limit on how far back.
+- **No sign-in:** a device-generated **12-character** letters-and-numbers ID links the app to the web. The web login is just that ID. A hidden registration secret makes re-registering safe after a reinstall.
+- **Sync consent:** a one-time notice on first launch. Sync is on by default, and "Keep on this phone only" is available.
+- **Android Auto Backup:** disabled. The server is the backup.
+- **Daily reminder:** optional. Turned on and timed on the web, delivered as local notifications scheduled by the phone in its local time. Skipped on days already logged. Neutral text ("Down & Up" / "Reminder").
+- **Reminder permission deferral:** "Not now" defers the explanation until the next foreground; it does not count as an OS permission request. Denied requests expose phone-settings guidance even when the OS would allow another request ([reminders](completed/reminders.md)).
+- **Delete my data:** either wipes the device too (fresh ID), or keeps local data and turns sync off.
+- **Sync metadata:** each field has a dirty flag; acknowledgments clear only accepted groups unchanged since the push. Clamped timestamps also have replay receipts to make retries idempotent across changing server times.
+- **Storage URLs:** audio object namespaces use a hash of the ID.
+- **Very old dates:** dates before 1900 are local-only.
+- **Mobile charts:** lightweight SVG charts, using the shared statistics helpers.
+- **Identity transitions:** abort sync, journal the reset, cache remote recordings for Merge, and re-queue every field and file.
+- **Replace ID:** generate server-side, copy audio before moving rows, invalidate sessions, and keep a short-lived retry receipt.
+- **Hobby staging:** use two daily cleanup jobs twelve hours apart; both drain the deletion queue and the second also sweeps orphans. This preserves the 24-hour deletion target without a paid hourly cron schedule. Vercel cron is production-only, so preview cleanup is verified by manual invocation.
+- **Phone-only cleanup:** delete unreferenced local recordings without waiting for sync. Discarding local data also removes cached CSV and ZIP exports.

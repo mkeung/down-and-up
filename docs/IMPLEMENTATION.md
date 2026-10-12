@@ -1,6 +1,6 @@
 # Implementation and verification
 
-The plan review identified field-level dirty tracking, durable clamped-write receipts, hashed audio namespaces, and recoverable ID transitions as necessary for correct sync and credential privacy. These are implemented and recorded in `PLAN.md`.
+The plan review identified field-level dirty tracking, durable clamped-write receipts, hashed audio namespaces, and recoverable ID transitions as necessary for correct sync and credential privacy. These are implemented and recorded in [the implementation review](completed/implementation-review.md).
 
 ## Delivered
 

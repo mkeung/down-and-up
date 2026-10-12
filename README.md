@@ -2,7 +2,7 @@
 
 A discreet daily 1–10 record. The Expo app saves values and notes in SQLite and works offline. Voice recording is built but turned off until Phase 6 (`RECORDING_ENABLED` in `packages/shared`). The Next.js app provides the sync API and a read-only dashboard. Access uses a device-generated ID; there are no accounts or authentication SDKs.
 
-`PLAN.md` defines the product and protocol. Its implementation review records the changes required to make the original plan consistent.
+[`docs/README.md`](docs/README.md) indexes the plans that define the product and protocol: active plans in `docs/`, completed ones in `docs/completed/`. The [implementation review](docs/completed/implementation-review.md) records the changes required to make the original plan consistent.
 
 ## Requirements
 
