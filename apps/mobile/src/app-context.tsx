@@ -105,13 +105,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           transition === 'replace',
         );
       const cursor = await repo.state('cursor');
-      const rows = await repo.list();
+      const hasEntries = await repo.hasEntries();
       if (!stored && cursor !== null) setNeedsIdentity(true);
       else if (!stored && (await repo.state('sync_enabled')) !== 'false') {
         stored = newIdentity();
         await saveIdentity(stored);
       }
-      if (stored && rows.length === 0) {
+      if (stored && !hasEntries) {
         await repo.resetSync(false);
         if (stored.secret) {
           stored = { ...stored, registered: false };
@@ -178,9 +178,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (state === 'active') void reminders.foreground().catch(reportError);
       });
       disposeApp = () => appSubscription.remove();
-      await reminders.rebuild();
-      await transport.cleanup(consent === 'false');
       setRuntime(initialized);
+      void reminders.rebuild().catch(reportError);
+      void transport.cleanup(consent === 'false').catch(reportError);
     })().catch(() => {
       if (alive) setStartupError(true);
     });

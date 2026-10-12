@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   chartPoints,
-  currentStreak,
+  currentStreakFromRuns,
   daysInRange,
   isCalendarDate,
   presetRange,
@@ -15,6 +15,7 @@ import {
   valueCounts,
   type RangePreset,
   type ServerEntry,
+  type StreakRun,
 } from '@down-up/shared';
 import { Charts } from './charts';
 import { EntriesTable } from './entries-table';
@@ -27,6 +28,8 @@ export type ChartEntry = {
 };
 export function Dashboard({
   history,
+  firstDate,
+  streakRuns,
   from,
   to,
   initialRows,
@@ -34,6 +37,8 @@ export function Dashboard({
   hasRange,
 }: {
   history: ChartEntry[];
+  firstDate: string | null;
+  streakRuns: StreakRun[];
   from: string;
   to: string;
   initialRows: ServerEntry[];
@@ -60,7 +65,10 @@ export function Dashboard({
     setCustomTo(to);
   }, [from, to]);
   const stats = useMemo(() => summary(history, from, to), [history, from, to]);
-  const streak = useMemo(() => currentStreak(history, today), [history, today]);
+  const streak = useMemo(
+    () => currentStreakFromRuns(streakRuns, today),
+    [streakRuns, today],
+  );
   const points = useMemo(() => {
     const chart = chartPoints(history, from, to);
     const averages = rolling
@@ -97,7 +105,7 @@ export function Dashboard({
     );
   }
   function preset(preset: RangePreset) {
-    const range = presetRange(preset, today, history[0]?.date);
+    const range = presetRange(preset, today, firstDate);
     changeRange(range.from, range.to);
   }
   const granularity =
@@ -124,7 +132,7 @@ export function Dashboard({
       <div className="range-controls">
         <div className="presets">
           {RANGE_PRESETS.map((item) => {
-            const range = presetRange(item, today, history[0]?.date);
+            const range = presetRange(item, today, firstDate);
             return (
               <button
                 key={item}

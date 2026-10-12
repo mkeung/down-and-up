@@ -12,6 +12,7 @@
   - The app schedules **individual notifications for the next 30 days** rather than one repeating notification. iOS allows 64 pending notifications.
   - **The reminder is skipped on any day that already has a value.** Recording a value for today cancels today's notification.
   - The schedule is rebuilt on app start, on foreground, after every sync, after a value is recorded for today, and when the phone's time zone changes.
+  - Startup scheduling runs after local screens open. Concurrent rebuild requests coalesce into one trailing rebuild, retaining permission requests and applying the latest entries/settings without creating one full scheduling job per tap.
   - If the app isn't opened for 30 days, reminders stop until it's opened again. That's a deliberate quiet failure mode.
 - **Android timing:** uses inexact scheduling, which can be a few minutes late. Exact alarms would need the `SCHEDULE_EXACT_ALARM` permission, which Google Play restricts to alarm and calendar apps.
 - **Permission:**

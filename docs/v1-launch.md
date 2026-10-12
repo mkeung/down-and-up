@@ -4,6 +4,8 @@
 
 ## Done
 
+- Performance review fixes: bounded sync/database work, faster shared chart calculations, range-scoped history reads, lazy mobile calendar rows, and nonblocking local startup. See [implementation review](completed/implementation-review.md#performance-and-responsiveness). Real-device responsiveness during restore remains a release check.
+
 - App icon, splash screen, dark mode, and store listing draft.
 - CSV export and Replace ID.
 - [Data status icon](completed/data-status-icon.md): replaces the text indicator at the bottom of Rate and is the way into Settings.

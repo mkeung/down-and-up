@@ -47,6 +47,8 @@
   - Rows edited during the sync (detected by comparing per-field timestamps) keep those fields dirty, so a tap or keystroke made mid-sync isn't lost. Only transmitted and accepted field groups are acknowledged; pending or rejected audio remains dirty.
 - **Pulled rows:** the client applies each pulled field group only if the local copy of that group is not dirty, or the pulled timestamp is newer.
 - Pushes are **idempotent**, so retries are always safe.
+- Server batches load existing entries and matching replay receipts in bulk, merge in memory under the profile lock, and upsert the merged rows together. Each changed row still increments the per-profile sequence, and acknowledged audio UUIDs retain Postgres's lowercase representation.
+- Mobile pages use bulk reads/writes in transactions of at most 50 dates so queued local edits can run between chunks. The cursor, reminder settings, and last-sync time commit only after all chunks succeed. An interrupted page can therefore replay safely without skipping rows; dirty edits made between chunks still use the same per-field merge rules. Entry revisions and sync-settings notifications are separate.
 - **Clock limitation:** LWW relies on device clocks, which is fine for one person on one or two phones.
   - The server clamps timestamps more than 5 minutes in the future to `now()`.
   - Because the client adopts the server's stored timestamps, a phone with a fast clock can't keep a stale value that beats newer edits.

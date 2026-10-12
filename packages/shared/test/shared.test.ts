@@ -7,8 +7,10 @@ import {
   chartPoints,
   cleanFields,
   currentStreak,
+  currentStreakFromRuns,
   dailyPoints,
   emptyEntry,
+  eachDay,
   entrySchema,
   exportCsv,
   formatIdForDisplay,
@@ -75,6 +77,34 @@ describe('calendar dates', () => {
     expect(addDays('0001-01-01', 1)).toBe('0001-01-02');
     expect(isCalendarDate('2026-13-01')).toBe(false);
   });
+  it.each([
+    'America/Los_Angeles',
+    'America/New_York',
+    'Pacific/Kiritimati',
+    'Pacific/Honolulu',
+  ])(
+    'iterates local days without skipping or repeating across DST in %s',
+    (timezone) => {
+      process.env.TZ = timezone;
+      for (const [from, to] of [
+        ['2026-03-06', '2026-03-10'],
+        ['2026-10-30', '2026-11-03'],
+        ['2024-02-27', '2024-03-02'],
+      ])
+        expect([...eachDay(from!, to!)]).toEqual(
+          Array.from({ length: 5 }, (_, index) => addDays(from!, index)),
+        );
+      expect([...eachDay('0099-12-31', '0100-01-02')]).toEqual([
+        '0099-12-31',
+        '0100-01-01',
+        '0100-01-02',
+      ]);
+      expect([...eachDay('9999-12-30', '9999-12-31')]).toEqual([
+        '9999-12-30',
+        '9999-12-31',
+      ]);
+    },
+  );
 });
 
 describe('shared statistics', () => {
@@ -131,6 +161,77 @@ describe('shared statistics', () => {
       from: '2026-09-11',
       to: '2026-10-10',
     });
+  });
+  it('keeps optimized rolling windows identical to the seven-day definition', () => {
+    const data = Array.from({ length: 45 }, (_, index) => ({
+      date: addDays('2026-02-20', index),
+      value: index % 3 === 0 ? null : (index % 10) + 1,
+    }));
+    const expected = [...eachDay('2026-02-26', '2026-04-05')].map((date) => {
+      const window = data.filter(
+        (row) =>
+          row.date >= addDays(date, -6) &&
+          row.date <= date &&
+          row.value !== null,
+      );
+      return {
+        date,
+        count: window.length,
+        value:
+          window.length >= 4
+            ? window.reduce((sum, row) => sum + row.value!, 0) / window.length
+            : null,
+      };
+    });
+    expect(rollingAverage(data, '2026-02-26', '2026-04-05')).toEqual(expected);
+  });
+  it('keeps partial months, leap years, and empty buckets in sparse long histories', () => {
+    const points = chartPoints(
+      [
+        { date: '2023-01-30', value: 10 },
+        { date: '2024-02-29', value: 2 },
+        { date: '2026-01-01', value: 8 },
+        { date: '2026-01-03', value: 1 },
+      ],
+      '2023-01-31',
+      '2026-01-02',
+    );
+    expect(points).toHaveLength(37);
+    expect(points[0]).toEqual({ date: '2023-01-01', value: null, count: 0 });
+    expect(points[13]).toEqual({ date: '2024-02-01', value: 2, count: 1 });
+    expect(points.at(-1)).toEqual({ date: '2026-01-01', value: 8, count: 1 });
+  });
+  it('keeps rolling windows and monthly iteration within the supported calendar bounds', () => {
+    const rows = [1, 2, 3, 4].map((day) => ({
+      date: `0001-01-0${day}`,
+      value: day,
+    }));
+    expect(rollingAverage(rows, '0001-01-01', '0001-01-04').at(-1)).toEqual({
+      date: '0001-01-04',
+      value: 2.5,
+      count: 4,
+    });
+    expect(chartPoints([], '9997-01-01', '9999-12-31')).toHaveLength(36);
+  });
+  it('resolves compact streak runs for local today, yesterday, and future entries', () => {
+    const runs = [
+      { from: '2026-10-07', to: '2026-10-10' },
+      { from: '2026-10-12', to: '2026-10-12' },
+    ];
+    const data = runs.flatMap((run) =>
+      [...eachDay(run.from, run.to)].map((date) => ({ date, value: 5 })),
+    );
+    for (const today of [
+      '2026-10-09',
+      '2026-10-10',
+      '2026-10-11',
+      '2026-10-12',
+      '2026-10-13',
+      '2026-10-14',
+    ])
+      expect(currentStreakFromRuns(runs, today)).toBe(
+        currentStreak(data, today),
+      );
   });
 });
 

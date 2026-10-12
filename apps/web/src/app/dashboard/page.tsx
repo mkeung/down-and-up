@@ -36,6 +36,8 @@ export default async function DashboardPage({
   return (
     <Dashboard
       history={data.history}
+      firstDate={data.firstDate}
+      streakRuns={data.streakRuns}
       from={from}
       to={to}
       initialRows={data.rows}

@@ -22,6 +22,7 @@
 - Confirm Pawsitive has no Record control and no recording playback, the app never asks for microphone access, and the merged Android manifest has no `RECORD_AUDIO` permission.
 - Put both phones offline with the same ID. Edit the value on one and the note on the other, then reconnect and confirm both converge.
 - Edit during an in-flight sync, retry after a dropped response, restore multiple 500-row pages, and test a fast device clock.
+- During a large restore, measure keypad tap-to-highlight latency, date switching, and scrolling on representative iOS/Android devices. Check cold launch with reminders enabled and long-range History/rolling charts; desktop helper timings and component tests do not measure native frame rate.
 - Reinstall with identity present/database missing; restore the full history. Simulate database present/identity missing; verify the prompt and that no new ID is silently generated.
 - Switch IDs with Merge and Discard. Cache remote recordings before Merge, re-queue every field/file, reset the cursor, and confirm the previous ID remains untouched.
 - Replace ID, retry after a lost response, and verify old devices and browser sessions lose access.

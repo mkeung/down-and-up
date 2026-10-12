@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { VirtualizedList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { router, useIsFocused } from 'expo-router';
 import {
   dateLabel,
-  eachDay,
+  addDays,
   presetRange,
   RECORDING_ENABLED,
   RANGE_PRESETS,
@@ -24,40 +23,58 @@ export default function History() {
   const app = useApp();
   const theme = useTheme();
   const { selectDate } = useSelectedDate();
-  const [entries, setEntries] = useState<LocalEntry[]>([]);
+  const focused = useIsFocused();
   const [preset, setPreset] = useState<RangePreset>('30D');
   const [counts, setCounts] = useState(false);
-  const [today, setToday] = useState(todayLocal);
-  const reload = useCallback(() => {
-    setToday(todayLocal());
-    void app.repo.list().then(setEntries).catch(reportError);
-  }, [app.repo]);
-  useFocusEffect(
-    useCallback(() => {
-      reload();
-    }, [reload]),
+  const request = useRef({ version: 0 });
+  const [loaded, setLoaded] = useState(() => ({
+    entries: [] as LocalEntry[],
+    today: todayLocal(),
+    range: presetRange('30D', todayLocal()),
+  }));
+  const { entries, today, range } = loaded;
+  const reload = useCallback(
+    (active: () => boolean = () => true) => {
+      const version = ++request.current.version;
+      void (async () => {
+        const today = todayLocal();
+        const first = preset === 'All' ? await app.repo.firstDate() : null;
+        const range = presetRange(preset, today, first);
+        const entries = await app.repo.list(range.from, range.to);
+        if (active() && request.current.version === version)
+          setLoaded({ entries, today, range });
+      })().catch(reportError);
+    },
+    [app.repo, preset],
   );
-  useEffect(reload, [reload, app.revision]);
-  const range = presetRange(preset, today, entries.at(-1)?.date);
-  const stats = summary(entries, range.from, range.to);
+  useEffect(() => {
+    if (!focused) return;
+    const requests = request.current;
+    let active = true;
+    reload(() => active);
+    return () => {
+      active = false;
+      requests.version++;
+    };
+  }, [reload, app.revision, focused]);
+  const stats = useMemo(
+    () => summary(entries, range.from, range.to),
+    [entries, range.from, range.to],
+  );
   const byDate = useMemo(
     () => new Map(entries.map((entry) => [entry.date, entry])),
     [entries],
-  );
-  const dates = useMemo(
-    () => Array.from(eachDay(range.from, range.to)).reverse(),
-    [range.from, range.to],
-  );
-  const rowsInRange = entries.filter(
-    (entry) => entry.date >= range.from && entry.date <= range.to,
   );
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
       style={{ flex: 1, backgroundColor: theme.background }}
     >
-      <FlatList
-        data={dates}
+      <VirtualizedList<string>
+        testID="history-list"
+        data={range}
+        getItem={(range: { to: string }, index) => addDays(range.to, -index)}
+        getItemCount={() => stats.days}
         keyExtractor={(date) => date}
         contentContainerStyle={{ padding: 24 }}
         refreshing={app.status === 'Syncing…'}
@@ -87,7 +104,7 @@ export default function History() {
             <Text style={{ color: theme.muted }}>
               {stats.logged} of {stats.days} days
             </Text>
-            {rowsInRange.length ? (
+            {entries.length ? (
               <>
                 <HistoryChart
                   entries={entries}

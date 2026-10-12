@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
 import {
   DEFAULT_SETTINGS,
   FIELDS,
@@ -90,46 +90,90 @@ export async function syncProfile(
     let seq = profile.seq;
     if (request.cursor !== null && BigInt(request.cursor) > seq)
       throw new HttpError(400, 'Reset the sync cursor');
-    const applied: ServerEntry[] = [];
-    const missingAudio: string[] = [];
-    for (const change of request.changes) {
-      const [existing] = await tx
-        .select()
-        .from(entries)
-        .where(and(eq(entries.profileId, id), eq(entries.date, change.date)))
-        .limit(1);
-      const audioExists = change.audioId
-        ? validAudio(await audioHead(audioKey(id, change.audioId)))
-        : true;
-      const fresh: Change = { ...change };
-      for (const field of FIELDS) {
+    const dates = [...new Set(request.changes.map((change) => change.date))];
+    const existingRows = dates.length
+      ? await tx
+          .select()
+          .from(entries)
+          .where(and(eq(entries.profileId, id), inArray(entries.date, dates)))
+      : [];
+    const byDate = new Map(
+      existingRows.map((row) => [row.date, serialize(row)]),
+    );
+    const receiptKey = (
+      date: string,
+      field: string,
+      timestamp: number | bigint,
+    ) => `${date}:${field}:${timestamp}`;
+    const requestedReceipts = request.changes.flatMap((change) =>
+      FIELDS.flatMap((field) => {
         const timestamp = fieldTimestamp(change, field);
-        if (timestamp == null) continue;
-        const [receipt] = await tx
+        return timestamp == null
+          ? []
+          : [
+              sql`(${change.date}::date, ${field}::text, ${BigInt(timestamp)}::bigint)`,
+            ];
+      }),
+    );
+    const storedReceipts = requestedReceipts.length
+      ? await tx
           .select()
           .from(clampedWrites)
           .where(
             and(
               eq(clampedWrites.profileId, id),
-              eq(clampedWrites.date, change.date),
-              eq(clampedWrites.field, field),
-              eq(clampedWrites.clientTimestamp, BigInt(timestamp)),
+              sql`(${clampedWrites.date}, ${clampedWrites.field}, ${clampedWrites.clientTimestamp}) IN (${sql.join(requestedReceipts, sql`, `)})`,
             ),
           )
-          .limit(1);
-        if (receipt) {
-          delete fresh[`${field}UpdatedAt`];
-          if (field === 'audio') {
-            delete fresh.audioId;
-            delete fresh.audioDurationMs;
-          } else delete fresh[field];
-        }
+      : [];
+    const receipts = new Set(
+      storedReceipts.map((row) =>
+        receiptKey(row.date, row.field, row.clientTimestamp),
+      ),
+    );
+    const newReceipts = new Map<string, typeof clampedWrites.$inferInsert>();
+    const writes = new Map<string, typeof entries.$inferInsert>();
+    const removedAudio = new Set<string>();
+    const audioExists = new Map<string, boolean>();
+    const audioIds = [
+      ...new Set(
+        request.changes.flatMap((change) =>
+          change.audioId ? [change.audioId] : [],
+        ),
+      ),
+    ];
+    for (let offset = 0; offset < audioIds.length; offset += 8)
+      await Promise.all(
+        audioIds.slice(offset, offset + 8).map(async (audioId) => {
+          audioExists.set(
+            audioId,
+            validAudio(await audioHead(audioKey(id, audioId))),
+          );
+        }),
+      );
+    const applied: ServerEntry[] = [];
+    const missingAudio: string[] = [];
+    for (const change of request.changes) {
+      const existing = byDate.get(change.date) ?? null;
+      const fresh: Change = { ...change };
+      for (const field of FIELDS) {
+        const timestamp = fieldTimestamp(change, field);
+        if (
+          timestamp == null ||
+          !receipts.has(receiptKey(change.date, field, timestamp))
+        )
+          continue;
+        delete fresh[`${field}UpdatedAt`];
+        if (field === 'audio') {
+          delete fresh.audioId;
+          delete fresh.audioDurationMs;
+        } else delete fresh[field];
       }
       const merged = mergeServer(
-        existing ? serialize(existing) : null,
+        existing,
         fresh,
         now,
-        audioExists,
+        change.audioId ? audioExists.get(change.audioId)! : true,
       );
       for (const field of FIELDS) {
         const timestamp = fieldTimestamp(fresh, field);
@@ -138,43 +182,78 @@ export async function syncProfile(
           timestamp > now + 5 * 60_000 &&
           !(field === 'audio' && merged.missingAudio)
         ) {
-          await tx
-            .insert(clampedWrites)
-            .values({
-              profileId: id,
-              date: change.date,
-              field,
-              clientTimestamp: BigInt(timestamp),
-            })
-            .onConflictDoNothing();
+          const key = receiptKey(change.date, field, timestamp);
+          receipts.add(key);
+          newReceipts.set(key, {
+            profileId: id,
+            date: change.date,
+            field,
+            clientTimestamp: BigInt(timestamp),
+          });
         }
       }
       if (merged.missingAudio) missingAudio.push(merged.missingAudio);
-      if (merged.removedAudio) await queueAudio(tx, id, merged.removedAudio);
+      if (merged.removedAudio) removedAudio.add(merged.removedAudio);
       if (merged.changed) {
         seq++;
-        const values = {
-          ...storeFields(merged.entry),
+        const saved = {
+          ...merged.entry,
+          audioId: merged.entry.audioId?.toLowerCase() ?? null,
+          serverSeq: seq.toString(),
+        };
+        byDate.set(change.date, saved);
+        writes.set(change.date, {
+          ...storeFields(saved),
           profileId: id,
           serverSeq: seq,
-        };
-        const [saved] = await tx
-          .insert(entries)
-          .values(values)
-          .onConflictDoUpdate({
-            target: [entries.profileId, entries.date],
-            set: values,
-          })
-          .returning();
-        applied.push(serialize(saved!));
-      } else if (existing) applied.push(serialize(existing));
-      if (merged.entry.audioId)
-        await tx
-          .delete(audioDeletions)
-          .where(
-            eq(audioDeletions.objectKey, audioKey(id, merged.entry.audioId)),
-          );
+        });
+        applied.push(saved);
+      } else if (existing) applied.push(existing);
     }
+    if (newReceipts.size)
+      await tx
+        .insert(clampedWrites)
+        .values([...newReceipts.values()])
+        .onConflictDoNothing();
+    if (writes.size)
+      await tx
+        .insert(entries)
+        .values([...writes.values()])
+        .onConflictDoUpdate({
+          target: [entries.profileId, entries.date],
+          set: {
+            value: sql`excluded.value`,
+            valueUpdatedAt: sql`excluded.value_updated_at`,
+            note: sql`excluded.note`,
+            noteUpdatedAt: sql`excluded.note_updated_at`,
+            audioId: sql`excluded.audio_id`,
+            audioDurationMs: sql`excluded.audio_duration_ms`,
+            audioUpdatedAt: sql`excluded.audio_updated_at`,
+            serverSeq: sql`excluded.server_seq`,
+          },
+        });
+    if (removedAudio.size)
+      await tx
+        .insert(audioDeletions)
+        .values(
+          [...removedAudio].map((audioId) => ({
+            objectKey: audioKey(id, audioId),
+            namespace: hash(id),
+            deleteAfter: new Date(),
+          })),
+        )
+        .onConflictDoNothing();
+    const referencedAudio = [
+      ...new Set(
+        [...byDate.values()].flatMap((row) =>
+          row.audioId ? [audioKey(id, row.audioId)] : [],
+        ),
+      ),
+    ];
+    if (referencedAudio.length)
+      await tx
+        .delete(audioDeletions)
+        .where(inArray(audioDeletions.objectKey, referencedAudio));
     await tx
       .update(profiles)
       .set({ seq, lastSeen: new Date(now) })

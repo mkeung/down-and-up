@@ -38,9 +38,28 @@ export default function Settings() {
   const [privacyVisible, setPrivacyVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    void app.repo.reminder().then(setReminder).catch(reportError);
-    void app.repo.state('last_synced_at').then(setLastSync).catch(reportError);
-  }, [app.repo, app.revision]);
+    let active = true;
+    const reload = () => {
+      void app.repo
+        .reminder()
+        .then((value) => {
+          if (active) setReminder(value);
+        })
+        .catch(reportError);
+      void app.repo
+        .state('last_synced_at')
+        .then((value) => {
+          if (active) setLastSync(value);
+        })
+        .catch(reportError);
+    };
+    reload();
+    const unsubscribe = app.repo.subscribeSyncState(reload);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [app.repo]);
   const run = (action: () => Promise<unknown>) => {
     if (busy) return;
     setBusy(true);

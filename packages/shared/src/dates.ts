@@ -14,7 +14,8 @@ export function isCalendarDate(value: string): boolean {
 }
 
 export function localDate(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+  if (Number.isNaN(date.getTime())) throw new RangeError('Invalid time value');
+  return `${date.getFullYear().toString().padStart(4, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
 }
 
 export function todayLocal(now = new Date()): string {
@@ -46,7 +47,13 @@ export function isFutureDate(date: string, now = new Date()): boolean {
 }
 
 export function* eachDay(from: string, to: string): Generator<string> {
-  for (let date = from; date <= to; date = addDays(date, 1)) yield date;
+  const date = calendarDate(from);
+  calendarDate(to);
+  for (let day = localDate(date); day <= to; day = localDate(date)) {
+    yield day;
+    if (day === to) return;
+    date.setDate(date.getDate() + 1);
+  }
 }
 
 export function isoWeekStart(date: string): string {

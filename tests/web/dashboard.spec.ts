@@ -83,6 +83,22 @@ test('complete ID, history, range, hidden recording, reminder and sign-out flow'
   expect(await page.locator('body').innerText()).not.toMatch(
     /mood|feelings|emotions/i,
   );
+  await expect(
+    page
+      .locator('.stat')
+      .filter({ hasText: 'Current streak' })
+      .locator('.stat-number'),
+  ).toHaveText('70');
+  await page.getByRole('button', { name: '7D', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`from=${addDays(today, -6)}`));
+  await expect(
+    page
+      .locator('.stat')
+      .filter({ hasText: 'Current streak' })
+      .locator('.stat-number'),
+  ).toHaveText('70');
+  await page.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`from=${addDays(today, -69)}`));
   await page.getByRole('button', { name: '90D', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`from=${addDays(today, -89)}`));
   await page.getByRole('button', { name: 'Next', exact: true }).click();

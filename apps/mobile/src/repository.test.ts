@@ -39,7 +39,7 @@ export function sqliteRepository() {
       }
     },
   };
-  return { repo: new Repository(adapter), db };
+  return { repo: new Repository(adapter), db, adapter };
 }
 const date = '2026-01-01';
 const settings = { reminderEnabled: false, reminderTime: '20:00' };
@@ -53,6 +53,153 @@ const response = (applied: ServerEntry[], changes = applied): SyncResponse => ({
 });
 
 describe('SQLite repository', () => {
+  it('publishes entry revisions only for entry edits and reads existence without loading rows', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    const changed = vi.fn();
+    repo.subscribe(changed);
+    expect(await repo.hasEntries()).toBe(false);
+    expect(await repo.firstDate()).toBeNull();
+    await repo.setState('ui_sound', '{}');
+    expect(changed).not.toHaveBeenCalled();
+    await repo.setField(date, 'value', 7);
+    await repo.setField(date, 'value', 7);
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(await repo.hasEntries()).toBe(true);
+    await repo.setField('1900-01-01', 'note', 'first');
+    expect(await repo.firstDate()).toBe('1900-01-01');
+    expect(await repo.list(date, date)).toHaveLength(1);
+    db.close();
+  });
+  it('bulk-applies a 500-row pull with bounded SQL calls', async () => {
+    const { repo, db, adapter } = sqliteRepository();
+    await repo.initialize();
+    const reads = vi.spyOn(adapter, 'getAllAsync');
+    const writes = vi.spyOn(adapter, 'runAsync');
+    const rows = Array.from({ length: 500 }, (_, index) => ({
+      ...emptyEntry(addDays('2020-01-01', index)),
+      value: 5,
+      valueUpdatedAt: 100,
+      serverSeq: String(index + 1),
+    }));
+    await repo.applyResponse([], response([], rows));
+    expect(reads).toHaveBeenCalledTimes(10);
+    expect(writes).toHaveBeenCalledTimes(13);
+    expect(await repo.list()).toHaveLength(500);
+    expect(await repo.state('cursor')).toBe('500');
+    db.close();
+  });
+  it('publishes sync settings without invalidating entries on an empty pull', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    const entries = vi.fn();
+    const metadata = vi.fn();
+    repo.subscribe(entries);
+    repo.subscribeSyncState(metadata);
+    await repo.applyResponse([], {
+      ...response([], []),
+      settings: { reminderEnabled: true, reminderTime: '18:00' },
+    });
+    expect(entries).not.toHaveBeenCalled();
+    expect(metadata).toHaveBeenCalledTimes(1);
+    expect(await repo.reminder()).toEqual({
+      reminderEnabled: true,
+      reminderTime: '18:00',
+    });
+    await repo.resetSync(true);
+    expect(metadata).toHaveBeenCalledTimes(2);
+    db.close();
+  });
+  it('lets a queued tap save between pull chunks and preserves it when its row arrives', async () => {
+    const { repo, db, adapter } = sqliteRepository();
+    await repo.initialize();
+    let firstStarted!: () => void;
+    let secondStarted!: () => void;
+    let releaseFirst!: () => void;
+    let releaseSecond!: () => void;
+    const first = new Promise<void>((resolve) => {
+      firstStarted = resolve;
+    });
+    const second = new Promise<void>((resolve) => {
+      secondStarted = resolve;
+    });
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const secondGate = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const original = adapter.getAllAsync.bind(adapter);
+    let batches = 0;
+    adapter.getAllAsync = async <T>(
+      sql: string,
+      ...params: (string | number | null)[]
+    ) => {
+      if (++batches === 1) {
+        firstStarted();
+        await firstGate;
+      } else if (batches === 2) {
+        secondStarted();
+        await secondGate;
+      }
+      return original<T>(sql, ...params);
+    };
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      ...emptyEntry(addDays('2020-01-01', index)),
+      value: 5,
+      valueUpdatedAt: 100,
+      serverSeq: String(index + 1),
+    }));
+    const applying = repo.applyResponse([], response([], rows));
+    await first;
+    let saved = false;
+    const tappedDate = rows[75]!.date;
+    const tap = repo.setField(tappedDate, 'value', 8).then(() => {
+      saved = true;
+    });
+    releaseFirst();
+    await second;
+    expect(saved).toBe(true);
+    expect(
+      db.prepare("SELECT value FROM sync_state WHERE key='cursor'").get(),
+    ).toBeUndefined();
+    releaseSecond();
+    await Promise.all([tap, applying]);
+    expect((await repo.get(tappedDate))?.value).toBe(8);
+    expect((await repo.get(tappedDate))?.dirtyFields.value).toBe(true);
+    db.close();
+  });
+  it('keeps the cursor replayable after an interrupted pull chunk', async () => {
+    const { repo, db, adapter } = sqliteRepository();
+    await repo.initialize();
+    const original = adapter.getAllAsync.bind(adapter);
+    let batches = 0;
+    adapter.getAllAsync = async <T>(
+      sql: string,
+      ...params: (string | number | null)[]
+    ) => {
+      if (++batches === 2) throw new Error('Interrupted');
+      return original<T>(sql, ...params);
+    };
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      ...emptyEntry(addDays('2020-01-01', index)),
+      value: 5,
+      valueUpdatedAt: 100,
+      serverSeq: String(index + 1),
+    }));
+    const changed = vi.fn();
+    repo.subscribe(changed);
+    await expect(repo.applyResponse([], response([], rows))).rejects.toThrow(
+      'Interrupted',
+    );
+    expect(await repo.state('cursor')).toBeNull();
+    expect(await repo.list()).toHaveLength(50);
+    expect(changed).toHaveBeenCalledTimes(1);
+    await repo.applyResponse([], response([], rows));
+    expect(await repo.list()).toHaveLength(100);
+    expect(await repo.state('cursor')).toBe('100');
+    db.close();
+  });
   it('keeps the theme local, separate from entry edits, and across identity resets', async () => {
     const { repo, db } = sqliteRepository();
     await repo.initialize();

@@ -2,7 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { and, eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { addDays, type Change, type ServerEntry } from '@down-up/shared';
+import {
+  addDays,
+  currentStreakFromRuns,
+  todayUTC,
+  type Change,
+  type ServerEntry,
+} from '@down-up/shared';
 import { getDb } from './db';
 import { audioDeletions, entries, profiles } from './schema';
 import { syncProfile } from './sync';
@@ -20,6 +26,7 @@ import {
 } from './handlers';
 import { queueAudio } from './sync';
 import { rateLimit } from './rate-limit';
+import { loadDashboardData } from './dashboard-data';
 
 const audio = vi.hoisted(() => ({
   exists: new Set<string>(),
@@ -91,6 +98,198 @@ run('Postgres transactions and API handlers', () => {
       );
     }
     await rateLimit(request('/api/health', id));
+  });
+  it('syncs 500 rows with a bounded number of SQL queries and retries without advancing seq', async () => {
+    const profileId = 'PERF12345678';
+    await register(
+      request('/api/ids/register', profileId, { secret: 'a'.repeat(32) }),
+    );
+    const db = getDb();
+    const transaction = db.transaction.bind(db);
+    let queries = 0;
+    const spy = vi
+      .spyOn(db, 'transaction')
+      .mockImplementation((callback, options) =>
+        transaction(
+          (tx) =>
+            callback(
+              new Proxy(tx, {
+                get(target, property, receiver) {
+                  const value: unknown = Reflect.get(
+                    target,
+                    property,
+                    receiver,
+                  );
+                  if (
+                    typeof value === 'function' &&
+                    [
+                      'select',
+                      'insert',
+                      'update',
+                      'delete',
+                      'execute',
+                    ].includes(String(property))
+                  )
+                    return (...args: unknown[]) => {
+                      queries++;
+                      return Reflect.apply(value, target, args);
+                    };
+                  return value;
+                },
+              }),
+            ),
+          options,
+        ),
+      );
+    try {
+      const changes = Array.from({ length: 500 }, (_, index) => ({
+        date: addDays('2020-01-01', index),
+        value: (index % 10) + 1,
+        valueUpdatedAt: 100,
+      }));
+      const first = await syncProfile(
+        profileId,
+        { cursor: null, changes },
+        1000,
+      );
+      expect(queries).toBe(8);
+      expect(first.applied).toHaveLength(500);
+      expect(first.cursor).toBe('500');
+      expect(first.applied.map((row) => row.serverSeq)).toEqual(
+        changes.map((_, index) => String(index + 1)),
+      );
+      queries = 0;
+      const retry = await syncProfile(
+        profileId,
+        { cursor: null, changes },
+        1000,
+      );
+      expect(queries).toBe(7);
+      expect(retry).toEqual(first);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('merges repeated dates in request order and remembers clamped receipts within the batch', async () => {
+    const profileId = 'PERF22345678';
+    await register(
+      request('/api/ids/register', profileId, { secret: 'a'.repeat(32) }),
+    );
+    const fast = { date, value: 3, valueUpdatedAt: 900_000 };
+    const result = await syncProfile(
+      profileId,
+      {
+        cursor: null,
+        changes: [
+          fast,
+          { date, note: 'kept', noteUpdatedAt: 1200 },
+          { date, value: 8, valueUpdatedAt: 1500 },
+          fast,
+        ],
+      },
+      1000,
+    );
+    expect(result.applied.map((row) => row.serverSeq)).toEqual([
+      '1',
+      '2',
+      '3',
+      '3',
+    ]);
+    expect(result.changes[0]).toMatchObject({
+      value: 8,
+      note: 'kept',
+      serverSeq: '3',
+    });
+    const retry = await syncProfile(
+      profileId,
+      { cursor: result.cursor, changes: [fast] },
+      2000,
+    );
+    expect(retry.applied[0]).toMatchObject({
+      value: 8,
+      note: 'kept',
+      serverSeq: '3',
+    });
+    expect(retry.changes).toEqual([]);
+  });
+  it('queues intermediate audio replacements and retains the final reference in a bulk write', async () => {
+    const profileId = 'PERF32345678';
+    await register(
+      request('/api/ids/register', profileId, { secret: 'a'.repeat(32) }),
+    );
+    const a = '11111111-1111-4111-8111-111111111111';
+    const b = '22222222-2222-4222-8222-222222222222';
+    for (const audioId of [a, b])
+      audio.exists.add(`audio/${hash(profileId)}/${audioId}.m4a`);
+    const result = await syncProfile(
+      profileId,
+      {
+        cursor: null,
+        changes: [a, b, a].map((audioId, index) => ({
+          date,
+          audioId,
+          audioDurationMs: 1000,
+          audioUpdatedAt: 100 + index,
+        })),
+      },
+      1000,
+    );
+    expect(result.changes[0]?.audioId).toBe(a);
+    const queued = await getDb()
+      .select()
+      .from(audioDeletions)
+      .where(eq(audioDeletions.namespace, hash(profileId)));
+    expect(queued.map((row) => row.objectKey)).toEqual([
+      `audio/${hash(profileId)}/${b}.m4a`,
+    ]);
+    expect(await drainDeletions()).toBe(1);
+  });
+  it('loads only the chart range and lookback while keeping lifetime All and streak metadata', async () => {
+    const profileId = 'PERF42345678';
+    await register(
+      request('/api/ids/register', profileId, { secret: 'a'.repeat(32) }),
+    );
+    const today = todayUTC();
+    await syncProfile(
+      profileId,
+      {
+        cursor: null,
+        changes: [
+          { date: '2000-01-01', note: 'old note', noteUpdatedAt: 100 },
+          ...Array.from({ length: 14 }, (_, index) => ({
+            date: addDays(today, 1 - index),
+            value: 5,
+            valueUpdatedAt: 100,
+          })),
+        ],
+      },
+      1000,
+    );
+    const result = await loadDashboardData(
+      profileId,
+      addDays(today, -2),
+      today,
+    );
+    expect(result.firstDate).toBe('2000-01-01');
+    expect(result.history).toHaveLength(9);
+    expect(result.history[0]?.date).toBe(addDays(today, -8));
+    expect(result.history.at(-1)?.date).toBe(today);
+    expect(result.rows).toHaveLength(3);
+    expect(currentStreakFromRuns(result.streakRuns, today)).toBe(13);
+    expect(currentStreakFromRuns(result.streakRuns, addDays(today, -1))).toBe(
+      12,
+    );
+    expect(currentStreakFromRuns(result.streakRuns, addDays(today, 1))).toBe(
+      14,
+    );
+    const empty = await loadDashboardData(
+      profileId,
+      '1999-01-01',
+      '1999-01-07',
+    );
+    expect(empty.history).toEqual([]);
+    expect(empty.firstDate).toBe('2000-01-01');
+    expect(currentStreakFromRuns(empty.streakRuns, today)).toBe(13);
   });
   it('registers idempotently and returns 409 for a different secret', async () => {
     expect(

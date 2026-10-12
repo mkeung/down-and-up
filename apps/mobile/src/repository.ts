@@ -96,31 +96,40 @@ async function read(tx: SqlDatabase, date: string): Promise<LocalEntry | null> {
   return row ? hydrate(row) : null;
 }
 async function write(tx: SqlDatabase, row: LocalEntry): Promise<void> {
-  const dirty = FIELDS.some((field) => row.dirtyFields[field]);
+  return writeBatch(tx, [row]);
+}
+async function writeBatch(
+  tx: SqlDatabase,
+  rows: readonly LocalEntry[],
+): Promise<void> {
+  if (!rows.length) return;
   await tx.runAsync(
     `INSERT INTO entries(date,value,value_updated_at,note,note_updated_at,audio_id,audio_duration_ms,audio_updated_at,dirty,value_dirty,note_dirty,audio_dirty)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(date) DO UPDATE SET
+    VALUES ${rows.map(() => '(?,?,?,?,?,?,?,?,?,?,?,?)').join(',')} ON CONFLICT(date) DO UPDATE SET
     value=excluded.value,value_updated_at=excluded.value_updated_at,note=excluded.note,note_updated_at=excluded.note_updated_at,
     audio_id=excluded.audio_id,audio_duration_ms=excluded.audio_duration_ms,audio_updated_at=excluded.audio_updated_at,
     dirty=excluded.dirty,value_dirty=excluded.value_dirty,note_dirty=excluded.note_dirty,audio_dirty=excluded.audio_dirty`,
-    row.date,
-    row.value,
-    row.valueUpdatedAt,
-    row.note,
-    row.noteUpdatedAt,
-    row.audioId,
-    row.audioDurationMs,
-    row.audioUpdatedAt,
-    Number(dirty),
-    Number(row.dirtyFields.value),
-    Number(row.dirtyFields.note),
-    Number(row.dirtyFields.audio),
+    ...rows.flatMap((row) => [
+      row.date,
+      row.value,
+      row.valueUpdatedAt,
+      row.note,
+      row.noteUpdatedAt,
+      row.audioId,
+      row.audioDurationMs,
+      row.audioUpdatedAt,
+      Number(FIELDS.some((field) => row.dirtyFields[field])),
+      Number(row.dirtyFields.value),
+      Number(row.dirtyFields.note),
+      Number(row.dirtyFields.audio),
+    ]),
   );
 }
 
 export class Repository {
   private tail: Promise<unknown> = Promise.resolve();
   private listeners = new Set<() => void>();
+  private syncListeners = new Set<() => void>();
   private editListeners = new Set<() => void>();
   private writeListeners = new Set<() => void>();
   private writes = 0;
@@ -133,6 +142,12 @@ export class Repository {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+    };
+  };
+  subscribeSyncState = (listener: () => void) => {
+    this.syncListeners.add(listener);
+    return () => {
+      this.syncListeners.delete(listener);
     };
   };
   onEdit = (listener: () => void) => {
@@ -162,13 +177,15 @@ export class Repository {
   private changed() {
     for (const listener of this.listeners) listener();
   }
+  private syncChanged() {
+    for (const listener of this.syncListeners) listener();
+  }
   private exclusive<T>(operation: (tx: SqlDatabase) => Promise<T>): Promise<T> {
     const result = this.tail.then(async () => {
       let value!: T;
       await this.db.withExclusiveTransactionAsync(async (tx) => {
         value = await operation(tx);
       });
-      this.changed();
       return value;
     });
     this.tail = result.catch(() => undefined);
@@ -187,6 +204,20 @@ export class Repository {
         to,
       )
     ).map(hydrate);
+  }
+  async hasEntries(): Promise<boolean> {
+    await this.tail;
+    return !!(await this.db.getFirstAsync('SELECT 1 FROM entries LIMIT 1'));
+  }
+  async firstDate(): Promise<string | null> {
+    await this.tail;
+    return (
+      (
+        await this.db.getFirstAsync<{ date: string }>(
+          'SELECT date FROM entries ORDER BY date LIMIT 1',
+        )
+      )?.date ?? null
+    );
   }
   async state(key: string): Promise<string | null> {
     await this.tail;
@@ -229,7 +260,10 @@ export class Repository {
       this.writes--;
       this.wrote();
     }
-    if (didEdit) for (const listener of this.editListeners) listener();
+    if (didEdit) {
+      this.changed();
+      for (const listener of this.editListeners) listener();
+    }
     return didEdit;
   }
   private edit(
@@ -323,55 +357,82 @@ export class Repository {
     }
     return changes;
   }
-  applyResponse(sent: readonly Change[], response: SyncResponse) {
-    return this.exclusive(async (tx) => {
-      const snapshots = new Map(sent.map((change) => [change.date, change]));
-      for (const server of response.applied) {
-        const local = await read(tx, server.date);
-        const snapshot = snapshots.get(server.date);
-        if (local && snapshot)
-          await write(
-            tx,
-            applyPull(
-              applyAcknowledgment(
-                local,
-                snapshot,
+  async applyResponse(sent: readonly Change[], response: SyncResponse) {
+    const snapshots = new Map(sent.map((change) => [change.date, change]));
+    const acknowledged = new Map(
+      response.applied.map((row) => [row.date, row]),
+    );
+    const pulled = new Map(response.changes.map((row) => [row.date, row]));
+    const dates = [...new Set([...acknowledged.keys(), ...pulled.keys()])];
+    let changed = false;
+    try {
+      // Short transactions let queued taps run between chunks. The cursor is
+      // committed last, so interruption safely replays partially applied pages.
+      for (let offset = 0; offset < dates.length; offset += 50) {
+        const batch = dates.slice(offset, offset + 50);
+        await this.exclusive(async (tx) => {
+          const stored = await tx.getAllAsync<StoredEntry>(
+            `SELECT * FROM entries WHERE date IN (${batch.map(() => '?').join(',')})`,
+            ...batch,
+          );
+          const local = new Map(stored.map((row) => [row.date, hydrate(row)]));
+          const rows: LocalEntry[] = [];
+          const audioIds = new Set<string>();
+          for (const date of batch) {
+            let row = local.get(date) ?? null;
+            const server = acknowledged.get(date);
+            const snapshot = snapshots.get(date);
+            if (row && server && snapshot)
+              row = applyPull(
+                applyAcknowledgment(
+                  row,
+                  snapshot,
+                  server,
+                  response.missingAudio,
+                ),
                 server,
-                response.missingAudio,
-              ),
-              server,
-            ),
-          );
+              );
+            const pull = pulled.get(date);
+            if (pull) row = applyPull(row, pull);
+            if (row) {
+              rows.push(row);
+              if (pull && row.audioId) audioIds.add(row.audioId);
+            }
+          }
+          await writeBatch(tx, rows);
+          if (audioIds.size)
+            await tx.runAsync(
+              `INSERT OR IGNORE INTO audio_files(audio_id,local_path,uploaded) VALUES ${[...audioIds].map(() => '(?,NULL,1)').join(',')}`,
+              ...audioIds,
+            );
+        });
+        changed = true;
       }
-      for (const server of response.changes) {
-        const row = applyPull(await read(tx, server.date), server);
-        await write(tx, row);
-        if (row.audioId)
+      await this.exclusive(async (tx) => {
+        if (response.missingAudio.length)
           await tx.runAsync(
-            'INSERT OR IGNORE INTO audio_files(audio_id,local_path,uploaded) VALUES(?,NULL,1)',
-            row.audioId,
+            `UPDATE audio_files SET uploaded=0 WHERE audio_id IN (${response.missingAudio.map(() => '?').join(',')})`,
+            ...response.missingAudio,
           );
-      }
-      for (const id of response.missingAudio)
-        await tx.runAsync(
-          'UPDATE audio_files SET uploaded=0 WHERE audio_id=?',
-          id,
-        );
-      for (const [key, value] of [
-        ['cursor', response.cursor],
-        ['reminder', JSON.stringify(response.settings)],
-        ['last_synced_at', Date.now().toString()],
-      ]) {
-        await tx.runAsync(
-          'INSERT INTO sync_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
-          key!,
-          value ?? null,
-        );
-      }
-    });
+        for (const [key, value] of [
+          ['cursor', response.cursor],
+          ['reminder', JSON.stringify(response.settings)],
+          ['last_synced_at', Date.now().toString()],
+        ]) {
+          await tx.runAsync(
+            'INSERT INTO sync_state(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+            key!,
+            value ?? null,
+          );
+        }
+      });
+      this.syncChanged();
+    } finally {
+      if (changed) this.changed();
+    }
   }
-  resetSync(discard: boolean, preserveUploads = false) {
-    return this.exclusive(async (tx) => {
+  async resetSync(discard: boolean, preserveUploads = false) {
+    await this.exclusive(async (tx) => {
       if (discard) {
         await tx.execAsync('DELETE FROM entries; DELETE FROM audio_files;');
       } else {
@@ -385,6 +446,8 @@ export class Repository {
         "DELETE FROM sync_state WHERE key IN ('cursor','last_synced_at','reminder','identity_transition');",
       );
     });
+    this.changed();
+    this.syncChanged();
   }
   async loggedDates(): Promise<Set<string>> {
     await this.tail;

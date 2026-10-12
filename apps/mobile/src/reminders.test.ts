@@ -69,6 +69,25 @@ function setup(initiallyAsked = false) {
 }
 
 describe('reminder permissions', () => {
+  it('coalesces edits during scheduling into one trailing rebuild', async () => {
+    const { reminders } = setup();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mocks.cancel.mockReturnValueOnce(gate);
+    mocks.getPermissions.mockResolvedValue({
+      granted: true,
+      canAskAgain: true,
+      status: 'granted',
+    });
+    const running = reminders.rebuild();
+    const pending = Array.from({ length: 10 }, () => reminders.rebuild());
+    expect(mocks.cancel).toHaveBeenCalledTimes(1);
+    release();
+    await Promise.all([running, ...pending]);
+    expect(mocks.cancel).toHaveBeenCalledTimes(2);
+  });
   it('allows a later permission request after choosing Not now', async () => {
     const { reminders, state } = setup();
     choose('Not now');

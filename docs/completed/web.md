@@ -33,6 +33,7 @@
 - **Entries table** below the charts, sorted newest first and paginated.
   - Columns: date, value, and note (full text, wrapped).
 - Responsive layout so the dashboard also works on a phone browser.
+- Chart data includes only the selected range and its six-day rolling-average lookback. The earliest entry date and the three most recent consecutive logged-day runs are fetched separately as compact metadata, preserving All and the browser-local current streak even when the chart shows a short or empty historical range. Runs include the UTC + 1 day margin needed for other phones' local dates; future days never extend today's streak.
 - Use neutral wording throughout: "value" or no label at all, never "mood". Page titles and the browser tab title stay generic.
 - Entries are read-only on the web in v1. Editing them can come later, using the same per-field upsert. The only thing editable on the web is the reminder ([other web pages](#other-web-pages)).
 

@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn(),
   identity: { id: '7K3M9QX2PDA4', secret: null, registered: true },
   operationId: '11111111-1111-4111-8111-111111111111',
+  rebuild: vi.fn(),
+  cleanup: vi.fn(),
+  hasEntries: vi.fn(),
 }));
 vi.mock('react-native', () => ({
   View: 'View',
@@ -50,6 +53,7 @@ vi.mock('./repository', () => ({
     };
     resetSync = async () => undefined;
     list = async () => [];
+    hasEntries = mocks.hasEntries;
     subscribe = () => () => undefined;
     onEdit = () => () => undefined;
     onWriteState = () => () => undefined;
@@ -64,12 +68,12 @@ vi.mock('./transport', () => ({
   apiUrl: () => 'https://example.com',
   HttpTransport: class {
     request = mocks.request;
-    cleanup = async () => undefined;
+    cleanup = mocks.cleanup;
   },
 }));
 vi.mock('./reminders', () => ({
   Reminders: class {
-    rebuild = async () => undefined;
+    rebuild = mocks.rebuild;
     foreground = async () => undefined;
   },
 }));
@@ -85,6 +89,9 @@ beforeEach(async () => {
   vi.useFakeTimers();
   mocks.state.clear();
   mocks.state.set('sync_enabled', 'true');
+  mocks.rebuild.mockReset().mockResolvedValue(undefined);
+  mocks.cleanup.mockReset().mockResolvedValue(undefined);
+  mocks.hasEntries.mockReset().mockResolvedValue(false);
   mocks.request.mockReset().mockResolvedValue({
     applied: [],
     changes: [],
@@ -129,6 +136,26 @@ it('keeps the real status immediate while sharing the icon delay across tab cons
   await act(async () => app.setNotePending(false));
   expect(app.dataStatus).toBe('cloud');
   expect(app.indicatorDataStatus).toBe('cloud');
+});
+
+it('opens local data without waiting for notification or recording housekeeping', async () => {
+  await act(async () => renderer.unmount());
+  mocks.hasEntries.mockResolvedValue(true);
+  mocks.rebuild.mockReturnValue(new Promise(() => {}));
+  mocks.cleanup.mockReturnValue(new Promise(() => {}));
+  let opened = false;
+  function Opened() {
+    useApp();
+    opened = true;
+    return null;
+  }
+  await act(async () => {
+    renderer = create(createElement(AppProvider, null, createElement(Opened)));
+  });
+  expect(opened).toBe(true);
+  expect(mocks.hasEntries).toHaveBeenCalled();
+  expect(mocks.rebuild).toHaveBeenCalled();
+  expect(mocks.cleanup).toHaveBeenCalled();
 });
 
 describe('failed identity operations', () => {

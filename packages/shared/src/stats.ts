@@ -1,4 +1,11 @@
-import { addDays, daysInRange, eachDay, isoWeekStart } from './dates';
+import {
+  addDays,
+  calendarDate,
+  daysInRange,
+  eachDay,
+  isoWeekStart,
+  localDate,
+} from './dates';
 import type { Entry } from './schemas';
 
 export type StatEntry = Pick<Entry, 'date' | 'value'>;
@@ -9,16 +16,22 @@ export function summary(
   from: string,
   to: string,
 ) {
-  const values = entries
-    .filter((row) => row.date >= from && row.date <= to && row.value !== null)
-    .map((row) => row.value as number);
+  let sum = 0;
+  let logged = 0;
+  let min: number | null = null;
+  let max: number | null = null;
+  for (const row of entries) {
+    if (row.date < from || row.date > to || row.value === null) continue;
+    sum += row.value;
+    logged++;
+    min = min === null ? row.value : Math.min(min, row.value);
+    max = max === null ? row.value : Math.max(max, row.value);
+  }
   return {
-    average: values.length
-      ? values.reduce((sum, value) => sum + value, 0) / values.length
-      : null,
-    min: values.length ? Math.min(...values) : null,
-    max: values.length ? Math.max(...values) : null,
-    logged: values.length,
+    average: logged ? sum / logged : null,
+    min,
+    max,
+    logged,
     days: daysInRange(from, to),
   };
 }
@@ -61,8 +74,16 @@ export function chartPoints(
   const key =
     days <= 730 ? isoWeekStart : (date: string) => `${date.slice(0, 7)}-01`;
   const buckets = new Map<string, { sum: number; count: number }>();
-  for (const date of eachDay(from, to))
-    if (!buckets.has(key(date))) buckets.set(key(date), { sum: 0, count: 0 });
+  const start = calendarDate(key(from));
+  for (
+    let date = localDate(start);
+    start.getFullYear() <= 9999 && date <= to;
+    date = localDate(start)
+  ) {
+    buckets.set(date, { sum: 0, count: 0 });
+    if (days <= 730) start.setDate(start.getDate() + 7);
+    else start.setMonth(start.getMonth() + 1);
+  }
   for (const row of entries) {
     if (row.date < from || row.date > to || row.value === null) continue;
     const bucket = buckets.get(key(row.date))!;
@@ -82,18 +103,29 @@ export function rollingAverage(
   to: string,
 ): ChartPoint[] {
   const values = new Map(entries.map((row) => [row.date, row.value]));
-  return Array.from(eachDay(from, to), (date) => {
-    let sum = 0;
-    let count = 0;
-    for (let offset = 0; offset < 7; offset++) {
-      const value = values.get(addDays(date, -offset));
-      if (value != null) {
-        sum += value;
-        count++;
-      }
+  const window: (number | null)[] = Array(7).fill(null);
+  let sum = 0;
+  let count = 0;
+  let index = 0;
+  const points: ChartPoint[] = [];
+  const lookback = from < '0001-01-07' ? '0001-01-01' : addDays(from, -6);
+  for (const date of eachDay(lookback, to)) {
+    const previous = window[index];
+    if (previous != null) {
+      sum -= previous;
+      count--;
     }
-    return { date, value: count >= 4 ? sum / count : null, count };
-  });
+    const value = values.get(date) ?? null;
+    window[index] = value;
+    index = (index + 1) % 7;
+    if (value !== null) {
+      sum += value;
+      count++;
+    }
+    if (date >= from)
+      points.push({ date, value: count >= 4 ? sum / count : null, count });
+  }
+  return points;
 }
 
 export function currentStreak(
@@ -110,4 +142,17 @@ export function currentStreak(
     end = addDays(end, -1);
   }
   return streak;
+}
+
+export type StreakRun = { from: string; to: string };
+
+export function currentStreakFromRuns(
+  runs: readonly StreakRun[],
+  today: string,
+): number {
+  for (const end of [today, addDays(today, -1)]) {
+    const run = runs.find((run) => run.from <= end && run.to >= end);
+    if (run) return daysInRange(run.from, end);
+  }
+  return 0;
 }

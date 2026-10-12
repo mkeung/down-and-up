@@ -98,7 +98,7 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 - **List (value-wise):**
   - One row per day in the range, newest first, showing the date and its value ("—" if none).
   - `✎` marks days with a note, with a one-line preview of the note.
-  - The list scrolls under the chart using a virtualized list (`FlatList` / `FlashList`), so long ranges stay smooth.
+  - The list scrolls under the chart using `VirtualizedList`. Calendar rows are generated only as needed; History reads just the selected SQLite range while focused. All uses a separate earliest-date lookup. Entry revisions refresh the view; preference writes and sync metadata do not reload history.
   - Days with unsynced changes get a subtle dot.
 - **Tap a row** to jump to the Rate tab with that day selected. The value can be changed there, and the note for the same day is on the Pawsitive tab. History itself is read-only.
 - **Empty state:** if the range has no entries, show a short neutral message ("Nothing recorded yet") instead of an empty chart.
@@ -147,6 +147,8 @@ Rate, Pawsitive, History, Settings, and privacy/consent panels use shared steppe
 The icon and splash image use `OfficialAssets/10-cerberus-retro-pixel-icon.png`, resized with nearest-neighbor sampling by `scripts/icons.mjs`. That script also prepares the Pawsitive character. Platform device/accessibility checks still live in the [visual-direction plan](../visual-direction.md).
 
 ## Offline-first behavior
+
+- Startup reads entry existence without loading all history and opens the local screens before rebuilding notifications or cleaning recording files. Housekeeping failures do not prevent access to saved entries.
 
 - The app is **fully usable without internet from the very first launch.** The ID is generated on the device, and every change is saved locally with `dirty = 1`.
 - **One-time sync notice on first launch:** "Your entries are saved on this phone and synced to our server so you can view them on the web."
