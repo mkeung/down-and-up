@@ -20,6 +20,7 @@ export const idSchema = z
   .transform(normalizeId)
   .refine(isValidId, 'Invalid ID');
 export const secretSchema = z.string().regex(/^[0-9a-f]{32}$/);
+export const audioIdSchema = z.uuid().transform((value) => value.toLowerCase());
 export const identitySchema = z.object({
   id: idSchema,
   secret: secretSchema.nullable(),
@@ -45,7 +46,7 @@ export const entrySchema = z
     valueUpdatedAt: timestampSchema.nullable(),
     note: z.string().max(MAX_NOTE_LENGTH).nullable(),
     noteUpdatedAt: timestampSchema.nullable(),
-    audioId: z.uuid().nullable(),
+    audioId: audioIdSchema.nullable(),
     audioDurationMs: z
       .number()
       .int()
@@ -88,7 +89,7 @@ export const changeSchema = z
     valueUpdatedAt: timestampSchema.optional(),
     note: z.string().max(MAX_NOTE_LENGTH).nullable().optional(),
     noteUpdatedAt: timestampSchema.optional(),
-    audioId: z.uuid().nullable().optional(),
+    audioId: audioIdSchema.nullable().optional(),
     audioDurationMs: z
       .number()
       .int()
@@ -181,14 +182,14 @@ export const syncResponseSchema = z
     changes: z.array(serverEntrySchema).max(MAX_BATCH),
     cursor: z.string().regex(/^\d+$/).nullable(),
     hasMore: z.boolean(),
-    missingAudio: z.array(z.uuid()).max(MAX_BATCH),
+    missingAudio: z.array(audioIdSchema).max(MAX_BATCH),
     settings: settingsSchema,
   })
   .strict();
 export type SyncResponse = z.infer<typeof syncResponseSchema>;
 export const uploadSchema = z
   .object({
-    audioId: z.uuid(),
+    audioId: audioIdSchema,
     size: z.number().int().min(1).max(MAX_AUDIO_BYTES),
   })
   .strict();

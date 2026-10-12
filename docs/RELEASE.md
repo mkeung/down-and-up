@@ -7,7 +7,9 @@
 - Configure HTTPS, `APP_ORIGIN`, session-signing and cron secrets, and the real privacy contact. Update `/privacy` with the actual database processor and confirmed retention before public release.
 - Apply Drizzle migrations. Confirm the profile counter is not a database sequence.
 - Keep R2 private. On live R2, verify that changing the signed Content-Length, Content-Type, or If-None-Match header rejects an upload; check retry after an interrupted upload, a missing object, and a referenced object.
+- Verify uppercase audio UUIDs use lowercase object keys for upload, sync, download, and deletion. Confirm the orphan sweep removes legacy uppercase keys once they are unreferenced. A missing referenced object must receive a repair upload URL with signed `If-None-Match: *`; existing objects must never receive an overwrite grant.
 - Confirm the two staggered daily crons run, drain the queue within 24 hours, retain objects still referenced, and retry after storage failures. Preview deployments require manual invocation; Vercel runs scheduled jobs only on production.
+- Test a backlog larger than 1,000 recordings: each cron must drain all jobs due at its start through successive 500-row batches. Confirm processing fits the function duration at the expected library size and storage latency; monitor the oldest queued deletion and increase cleanup capacity if needed.
 - Monitor the Redis security alert key and connect an operator-owned alert integration if required.
 - Test ID replacement on a large recording library within the function duration limit. Copies happen under a profile lock; partial failed copies are orphaned and retried safely, but a very large library may need a multi-step migration job before release.
 

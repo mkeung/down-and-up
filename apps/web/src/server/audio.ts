@@ -28,7 +28,7 @@ export function audioKey(profileId: string, audioId: string): string {
   return namespaceKey(hash(profileId), audioId);
 }
 export function namespaceKey(namespace: string, audioId: string): string {
-  return `audio/${namespace}/${audioId}.m4a`;
+  return `audio/${namespace}/${audioId.toLowerCase()}.m4a`;
 }
 export async function audioHead(
   key: string,

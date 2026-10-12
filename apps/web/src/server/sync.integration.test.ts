@@ -4,30 +4,51 @@ import { and, eq, sql } from 'drizzle-orm';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { addDays, type Change, type ServerEntry } from '@down-up/shared';
 import { getDb } from './db';
-import { entries, profiles } from './schema';
+import { audioDeletions, entries, profiles } from './schema';
 import { syncProfile } from './sync';
 import { hash } from './security';
 import {
   register,
   deleteData,
   drainDeletions,
+  audioDeletionCron,
+  audioDownload,
+  audioUpload,
+  orphanSweepCron,
   replaceId,
   verify,
 } from './handlers';
 import { queueAudio } from './sync';
 import { rateLimit } from './rate-limit';
 
-const audio = vi.hoisted(() => ({ exists: new Set<string>() }));
+const audio = vi.hoisted(() => ({
+  exists: new Set<string>(),
+  invalid: new Set<string>(),
+  orphans: new Set<string>(),
+  failures: new Set<string>(),
+}));
 vi.mock('./audio', async (original) => ({
   ...(await original<typeof import('./audio')>()),
   audioHead: async (key: string) =>
-    audio.exists.has(key) ? { size: 1000, type: 'audio/mp4' } : null,
+    audio.exists.has(key)
+      ? {
+          size: 1000,
+          type: audio.invalid.has(key) ? 'text/plain' : 'audio/mp4',
+        }
+      : null,
   copyAudio: async (_old: string, next: string) => {
     audio.exists.add(next);
   },
   deleteObject: async (key: string) => {
+    if (audio.failures.has(key)) throw new Error('Storage unavailable');
     audio.exists.delete(key);
   },
+  listObjects: async () => ({
+    Contents: [...audio.orphans].map((Key) => ({
+      Key,
+      LastModified: new Date(0),
+    })),
+  }),
 }));
 const run = process.env.TEST_DATABASE_URL ? describe : describe.skip;
 run('Postgres transactions and API handlers', () => {
@@ -298,5 +319,173 @@ run('Postgres transactions and API handlers', () => {
     expect(
       await getDb().select().from(profiles).where(eq(profiles.id, other)),
     ).toEqual([]);
+  });
+  it('uses a lowercase object key throughout upload, sync, download, and deletion', async () => {
+    await drainDeletions();
+    const identity = '23456789ABCD';
+    const audioId = 'B68D4F5E-4168-4D8B-AE7E-3C4DF743364C';
+    const key = `audio/${hash(identity)}/${audioId.toLowerCase()}.m4a`;
+    await register(
+      request('/api/ids/register', identity, { secret: 'd'.repeat(32) }),
+    );
+    const grant = await audioUpload(
+      request('/api/audio/upload-url', identity, { audioId, size: 1000 }),
+    );
+    expect(grant.status).toBe(200);
+    expect(new URL((await grant.json()).url).pathname).toContain(key);
+    audio.exists.add(key);
+    const synced = await syncProfile(
+      identity,
+      {
+        cursor: null,
+        changes: [
+          { date, audioId, audioDurationMs: 1000, audioUpdatedAt: 100 },
+        ],
+      },
+      1000,
+    );
+    expect(synced.missingAudio).toEqual([]);
+    expect(synced.applied[0]?.audioId).toBe(audioId.toLowerCase());
+    const download = await audioDownload(
+      request(`/api/audio/${audioId}`, identity, undefined, 'GET'),
+    );
+    expect(download.status).toBe(302);
+    expect(new URL(download.headers.get('location')!).pathname).toContain(key);
+    await deleteData(request('/api/data', identity, undefined, 'DELETE'));
+    expect(await drainDeletions()).toBe(1);
+    expect(audio.exists.has(key)).toBe(false);
+  });
+  it('repairs missing referenced objects without granting overwrites of existing objects', async () => {
+    const identity = '3456789ABCDE';
+    const audioId = 'b68d4f5e-4168-4d8b-ae7e-3c4df743364c';
+    const key = `audio/${hash(identity)}/${audioId}.m4a`;
+    await register(
+      request('/api/ids/register', identity, { secret: 'e'.repeat(32) }),
+    );
+    audio.exists.add(key);
+    await syncProfile(
+      identity,
+      {
+        cursor: null,
+        changes: [
+          { date, audioId, audioDurationMs: 1000, audioUpdatedAt: 100 },
+        ],
+      },
+      1000,
+    );
+    audio.exists.delete(key);
+    const changes = [
+      { date, audioId, audioDurationMs: 1000, audioUpdatedAt: 200 },
+    ];
+    expect(
+      (await syncProfile(identity, { cursor: null, changes }, 1000))
+        .missingAudio,
+    ).toEqual([audioId]);
+    const grant = await audioUpload(
+      request('/api/audio/upload-url', identity, { audioId, size: 1000 }),
+    );
+    expect(grant.status).toBe(200);
+    expect((await grant.json()).headers['If-None-Match']).toBe('*');
+    audio.exists.add(key);
+    const repaired = await syncProfile(
+      identity,
+      { cursor: null, changes },
+      1000,
+    );
+    expect(repaired.missingAudio).toEqual([]);
+    expect(repaired.applied[0]?.audioUpdatedAt).toBe(200);
+    const existing = await audioUpload(
+      request('/api/audio/upload-url', identity, { audioId, size: 1000 }),
+    );
+    expect(await existing.json()).toEqual({ uploaded: true });
+    audio.invalid.add(key);
+    expect(
+      (
+        await audioUpload(
+          request('/api/audio/upload-url', identity, { audioId, size: 1000 }),
+        )
+      ).status,
+    ).toBe(409);
+    audio.invalid.delete(key);
+    await deleteData(request('/api/data', identity, undefined, 'DELETE'));
+    await drainDeletions();
+  });
+  it('sweeps legacy uppercase object keys and retains referenced recordings', async () => {
+    const identity = '456789ABCDEF';
+    const audioId = 'B68D4F5E-4168-4D8B-AE7E-3C4DF743364C';
+    const key = `audio/${hash(identity)}/${audioId}.m4a`;
+    await register(
+      request('/api/ids/register', identity, { secret: 'f'.repeat(32) }),
+    );
+    audio.exists.add(key.toLowerCase());
+    await syncProfile(
+      identity,
+      {
+        cursor: null,
+        changes: [
+          {
+            date,
+            audioId: audioId.toLowerCase(),
+            audioDurationMs: 1000,
+            audioUpdatedAt: 100,
+          },
+        ],
+      },
+      1000,
+    );
+    audio.exists.add(key);
+    audio.orphans.add(key);
+    const cron = new Request('http://localhost:3000/api/cron/orphan-sweep', {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+    expect(await (await orphanSweepCron(cron)).json()).toEqual({
+      queued: 0,
+      deleted: 0,
+    });
+    await deleteData(request('/api/data', identity, undefined, 'DELETE'));
+    expect(await (await orphanSweepCron(cron)).json()).toEqual({
+      queued: 1,
+      deleted: 2,
+    });
+    expect(audio.exists.has(key)).toBe(false);
+    audio.orphans.clear();
+  });
+  it('drains more than two batches in one cron run, preserves future jobs, and retries storage failures', async () => {
+    const namespace = 'a'.repeat(64);
+    const jobs = Array.from({ length: 1001 }, (_, index) => ({
+      namespace,
+      objectKey: `audio/${namespace}/00000000-0000-4000-8000-${index.toString().padStart(12, '0')}.m4a`,
+      deleteAfter: new Date(0),
+    }));
+    const future = {
+      ...jobs[0]!,
+      objectKey: `audio/${namespace}/ffffffff-ffff-4fff-8fff-ffffffffffff.m4a`,
+      deleteAfter: new Date(Date.now() + 60_000),
+    };
+    for (const job of [...jobs, future]) audio.exists.add(job.objectKey);
+    await getDb()
+      .insert(audioDeletions)
+      .values([...jobs, future]);
+    const cron = new Request('http://localhost:3000/api/cron/audio-deletions', {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+    const result = await audioDeletionCron(cron);
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({ deleted: 1001 });
+    expect(jobs.some((job) => audio.exists.has(job.objectKey))).toBe(false);
+    expect(audio.exists.has(future.objectKey)).toBe(true);
+    expect(await getDb().select().from(audioDeletions)).toEqual([future]);
+    await getDb()
+      .update(audioDeletions)
+      .set({ deleteAfter: new Date(0) })
+      .where(eq(audioDeletions.objectKey, future.objectKey));
+    audio.failures.add(future.objectKey);
+    expect((await audioDeletionCron(cron)).status).toBe(503);
+    expect(await getDb().select().from(audioDeletions)).toHaveLength(1);
+    audio.failures.clear();
+    expect(await (await audioDeletionCron(cron)).json()).toEqual({
+      deleted: 1,
+    });
+    expect(await getDb().select().from(audioDeletions)).toEqual([]);
   });
 });

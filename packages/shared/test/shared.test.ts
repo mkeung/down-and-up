@@ -3,11 +3,13 @@ import {
   addDays,
   applyAcknowledgment,
   applyPull,
+  changeSchema,
   chartPoints,
   cleanFields,
   currentStreak,
   dailyPoints,
   emptyEntry,
+  entrySchema,
   exportCsv,
   formatIdForDisplay,
   generateId,
@@ -23,6 +25,7 @@ import {
   serverSyncRequestSchema,
   summary,
   todayLocal,
+  uploadSchema,
   valueCounts,
   type Change,
   type LocalEntry,
@@ -273,6 +276,22 @@ describe('field-level sync', () => {
 
 describe('validation', () => {
   const schema = serverSyncRequestSchema(new Date('2026-10-10T23:00:00Z'));
+  it('normalizes audio UUIDs in uploads, changes, and stored entries', () => {
+    const audioId = 'B68D4F5E-4168-4D8B-AE7E-3C4DF743364C';
+    const change = {
+      date: '2026-10-10',
+      audioId,
+      audioDurationMs: 1000,
+      audioUpdatedAt: 1,
+    };
+    expect(uploadSchema.parse({ audioId, size: 1000 }).audioId).toBe(
+      audioId.toLowerCase(),
+    );
+    expect(changeSchema.parse(change).audioId).toBe(audioId.toLowerCase());
+    expect(
+      entrySchema.parse({ ...emptyEntry(change.date), ...change }).audioId,
+    ).toBe(audioId.toLowerCase());
+  });
   it('requires paired fields and validates batch, time, and date bounds', () => {
     const change = { date: '2026-10-11', value: 7, valueUpdatedAt: 1 };
     expect(schema.safeParse({ cursor: null, changes: [change] }).success).toBe(

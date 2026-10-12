@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
+  audioIdSchema,
   dateSchema,
   generateId,
   generateSecret,
@@ -197,20 +198,15 @@ export const audioUpload = route(async (request) => {
     const key = audioKey(id, input.audioId);
     const head = await audioHead(key);
     if (validAudio(head)) return json({ uploaded: true });
-    const [reference] = await tx
-      .select({ date: entries.date })
-      .from(entries)
-      .where(and(eq(entries.profileId, id), eq(entries.audioId, input.audioId)))
-      .limit(1);
-    if (reference) throw new HttpError(409, 'Recording is unavailable');
     if (head) throw new HttpError(409, 'Recording is unavailable');
+    // Missing referenced files can be repaired; the signed If-None-Match prevents overwrites.
     return json(await uploadUrl(key, input.size));
   });
 });
 export const audioDownload = route(async (request) => {
   const { id } = await authenticate(request);
   const audioId = new URL(request.url).pathname.split('/').at(-1);
-  const parsed = z.uuid().safeParse(audioId);
+  const parsed = audioIdSchema.safeParse(audioId);
   if (!parsed.success) throw new HttpError(404, 'Recording not found');
   return getDb().transaction(async (tx) => {
     await lockProfile(tx, id);
@@ -362,57 +358,60 @@ function assertCron(request: Request) {
   if (!constantEqual(request.headers.get('authorization') ?? '', expected))
     throw new HttpError(401);
 }
-export async function drainDeletions(limit = 500): Promise<number> {
-  const pending = await getDb()
-    .select()
-    .from(audioDeletions)
-    .where(lte(audioDeletions.deleteAfter, new Date()))
-    .orderBy(asc(audioDeletions.deleteAfter))
-    .limit(limit);
+export async function drainDeletions(): Promise<number> {
+  const dueBefore = new Date();
   let deleted = 0;
-  for (const item of pending) {
-    await getDb().transaction(async (tx) => {
-      await lockNamespace(tx, item.namespace);
-      const [queued] = await tx
-        .select()
-        .from(audioDeletions)
-        .where(eq(audioDeletions.objectKey, item.objectKey))
-        .for('update');
-      if (!queued || queued.deleteAfter > new Date()) return;
-      const [profile] = await tx
-        .select()
-        .from(profiles)
-        .where(eq(profiles.audioNamespace, item.namespace))
-        .for('update');
-      const match = /\/([0-9a-f-]{36})\.m4a$/.exec(item.objectKey);
-      if (!match) {
+  for (;;) {
+    const pending = await getDb()
+      .select()
+      .from(audioDeletions)
+      .where(lte(audioDeletions.deleteAfter, dueBefore))
+      .orderBy(asc(audioDeletions.deleteAfter))
+      .limit(500);
+    if (!pending.length) return deleted;
+    for (const item of pending) {
+      await getDb().transaction(async (tx) => {
+        await lockNamespace(tx, item.namespace);
+        const [queued] = await tx
+          .select()
+          .from(audioDeletions)
+          .where(eq(audioDeletions.objectKey, item.objectKey))
+          .for('update');
+        if (!queued || queued.deleteAfter > dueBefore) return;
+        const [profile] = await tx
+          .select()
+          .from(profiles)
+          .where(eq(profiles.audioNamespace, item.namespace))
+          .for('update');
+        const match = /\/([0-9a-f-]{36})\.m4a$/i.exec(item.objectKey);
+        if (!match) {
+          await tx
+            .delete(audioDeletions)
+            .where(eq(audioDeletions.objectKey, item.objectKey));
+          return;
+        }
+        const [referenced] = profile
+          ? await tx
+              .select({ date: entries.date })
+              .from(entries)
+              .where(
+                and(
+                  eq(entries.profileId, profile.id),
+                  eq(entries.audioId, match[1]!),
+                ),
+              )
+              .limit(1)
+          : [];
+        if (!referenced) {
+          await deleteObject(item.objectKey);
+          deleted++;
+        }
         await tx
           .delete(audioDeletions)
           .where(eq(audioDeletions.objectKey, item.objectKey));
-        return;
-      }
-      const [referenced] = profile
-        ? await tx
-            .select({ date: entries.date })
-            .from(entries)
-            .where(
-              and(
-                eq(entries.profileId, profile.id),
-                eq(entries.audioId, match[1]!),
-              ),
-            )
-            .limit(1)
-        : [];
-      if (!referenced) {
-        await deleteObject(item.objectKey);
-        deleted++;
-      }
-      await tx
-        .delete(audioDeletions)
-        .where(eq(audioDeletions.objectKey, item.objectKey));
-    });
+      });
+    }
   }
-  return deleted;
 }
 export const audioDeletionCron = route(async (request) => {
   assertCron(request);
@@ -437,7 +436,7 @@ export const orphanSweepCron = route(async (request) => {
         object.LastModified.getTime() > cutoff
       )
         continue;
-      const match = /^audio\/([0-9a-f]{64})\/([0-9a-f-]{36})\.m4a$/.exec(
+      const match = /^audio\/([0-9a-f]{64})\/([0-9a-f-]{36})\.m4a$/i.exec(
         object.Key,
       );
       if (!match) continue;

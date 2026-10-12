@@ -8,6 +8,12 @@ import {
   verifySession,
 } from './security';
 describe('credentials and storage', () => {
+  it('uses one storage key for every UUID casing', () => {
+    const audioId = 'B68D4F5E-4168-4D8B-AE7E-3C4DF743364C';
+    expect(audioKey('7K3M9QX2PDA4', audioId)).toBe(
+      audioKey('7K3M9QX2PDA4', audioId.toLowerCase()),
+    );
+  });
   it('signs opaque session IDs and rejects tampering', () => {
     const sessionId = 'a'.repeat(64);
     const cookie = signSession(sessionId, 'test-secret');
