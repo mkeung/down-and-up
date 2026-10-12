@@ -1,0 +1,53 @@
+appId: app.downandup.tracker
+name: Local record and history
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: Keep on this phone only
+    optional: true
+- assertVisible: '1'
+- tapOn: '3'
+- tapOn: '8'
+- tapOn: '8'
+- assertVisible:
+    text: '8'
+    selected: true
+- assertVisible:
+    text: Next day
+    enabled: false
+- tapOn: 'Note.*'
+- inputText: Offline test note
+- swipe:
+    start: 50%, 35%
+    end: 50%, 15%
+- tapOn: History
+- assertVisible: '.*Today.*8.*note.*'
+- tapOn:
+    text: '.*Today.*8.*note.*'
+- assertVisible: '8'
+- assertVisible: '.*Offline test note.*'
+- swipe:
+    start: 50%, 35%
+    end: 50%, 70%
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    text: Previous day
+    retryTapIfNoChange: true
+- assertVisible: 'Choose date, Yesterday.*'
+- tapOn: '6'
+- tapOn:
+    text: Next day
+    retryTapIfNoChange: true
+- assertVisible: 'Choose date, Today.*'
+- assertVisible:
+    text: '8'
+    selected: true
+- assertVisible: '.*Offline test note.*'
+- stopApp
+- launchApp
+- assertVisible: '.*Offline test note.*'
+- takeScreenshot: test-results/mobile-local
+- tapOn: Settings
+- assertVisible: Sync is off

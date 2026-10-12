@@ -1,0 +1,17 @@
+.git
+**/node_modules
+.pnpm-store
+**/.pnpm-store
+**/.env*
+**/.next
+**/.expo
+**/dist
+**/*.tsbuildinfo
+apps/mobile
+tests
+test-results
+playwright-report
+coverage
+.agents
+.claude
+skills-lock.json

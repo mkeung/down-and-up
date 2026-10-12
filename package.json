@@ -1,0 +1,36 @@
+{
+  "name": "down-and-up",
+  "private": true,
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @down-up/web dev",
+    "dev:mobile": "pnpm --filter @down-up/mobile start",
+    "build": "pnpm --filter @down-up/web build",
+    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.tools.json",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:web": "node scripts/web-e2e.mjs",
+    "test:integration": "node scripts/integration.mjs",
+    "test:staging": "node scripts/staging-check.mjs",
+    "db:migrate": "pnpm --filter @down-up/web db:migrate",
+    "db:generate": "pnpm --filter @down-up/web db:generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
+  }
+}

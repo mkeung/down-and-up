@@ -5,6 +5,7 @@ Guidance for AI coding agents working in this repository.
 ## Project
 
 **Down & Up** is a discreet daily 1–10 tracker. The repo will contain:
+
 - an offline-first mobile app (iOS + Android) for recording one value per day, with an optional text note and audio recording,
 - a web dashboard where users view their history as charts after entering their unique ID.
 
@@ -12,7 +13,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Status
 
-Planning only. No code exists yet. Build in the phase order from `PLAN.md` §8, unless told otherwise.
+The shared package, Expo app, Next.js API/dashboard, migrations, and test suites are implemented. Hosted infrastructure and release/device gates remain in `docs/RELEASE.md`. Build in the phase order from `PLAN.md` §8, unless told otherwise.
 
 ## Layout (planned)
 
@@ -21,7 +22,10 @@ apps/mobile/      Expo (React Native) + TypeScript, expo-router, expo-sqlite, ex
 apps/web/         Next.js (App Router) + TypeScript: dashboard UI and /api routes
 packages/shared/  zod schemas, sync protocol types, date utils, ID utils, stats helpers
 ```
-Package manager: **pnpm** workspaces. Once tooling exists, list the real commands here (install, dev, test, lint, typecheck, build).
+
+Package manager: **pnpm 12.9.1** workspaces, Node.js 24.
+
+Commands: `pnpm install --frozen-lockfile`, `pnpm dev`, `pnpm dev:mobile`, `pnpm test`, `pnpm test:integration`, `pnpm test:web`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm db:migrate`. See `README.md` for environment setup and native builds.
 
 ## Product rules (don't break these)
 
@@ -31,6 +35,7 @@ Package manager: **pnpm** workspaces. Once tooling exists, list the real command
   - permission prompts and notifications.
 
   Use neutral words like "value" and "note", or no label at all. All ten keys share one neutral color, with no color gradients or emoji that suggest good or bad.
+
 - **Keypad:** 3×3 grid `1 2 3 / 4 5 6 / 7 8 9`, with `10` alone and centered in the bottom row. Keys are at least 64×64pt. The selected key stays highlighted, and the highlight doesn't rely on color alone.
 - **One entry per day:** tapping a number saves right away (no save button) and overwrites that day's value. Tapping the selected number does nothing. **A value can never be cleared.** Notes and recordings can be edited or removed.
 - **Dates:** default to today. Future dates are never allowed. There is no lower limit.
@@ -73,6 +78,7 @@ Package manager: **pnpm** workspaces. Once tooling exists, list the real command
   4. the stats helpers.
 
   Mobile E2E uses Maestro. Web E2E uses Playwright.
+
 - Accessibility: every interactive element has an accessibility label (the keypad labels are just the numbers), and font scaling is supported.
 - Never commit secrets (database URLs, R2 keys, the session signing secret). Use `.env.local` and keep `.env.example` up to date.
 - Commit messages: imperative mood, with a short summary line.

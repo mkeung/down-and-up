@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/audio-deletions", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/orphan-sweep", "schedule": "0 12 * * *" }
+  ]
+}

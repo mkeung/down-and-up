@@ -1,0 +1,38 @@
+import type { ExpoConfig } from 'expo/config';
+const config: ExpoConfig = {
+  name: 'Down & Up',
+  slug: 'down-and-up',
+  scheme: 'down-up',
+  version: '1.0.0',
+  icon: './assets/icon.png',
+  orientation: 'default',
+  userInterfaceStyle: 'automatic',
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'app.downandup.tracker',
+    infoPlist: {
+      NSMicrophoneUsageDescription: 'Used to record audio notes.',
+      ITSAppUsesNonExemptEncryption: false,
+    },
+  },
+  android: { package: 'app.downandup.tracker', allowBackup: false },
+  plugins: [
+    ['expo-build-properties', { ios: { enableSceneSupport: true } }],
+    'expo-router',
+    'expo-secure-store',
+    'expo-sqlite',
+    'expo-notifications',
+    ['expo-audio', { microphonePermission: 'Used to record audio notes.' }],
+    [
+      'expo-splash-screen',
+      {
+        backgroundColor: '#f4f3ec',
+        image: './assets/icon.png',
+        imageWidth: 96,
+        dark: { backgroundColor: '#171e19' },
+      },
+    ],
+  ],
+  experiments: { typedRoutes: false },
+};
+export default config;

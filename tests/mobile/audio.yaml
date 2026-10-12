@@ -1,0 +1,27 @@
+appId: app.downandup.tracker
+name: Audio record, play, and delete
+---
+- launchApp
+- tapOn:
+    text: Keep on this phone only
+    optional: true
+- tapOn: Today
+- scrollUntilVisible:
+    element:
+      text: Record
+    direction: DOWN
+    centerElement: true
+- tapOn: Record
+- tapOn:
+    text: Allow
+    optional: true
+- assertVisible: Stop
+- extendedWaitUntil:
+    visible: '0:0[1-9]'
+    timeout: 10000
+- tapOn: Stop
+- assertVisible: Play recording
+- tapOn: Play recording
+- tapOn: Delete recording
+- tapOn: Delete
+- assertNotVisible: Play recording

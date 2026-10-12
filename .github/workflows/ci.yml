@@ -1,0 +1,34 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm --filter @down-up/mobile export
+      - name: Install isolated integration-test services
+        run: sudo apt-get update && sudo apt-get install -y postgresql redis-server
+      - name: Test Postgres and Redis transactions
+        run: |
+          export PATH="$(pg_config --bindir):$PATH"
+          pnpm test:integration
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Test web user flows
+        env:
+          PLAYWRIGHT_CHANNEL: ''
+        run: |
+          export PATH="$(pg_config --bindir):$PATH"
+          pnpm test:web

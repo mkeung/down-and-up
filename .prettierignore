@@ -1,0 +1,16 @@
+pnpm-lock.yaml
+.pnpm-store
+node_modules
+.next
+.expo
+dist
+coverage
+playwright-report
+test-results
+.agents
+.codex
+.claude
+skills-lock.json
+apps/web/next-env.d.ts
+apps/mobile/ios
+apps/mobile/android

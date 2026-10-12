@@ -1,0 +1,21 @@
+appId: app.downandup.tracker
+name: Cached audio playback and deletion
+---
+- launchApp
+- tapOn: Today
+- scrollUntilVisible:
+    element:
+      text: Play recording
+    direction: DOWN
+    centerElement: true
+- tapOn: Play recording
+- assertVisible: Pause recording
+- scrollUntilVisible:
+    element:
+      text: Delete recording
+    direction: DOWN
+    centerElement: true
+- assertVisible: Delete recording
+- tapOn: Delete recording
+- tapOn: Delete
+- assertNotVisible: Play recording
