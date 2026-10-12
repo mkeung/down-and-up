@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import character from '../assets/cerberus.png';
 
-const SIZE = 120;
+const SIZE = 168;
 
 export function CerberusArtwork({ visible = true }: { visible?: boolean }) {
   const [width, setWidth] = useState(0);

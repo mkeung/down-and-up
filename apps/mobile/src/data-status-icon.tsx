@@ -33,7 +33,7 @@ export function DataStatusButton() {
       onPress={() => router.navigate('/settings')}
       style={{
         alignSelf: 'flex-end',
-        marginBottom: -16,
+        marginBottom: -20,
         minWidth: 44,
         minHeight: 44,
         alignItems: 'center',

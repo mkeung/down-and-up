@@ -105,7 +105,7 @@ it('roams within the available width with no frame or touch/accessibility interc
   expect(renderer.root.findAllByType(Image)).toHaveLength(1);
   expect(mocks.interpolate).toHaveBeenLastCalledWith({
     inputRange: [0, 1],
-    outputRange: [-104, 104],
+    outputRange: [-80, 80],
     extrapolate: 'clamp',
   });
   expect(mocks.start).toHaveBeenCalledTimes(1);
@@ -122,7 +122,7 @@ it('roams within the available width with no frame or touch/accessibility interc
   expect(mocks.stop).toHaveBeenCalledTimes(1);
   expect(mocks.interpolate).toHaveBeenLastCalledWith({
     inputRange: [0, 1],
-    outputRange: [-64, 64],
+    outputRange: [-40, 40],
     extrapolate: 'clamp',
   });
 });

@@ -23,7 +23,12 @@ export default function Pawsitive() {
         keyboardDismissMode="on-drag"
         onScrollBeginDrag={Keyboard.dismiss}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 20, gap: 22, alignItems: 'center' }}
+        contentContainerStyle={{
+          padding: 20,
+          paddingTop: 4,
+          gap: 22,
+          alignItems: 'center',
+        }}
       >
         <View style={{ width: '100%', maxWidth: 420, gap: 24 }}>
           <DataStatusButton />
