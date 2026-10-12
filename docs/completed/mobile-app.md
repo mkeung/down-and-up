@@ -2,7 +2,7 @@
 
 **Status: completed** (Phase 1, plus the Rate/Pawsitive tab split). This describes the screens as built. Planned changes to them live in active plans:
 
-- [Data status icon](../data-status-icon.md) replaces the status line on Rate and becomes the way into Settings.
+- [Data status icon](data-status-icon.md) replaces the status line on Rate and becomes the way into Settings.
 - [Visual direction](../visual-direction.md) restyles the screens.
 - [Voice recording](../voice-recording.md) adds recording to Pawsitive.
 
@@ -59,7 +59,7 @@ Tap the date label to open the calendar. `10` sits where the 0 key is on a phone
 
 ### Sync status indicator
 
-On Rate: one of "Synced", "Saved on device, will sync", or "Syncing…". Tapping it starts a manual sync. [Data status icon](../data-status-icon.md) replaces it.
+On Rate: one of "Synced", "Saved on device, will sync", or "Syncing…". Tapping it starts a manual sync. [Data status icon](data-status-icon.md) replaces it.
 
 ## Screen: History
 
@@ -105,7 +105,7 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 
 ## Screen: Settings
 
-Settings has no tab. It opens from the "Enter ID" prompt ([identity: lifecycle](identity.md#lifecycle)) and through the `down-up://settings` link. [Data status icon](../data-status-icon.md) adds a visible entry point.
+Settings has no tab. It opens from the "Enter ID" prompt ([identity: lifecycle](identity.md#lifecycle)) and through the `down-up://settings` link. [Data status icon](data-status-icon.md) adds a visible entry point.
 
 - **Your ID:**
   - Shown large and grouped for readability (e.g., `7K3M 9QX2 PDA4`).
@@ -121,6 +121,14 @@ Settings has no tab. It opens from the "Enter ID" prompt ([identity: lifecycle](
   - **Also delete from this device:** wipes local data, then starts fresh with a new ID.
   - **Keep on this device:** keeps local data, clears the ID, and **turns sync off**, so nothing gets re-uploaded.
 - **Export CSV:** date, value, and note.
+
+### Theme colors
+
+- Settings has a **Theme color** picker: Neutral (default), Mint, Blue, Peach, and Plum. Labeled swatches preview the surface color with neutral keys. A checkmark, selected border, and accessibility selection state identify the active choice.
+- Picking a swatch saves immediately and updates all mobile screens and the tab bar. There is no save button. The choice stays in SQLite under `ui_theme`, is never synced, and survives restarts and identity changes, including discarding entry data.
+- The saved choice loads before the screens render. Unknown saved choices fall back to Neutral. A failed save preserves the previous choice and shows an error so it can be retried.
+- Light and dark variants follow the phone's appearance. Text contrast is at least 4.5:1, control outlines at least 3:1, and dedicated data-status colors at least 3:1 against each palette's background.
+- Color applies to backgrounds and chrome. All ten number keys retain the same neutral surfaces and selection colors; data-status colors describe storage and do not change with the selected theme.
 
 ## Offline-first behavior
 

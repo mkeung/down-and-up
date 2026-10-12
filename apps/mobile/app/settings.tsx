@@ -24,6 +24,7 @@ import { PrivacyNotice } from '../src/privacy-notice';
 import { Action, Row } from '../src/components';
 import { apiUrl } from '../src/transport';
 import { shareLocalRecordings } from '../src/export-recordings';
+import { ThemePicker } from '../src/theme-picker';
 
 export default function Settings() {
   const app = useApp();
@@ -109,6 +110,7 @@ export default function Settings() {
         <Text style={{ color: theme.text, fontSize: 30, fontWeight: '600' }}>
           Settings
         </Text>
+        <ThemePicker />
         {app.needsIdentity && (
           <View style={{ gap: 12 }}>
             <Text style={{ color: theme.text, fontSize: 18 }}>

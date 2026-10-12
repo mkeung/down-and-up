@@ -53,6 +53,28 @@ const response = (applied: ServerEntry[], changes = applied): SyncResponse => ({
 });
 
 describe('SQLite repository', () => {
+  it('keeps the theme local, separate from entry edits, and across identity resets', async () => {
+    const { repo, db } = sqliteRepository();
+    await repo.initialize();
+    await repo.setField(date, 'value', 7);
+    const sent = await repo.pushBatch();
+    const server = {
+      ...mergeServer(null, sent[0]!, Date.now()).entry,
+      serverSeq: '1',
+    };
+    await repo.applyResponse(sent, response([server]));
+    const edit = vi.fn();
+    repo.onEdit(edit);
+    await repo.setState('ui_theme', 'blue');
+    expect(await repo.state('ui_theme')).toBe('blue');
+    expect(edit).not.toHaveBeenCalled();
+    expect(await repo.pushBatch()).toEqual([]);
+    await repo.resetSync(false);
+    expect(await repo.state('ui_theme')).toBe('blue');
+    await repo.resetSync(true);
+    expect(await repo.state('ui_theme')).toBe('blue');
+    db.close();
+  });
   it('collects unreferenced recordings in phone-only mode while preserving active recordings', async () => {
     const { repo, db } = sqliteRepository();
     await repo.initialize();

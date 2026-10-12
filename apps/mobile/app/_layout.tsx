@@ -1,11 +1,12 @@
 import { Tabs, router } from 'expo-router';
 import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
-import { AppProvider } from '../src/app-context';
+import { AppProvider, useApp } from '../src/app-context';
 import { useTheme } from '../src/theme';
 import { todayLocal } from '@down-up/shared';
 import { SelectedDateProvider, useSelectedDate } from '../src/selected-date';
 import { PawsitiveIcon, RateIcon } from '../src/tab-icons';
+import { ThemeProvider } from '../src/theme-preference';
 function Navigation() {
   const theme = useTheme();
   const { selectDate } = useSelectedDate();
@@ -29,7 +30,7 @@ function Navigation() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: theme.background },
-        tabBarStyle: { backgroundColor: theme.surface },
+        tabBarStyle: { backgroundColor: theme.chrome },
         tabBarActiveTintColor: theme.text,
         tabBarInactiveTintColor: theme.muted,
       }}
@@ -58,9 +59,17 @@ function Navigation() {
 export default function Layout() {
   return (
     <AppProvider>
+      <Appearance />
+    </AppProvider>
+  );
+}
+function Appearance() {
+  const { repo } = useApp();
+  return (
+    <ThemeProvider store={repo}>
       <SelectedDateProvider>
         <Navigation />
       </SelectedDateProvider>
-    </AppProvider>
+    </ThemeProvider>
   );
 }
