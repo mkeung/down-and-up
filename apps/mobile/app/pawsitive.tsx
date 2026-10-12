@@ -1,4 +1,4 @@
-import { Keyboard, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Keyboard, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RECORDING_ENABLED } from '@down-up/shared';
 import { useTheme } from '../src/theme';
@@ -22,15 +22,19 @@ export default function Pawsitive() {
       >
         <View style={{ width: '100%', maxWidth: 420, gap: 24 }}>
           <DateBar />
-          <NoteEditor
-            key={date}
-            date={date}
-            note={selectedEntry?.note ?? null}
-          />
+          {selectedEntry === undefined ? (
+            <ActivityIndicator accessibilityLabel="Loading note" />
+          ) : (
+            <NoteEditor
+              key={date}
+              date={date}
+              note={selectedEntry?.note ?? null}
+            />
+          )}
           {RECORDING_ENABLED && (
             <AudioNote
               date={date}
-              entry={selectedEntry}
+              entry={selectedEntry ?? null}
               onRecording={setRecording}
             />
           )}

@@ -13,11 +13,16 @@ Notifications.setNotificationHandler({
 });
 export class Reminders {
   private tail: Promise<unknown> = Promise.resolve();
+  private promptDeferred = false;
   constructor(
     private readonly repo: Repository,
     private readonly enabled: () => boolean,
     private readonly onPermission: (blocked: boolean) => void,
   ) {}
+  foreground(): Promise<void> {
+    this.promptDeferred = false;
+    return this.rebuild(true);
+  }
   rebuild(allowPrompt = false): Promise<void> {
     const result = this.tail.then(async () => {
       await Notifications.cancelAllScheduledNotificationsAsync();
@@ -30,12 +35,16 @@ export class Reminders {
           sound: null,
         });
       let permission = await Notifications.getPermissionsAsync();
+      let asked =
+        (await this.repo.state('notification_asked')) === 'true' &&
+        permission.status !== 'undetermined';
       if (
         !permission.granted &&
         permission.canAskAgain &&
         allowPrompt &&
+        !this.promptDeferred &&
         AppState.currentState === 'active' &&
-        (await this.repo.state('notification_asked')) !== 'true'
+        !asked
       ) {
         const proceed = await new Promise<boolean>((resolve) =>
           Alert.alert(
@@ -48,11 +57,16 @@ export class Reminders {
             { cancelable: false },
           ),
         );
-        await this.repo.setState('notification_asked', 'true');
-        if (proceed && this.enabled())
+        if (proceed && this.enabled()) {
           permission = await Notifications.requestPermissionsAsync();
+          await this.repo.setState('notification_asked', 'true');
+          asked = true;
+        }
+        if (!proceed) this.promptDeferred = true;
       }
-      this.onPermission(!permission.granted && !permission.canAskAgain);
+      this.onPermission(
+        !permission.granted && (!permission.canAskAgain || asked),
+      );
       const dates = await this.repo.loggedDates();
       for (const item of reminderSchedule(
         settings,

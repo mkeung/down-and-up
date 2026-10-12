@@ -71,18 +71,21 @@ export function useSelectedDate() {
 
 export function useEntry(date: string) {
   const app = useApp();
-  const [entry, setEntry] = useState<LocalEntry | null>(null);
+  const [loaded, setLoaded] = useState<{
+    date: string;
+    entry: LocalEntry | null;
+  } | null>(null);
   useEffect(() => {
     let active = true;
     void app.repo
       .get(date)
       .then((row) => {
-        if (active) setEntry(row);
+        if (active) setLoaded({ date, entry: row });
       })
       .catch(reportError);
     return () => {
       active = false;
     };
   }, [app.repo, app.revision, date]);
-  return entry?.date === date ? entry : null;
+  return loaded?.date === date ? loaded.entry : undefined;
 }

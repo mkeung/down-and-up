@@ -16,17 +16,26 @@ export function NoteEditor({
   const [focused, setFocused] = useState(false);
   const latest = useRef(note ?? '');
   const changed = useRef(false);
+  const version = useRef(0);
+  const savingVersion = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flush = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
-    if (!changed.current) return;
-    changed.current = false;
+    if (!changed.current || savingVersion.current === version.current) return;
+    const savedVersion = version.current;
+    savingVersion.current = savedVersion;
     void repo
       .setField(date, 'note', latest.current || null)
+      .then(() => {
+        if (version.current === savedVersion) changed.current = false;
+      })
       .catch((error: unknown) => {
-        changed.current = true;
         reportError(error);
+      })
+      .finally(() => {
+        if (savingVersion.current === savedVersion)
+          savingVersion.current = null;
       });
   }, [repo, date]);
   useEffect(() => {
@@ -61,6 +70,7 @@ export function NoteEditor({
         setText(next);
         latest.current = next;
         changed.current = true;
+        version.current++;
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(flush, 1000);
       }}

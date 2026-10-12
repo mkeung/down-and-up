@@ -162,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           onlineRef.current,
           state === 'active',
         );
-        if (state === 'active') void reminders.rebuild(true).catch(reportError);
+        if (state === 'active') void reminders.foreground().catch(reportError);
       });
       disposeApp = () => appSubscription.remove();
       await reminders.rebuild();
@@ -205,6 +205,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       </View>
     );
   const { repo, engine, transport, reminders } = runtime;
+  const resumeSync = () =>
+    engine.configure(
+      enabledRef.current && !!apiUrl(),
+      onlineRef.current,
+      AppState.currentState === 'active',
+    );
   const stop = async () => {
     operations.current.abort();
     operations.current = new AbortController();
@@ -332,13 +338,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!identityRef.current || !enabledRef.current)
         throw new Error('Turn on sync to delete server data');
       await stop();
-      await transport.request(
-        '/api/data',
-        identityRef.current,
-        'DELETE',
-        undefined,
-        operations.current.signal,
-      );
+      try {
+        await transport.request(
+          '/api/data',
+          identityRef.current,
+          'DELETE',
+          undefined,
+          operations.current.signal,
+        );
+      } catch (error) {
+        resumeSync();
+        throw error;
+      }
       enabledRef.current = false;
       await enable(false);
       await transition(discard ? newIdentity() : null, discard);
@@ -348,17 +359,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!identityRef.current || !enabledRef.current)
         throw new Error('Turn on sync first');
       await stop();
-      const operationId =
-        (await repo.state('replace_operation')) ?? Crypto.randomUUID();
-      await repo.setState('replace_operation', operationId);
-      const response = await transport.request(
-        '/api/ids/replace',
-        identityRef.current,
-        'POST',
-        { operationId },
-        operations.current.signal,
-      );
-      const next = identitySchema.parse(response);
+      let next: Identity;
+      try {
+        const operationId =
+          (await repo.state('replace_operation')) ?? Crypto.randomUUID();
+        await repo.setState('replace_operation', operationId);
+        const response = await transport.request(
+          '/api/ids/replace',
+          identityRef.current,
+          'POST',
+          { operationId },
+          operations.current.signal,
+        );
+        next = identitySchema.parse(response);
+      } catch (error) {
+        resumeSync();
+        throw error;
+      }
       await transition(next, false, true);
       await repo.setState('replace_operation', null);
       await enable(true);
