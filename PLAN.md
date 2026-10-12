@@ -154,6 +154,7 @@ The bottom tab bar has two tabs. **Rate** holds the keypad and **Pawsitive** hol
 ```
 Rate                              Pawsitive
 ┌─────────────────────────────┐   ┌─────────────────────────────┐
+│                         (●) │   │                         (●) │
 │  ◀   Today, Sat Oct 10   ▶  │   │  ◀   Today, Sat Oct 10   ▶  │
 │                             │   │                             │
 │     [ 1 ]  [ 2 ]  [ 3 ]     │   │  ┌ Note…                  ┐ │
@@ -161,13 +162,12 @@ Rate                              Pawsitive
 │     [ 7 ]  [ 8 ]  [ 9 ]     │   │                             │
 │            [10 ]            │   │                             │
 │                             │   │                             │
-│           ✓ Synced          │   │                             │
 │─────────────────────────────│   │─────────────────────────────│
 │     Rate       Pawsitive    │   │     Rate       Pawsitive    │
 └─────────────────────────────┘   └─────────────────────────────┘
 ```
 
-Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. The sync status on Rate is small and unobtrusive.
+Tap the date label to open the calendar. `10` sits where the 0 key is on a phone keypad. The note is optional and expands when tapped. `(●)` in the top-right corner is the data status icon (§4.7). Its color shows whether entries are saved, and tapping it opens Settings.
 
 **Day selector**
 
@@ -209,7 +209,7 @@ Not in the first release. When it ships, a recording shows on Pawsitive as `[ �
 - **Day changes while recording:** the day selector is disabled on both tabs, and leaving the Pawsitive tab stops and saves the recording.
 - **Discreet permission text:** "Used to record audio notes."
 
-**Sync status indicator** (Rate tab): one of "Synced", "Saved on device, will sync", or "Syncing…". Tapping it starts a manual sync.
+**Data status:** shown by the icon in the top-right corner of both tabs (§4.7). It replaces the old text indicator at the bottom of Rate. Manual sync is "Sync now" in Settings.
 
 ### 4.2 Screen: History
 
@@ -255,7 +255,7 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 
 ### 4.3 Screen: Settings
 
-Settings has no tab. It opens from the "Enter ID" prompt (§5.2) and through the `down-up://settings` link.
+Settings has no tab. It opens from the data status icon in the top-right corner (§4.7), from the "Enter ID" prompt (§5.2), and through the `down-up://settings` link. The tab bar stays visible, so tapping Rate or Pawsitive returns.
 
 - **Your ID:**
   - Shown large and grouped for readability (e.g., `7K3M 9QX2 PDA4`).
@@ -265,7 +265,7 @@ Settings has no tab. It opens from the "Enter ID" prompt (§5.2) and through the
 - **Use an existing ID:** for a new phone or a reinstall. See §5.4.
 - **Reminder** (read-only here): "Daily at 8:00 PM", or "Off", with a note that it's set on the web. If notification permission is denied, it shows "Notifications are blocked" with a button that opens the phone's settings.
 - **Sync:**
-  - Shows the last sync time and a "Sync now" button.
+  - Shows the data status in words, matching the icon (§4.7), plus the last sync time and a "Sync now" button. If the last sync failed, it says so here.
   - When sync is off, shows "Sync is off" with a **Start syncing** button. Starting creates a new ID and uploads all local data.
 - **Delete my data from the server** (with confirmation). This removes all entries and audio for the ID from the server, then asks:
   - **Also delete from this device:** wipes local data, then starts fresh with a new ID.
@@ -323,6 +323,28 @@ Implemented once in `packages/shared` and used by both the History tab and the w
 - **Multiple phones:** each phone sharing the ID schedules its own reminders. Logging on one phone cancels the reminder on the others only after they sync.
 
 ---
+
+### 4.7 Data status icon
+
+One icon in the top-right corner of the Rate and Pawsitive tabs, above the day selector, shows whether the user's entries are safe. It's also the way into Settings: tapping it opens Settings.
+
+The icon describes all of the user's data, not just the selected day. When more than one state applies, the first match below wins.
+
+| State            | Color  | Shape                   | When                                                                                                                                                                                                                                                         |
+| ---------------- | ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Unsaved**      | Red    | Circle with `!`         | A change isn't on the phone yet: a note edit waiting for its ~1s autosave, a write in progress, or a local write that failed. Taps on the keypad write immediately, so red is normally brief. It stays red only if a write fails.                            |
+| **Saved here**   | Yellow | Phone outline           | Everything is saved in SQLite, but the server doesn't have all of it: a field is still dirty, a sync is running or failed, the phone is offline, the ID needs to be entered (§5.2), the server isn't configured, or sync is off ("Keep on this phone only"). |
+| **In the cloud** | Green  | Cloud with a check mark | Sync is on, no field is dirty, no local write is pending, and the last sync succeeded.                                                                                                                                                                       |
+
+- **Sync off stays yellow.** With "Keep on this phone only", entries really are only on the phone, so the icon is yellow for as long as sync is off.
+- **Sync errors stay yellow, not red.** The data is safe on the phone. Details go in Settings.
+- **No animation.** While a sync runs, the icon stays yellow until the server accepts the changes, then turns green. There's no spinner or pulse.
+- **Not color alone.** Each state has its own shape, so the status reads without color (color blindness, grayscale mode).
+- **Colors:** three dedicated theme colors for status only, with light and dark variants that keep at least 3:1 contrast against the background. They're never used on the keypad, which keeps one neutral color, and they never depend on the value, so they don't suggest that a value is good or bad.
+- **Size:** about 24pt, with a touch target of at least 44×44pt.
+- **Accessibility:** a button labeled "Settings", with the status as its value: "Not saved yet", "Saved on this phone", or "Saved to the cloud". The text is neutral, like the rest of the app.
+- **Where it appears:** Rate and Pawsitive only. History and Settings don't show it.
+- **One source of truth:** a pure function in the mobile app turns the inputs into a state: pending or failed local writes, whether any field is dirty, whether sync is on, and the last sync result. It's unit-tested. The note editor reports its pending autosave, and the repository reports write failures. The dirty check re-runs after every local change and every sync.
 
 ## 5. Unique ID: access without accounts
 
@@ -609,6 +631,7 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 ### Phase 5: Polish + release (≈2 weeks, including store review buffer)
 
 - App icon, splash screen, dark mode, store listings. Keep the icon, display name ("Down & Up"), and listing text neutral, with no mention of mood.
+- Data status icon (§4.7): replaces the text indicator at the bottom of Rate and becomes the way into Settings.
 - Ship without voice recording: hide the Record control, recording markers, and playback in the app and on the web behind `RECORDING_ENABLED` (`packages/shared`), and drop the microphone permission from the app config (blocking `RECORD_AUDIO` on Android). Keep the audio columns and sync field group, which stay empty.
 - Privacy policy, App Store privacy label, and Play Data Safety form (§5.6). Confirm encryption at rest and the backup retention settings with the chosen providers.
 - CSV export and Replace ID.
@@ -654,10 +677,12 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
   - Recording stopped by an interruption.
   - A row referencing a file that's missing on the server is answered with `missingAudio`, and the file is re-uploaded.
   - The cron jobs delete queued and orphaned objects, and nothing that's still referenced.
+- **Data status (unit):** each state, the order when several apply, sync off staying yellow, a failed sync staying yellow, and a failed local write showing red.
 - **Mobile E2E (Maestro):**
   - Select a day, tap 3 then 8, and check that 8 is highlighted.
   - Try to go past today and check it's blocked. Pick a date years back.
   - Add a note. (Add a recording once Phase 6 ships.)
+  - Data status icon: red while a note autosave is pending, yellow after it saves with sync off or offline, green after a successful sync. Tapping it opens Settings on both tabs.
   - Airplane-mode round trip.
   - Reinstall cases: ID kept but database gone (full restore), and database kept but ID gone (prompt, no silent new ID).
   - "Use an existing ID" with Merge (previously synced rows reach the new ID) and with Discard.
@@ -682,7 +707,8 @@ Failures retry with exponential backoff (cap ~5 min while foregrounded). Only on
 - **Official artwork:** keep the Cerberus character version 01c and final icon versions 09b (opaque) and 09c (transparent) in `OfficialAssets/`. Exploratory studies and generation prompts stay in `ConceptArt/`. The icons show two front paws with the legs hidden.
 - **App lock:** none.
 - **In-app history:** a History screen with a list of values by day and charts, read from local data so it works offline.
-- **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note, plus recording once it ships), sharing one selected day. History and Settings stay as screens without a tab and have no visible entry point for now. They open through `down-up://history` and `down-up://settings`, and Settings also opens from the "Enter ID" prompt. Until an entry point is added, sync can't be turned off after the first-launch notice, and the ID, export, and delete options aren't reachable from the app.
+- **Mobile tabs:** two tabs, **Rate** (keypad) and **Pawsitive** (note, plus recording once it ships), sharing one selected day. History and Settings stay as screens without a tab. Settings opens from the data status icon (§4.7). History has no visible entry point for now and opens through `down-up://history`.
+- **Data status icon:** a red, yellow, or green icon in the top-right corner of Rate and Pawsitive shows whether entries are unsaved, saved on the phone, or saved to the cloud, and opens Settings. Each state also has its own shape. These status colors are the only colors outside the neutral palette and never relate to the value (§4.7).
 - **Notes:** an optional text note (≤2,000 chars) for any day. An optional audio recording (≤5 min, one per day) comes later.
 - **Voice recording deferred:** the first release ships without recording. The audio design (§4.1, §6.3, the audio routes, R2, and the cleanup cron jobs) is kept for Phase 6. The SQLite and Postgres audio columns and the audio field group in the sync protocol stay in place and empty, so turning recording on later needs no migration or protocol change.
 - **Past dates:** no limit on how far back.
