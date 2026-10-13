@@ -2,6 +2,8 @@
 
 A running log. Add new decisions here in the same change that makes them, and link the plan that carries the detail.
 
+- **Weekday chart context:** at the user's request, add weekday and month/day labels to the mobile/web time charts and a separate Monday–Sunday average chart for the selected period. Weekday averages use recorded daily values only, with gaps for missing weekdays and logged-day counts alongside the means. See [stats](completed/stats.md), [mobile History](completed/mobile-app.md#screen-history), and [web dashboard](completed/web.md#dashboard-page-dashboard-session-required).
+
 - **Larger Android launcher portrait:** at the user's request, use an adaptive icon derived from official master 10 so Android does not apply its extra legacy-icon padding. Center a 720px rendition on a 1024px foreground with extended background edges; keep the full heads and tails inside the circular mask. See [visual direction](visual-direction.md).
 
 - **Portrait-only mobile app:** at the user's request, restrict iOS and Android to portrait on phones and tablets. Keep iPad support, require full-screen presentation, and override its supported orientations so existing native projects cannot retain landscape support after prebuild. See [mobile app](completed/mobile-app.md) and [release checks](RELEASE.md).

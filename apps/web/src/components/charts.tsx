@@ -9,20 +9,90 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  type XAxisTickContentProps,
 } from 'recharts';
-import { RECORDING_ENABLED } from '@down-up/shared';
+import {
+  chartDateLabel,
+  RECORDING_ENABLED,
+  type WeekdayAverage,
+} from '@down-up/shared';
 import type { DashboardPoint as Point } from '../server/dashboard-data';
+
+function DateTick({ x, y, payload }: XAxisTickContentProps) {
+  const label = chartDateLabel(String(payload.value));
+  return (
+    <text x={x} y={y} textAnchor="middle" fill="var(--muted)" fontSize={12}>
+      <tspan x={x} dy={12}>
+        {label.weekday}
+      </tspan>
+      <tspan x={x} dy={16}>
+        {label.date}
+      </tspan>
+    </text>
+  );
+}
 export function Charts({
   points,
   counts,
+  weekdays,
   rolling,
   kind,
 }: {
   points: Point[];
   counts: { value: number; count: number }[];
+  weekdays: WeekdayAverage[];
   rolling: boolean;
-  kind: 'line' | 'counts';
+  kind: 'line' | 'counts' | 'weekdays';
 }) {
+  if (kind === 'weekdays')
+    return (
+      <div style={{ width: '100%', height: 240 }}>
+        <ResponsiveContainer>
+          <BarChart data={weekdays} accessibilityLayer>
+            <CartesianGrid vertical={false} stroke="var(--line)" />
+            <XAxis
+              dataKey="weekday"
+              interval={0}
+              tick={{ fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+              stroke="var(--muted)"
+            />
+            <YAxis
+              domain={[0, 10]}
+              ticks={[1, 3, 5, 7, 10]}
+              tickLine={false}
+              axisLine={false}
+              stroke="var(--muted)"
+            />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                const point =
+                  weekdays.find((point) => point.weekday === label) ??
+                  (payload?.[0]?.payload as WeekdayAverage | undefined);
+                return active && point ? (
+                  <div className="chart-tooltip">
+                    <strong>{point.weekday}</strong>
+                    <p>
+                      {point.average?.toFixed(1) ?? '—'} · {point.count}{' '}
+                      {point.count === 1 ? 'day' : 'days'}
+                    </p>
+                  </div>
+                ) : null;
+              }}
+            />
+            <Bar
+              dataKey="average"
+              name="Average"
+              fill="var(--accent)"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={32}
+              isAnimationActive={false}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
   if (kind === 'counts')
     return (
       <div style={{ width: '100%', height: 200 }}>
@@ -71,8 +141,10 @@ export function Charts({
           <CartesianGrid vertical={false} stroke="var(--line)" />
           <XAxis
             dataKey="date"
-            minTickGap={36}
-            tickFormatter={(date: string) => date.slice(5)}
+            minTickGap={12}
+            height={44}
+            tick={DateTick}
+            tickFormatter={(date: string) => chartDateLabel(date).date}
             tickLine={false}
             axisLine={false}
             stroke="var(--muted)"

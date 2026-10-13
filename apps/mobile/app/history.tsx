@@ -17,7 +17,7 @@ import { useTheme } from '../src/theme';
 import { PixelText } from '../src/retro';
 import { reportError, useApp } from '../src/app-context';
 import { Action, Row } from '../src/components';
-import { HistoryChart } from '../src/history-chart';
+import { HistoryChart, WeekdayChart } from '../src/history-chart';
 import { useSelectedDate } from '../src/selected-date';
 export default function History() {
   const app = useApp();
@@ -110,6 +110,13 @@ export default function History() {
                 onPress={() => setCounts(true)}
               />
             </Row>
+            <Text style={{ color: theme.text, fontSize: 18 }}>
+              Average by weekday
+            </Text>
+            <Text style={{ color: theme.muted }}>
+              Recorded days in this range only.
+            </Text>
+            <WeekdayChart entries={entries} from={range.from} to={range.to} />
           </>
         ) : (
           <Text style={{ color: theme.muted }}>Nothing recorded yet</Text>

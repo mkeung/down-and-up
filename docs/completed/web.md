@@ -24,12 +24,13 @@
 - **Date range control:** presets **7D · 30D · 90D · 1Y · All**, plus a **custom** from/to picker. The range is kept in the URL query string (`?from=…&to=…`) so it can be bookmarked. Only the range goes in the URL, never the ID.
 - **Summary tiles for the range:** average, min, max, days logged / days in range, and a current streak ([stats definitions](stats.md)).
 - **Main chart: line chart of value over time.**
-  - X = date, Y = 1–10 (fixed axis).
+  - X = date, with abbreviated weekday above month/day on each visible tick, Y = 1–10 (fixed axis).
   - Days without a value show as **gaps** and are not interpolated to zero.
   - Optional toggle for a **7-day rolling average** overlay.
   - Long ranges switch to weekly or monthly averages, following the [shared rules](stats.md) (identical to the app).
   - Tooltip shows the date, the value, and a short note preview, if any. Points for days with a note get a small marker. Weekly and monthly points show their average and day count only, never a single day's note.
 - **Secondary chart: distribution bar chart** showing how many days each value (1–10) was recorded in the range.
+- **Average by weekday:** a separate Monday–Sunday bar chart for the selected range. Only days with a value contribute; a weekday with no values has no bar. Tooltips show the mean to one decimal and logged-day count. The server uses the shared helper on daily entries, including for weekly/monthly chart ranges, and sends just seven aggregates to the browser.
 - **Entries table** below the charts, sorted newest first and paginated.
   - Columns: date, value, and note (full text, wrapped).
 - Responsive layout so the dashboard also works on a phone browser.

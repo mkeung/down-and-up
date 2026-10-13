@@ -23,6 +23,66 @@ async function profile(request: APIRequestContext) {
   ).toBe(200);
   return { id, headers };
 }
+test('shows weekday/date labels and weekday averages for the selected period', async ({
+  page,
+  request,
+}) => {
+  const { id, headers } = await profile(request);
+  expect(
+    (
+      await request.post('/api/sync', {
+        headers,
+        data: {
+          cursor: null,
+          changes: [
+            { date: '2026-09-07', value: 2, valueUpdatedAt: 1000 },
+            { date: '2026-09-08', value: 4, valueUpdatedAt: 1000 },
+            { date: '2026-09-14', value: 8, valueUpdatedAt: 1000 },
+            { date: '2026-09-15', note: 'Note only', noteUpdatedAt: 1000 },
+          ],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.goto('/');
+  await page.getByLabel('Enter your ID').fill(id);
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto('/dashboard?from=2026-09-07&to=2026-09-15');
+  const line = page
+    .locator('.chart-card')
+    .filter({ has: page.getByRole('heading', { name: 'Daily values' }) });
+  await expect(
+    line.locator('tspan').filter({ hasText: /^Mon$/ }).first(),
+  ).toBeVisible();
+  await expect(
+    line.locator('tspan').filter({ hasText: /^09\/07$/ }),
+  ).toBeVisible();
+  const weekdays = page
+    .locator('.chart-card')
+    .filter({ has: page.getByRole('heading', { name: 'Average by weekday' }) });
+  await expect(
+    weekdays.locator(
+      '.recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value',
+    ),
+  ).toHaveText(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  await weekdays.locator('.recharts-bar-rectangle').first().hover();
+  await expect(weekdays.locator('.chart-tooltip')).toContainText(
+    '5.0 · 2 days',
+  );
+  await page.getByLabel('To date').fill('2026-09-08');
+  await page.getByRole('button', { name: 'Apply', exact: true }).click();
+  await expect(page).toHaveURL(/to=2026-09-08/);
+  await weekdays.locator('.recharts-bar-rectangle').first().hover();
+  await expect(weekdays.locator('.chart-tooltip')).toContainText('2.0 · 1 day');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    weekdays.locator(
+      '.recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value',
+    ),
+  ).toHaveText(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+  await weekdays.screenshot({ path: 'test-results/weekday-chart-mobile.png' });
+});
 test('complete ID, history, range, hidden recording, reminder and sign-out flow', async ({
   page,
   request,

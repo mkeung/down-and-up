@@ -465,6 +465,12 @@ run('Postgres transactions and API handlers', () => {
       days: 3,
     });
     expect(result.counts[4]).toEqual({ value: 5, count: 3 });
+    expect(
+      result.weekdays.reduce((total, point) => total + point.count, 0),
+    ).toBe(3);
+    expect(
+      result.weekdays.filter((point) => point.average !== null),
+    ).toHaveLength(3);
     expect(result.rows).toHaveLength(3);
     // Bucketed ranges never attach a single day's note to a point.
     const weekly = await loadDashboardData(
@@ -477,6 +483,9 @@ run('Postgres transactions and API handlers', () => {
       weekly.points.some((point) => 'notePreview' in point || 'audio' in point),
     ).toBe(false);
     expect(weekly.stats.logged).toBe(13);
+    expect(
+      weekly.weekdays.reduce((total, point) => total + point.count, 0),
+    ).toBe(13);
     expect(weekly.points.at(-1)?.rolling).toBe(5);
     expect(currentStreakFromRuns(result.streakRuns, today)).toBe(13);
     expect(currentStreakFromRuns(result.streakRuns, addDays(today, -1))).toBe(
@@ -492,6 +501,11 @@ run('Postgres transactions and API handlers', () => {
     );
     expect(empty.points.every((point) => point.value === null)).toBe(true);
     expect(empty.stats.logged).toBe(0);
+    expect(
+      empty.weekdays.every(
+        (point) => point.average === null && point.count === 0,
+      ),
+    ).toBe(true);
     expect(empty.firstDate).toBe('2000-01-01');
     expect(currentStreakFromRuns(empty.streakRuns, today)).toBe(13);
   });

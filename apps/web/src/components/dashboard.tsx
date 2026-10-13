@@ -18,6 +18,7 @@ import {
   type RangePreset,
   type ServerEntry,
   type StreakRun,
+  type WeekdayAverage,
 } from '@down-up/shared';
 import type { DashboardPoint } from '../server/dashboard-data';
 import { EntriesTable } from './entries-table';
@@ -35,6 +36,7 @@ export function Dashboard({
   points,
   stats,
   counts,
+  weekdays,
   firstDate,
   streakRuns,
   from,
@@ -53,6 +55,7 @@ export function Dashboard({
     days: number;
   };
   counts: { value: number; count: number }[];
+  weekdays: WeekdayAverage[];
   firstDate: string | null;
   streakRuns: StreakRun[];
   from: string;
@@ -220,6 +223,7 @@ export function Dashboard({
             <Charts
               points={points}
               counts={counts}
+              weekdays={weekdays}
               rolling={rolling}
               kind="line"
             />
@@ -234,8 +238,22 @@ export function Dashboard({
           <Charts
             points={points}
             counts={counts}
+            weekdays={weekdays}
             rolling={false}
             kind="counts"
+          />
+        </div>
+      </section>
+      <section className="chart-card">
+        <h2>Average by weekday</h2>
+        <p className="muted small">Recorded days in this range only.</p>
+        <div style={{ height: 240 }}>
+          <Charts
+            points={points}
+            counts={counts}
+            weekdays={weekdays}
+            rolling={false}
+            kind="weekdays"
           />
         </div>
       </section>

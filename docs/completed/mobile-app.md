@@ -93,11 +93,12 @@ Read entirely from local SQLite, so it works offline and updates instantly after
 - **Range:** presets 7D · 30D · 90D · 1Y · All, the same as the web dashboard. The default is 30D. Custom ranges are left to the web.
 - **Summary row:** average, min, max, and days logged out of days in range. These are computed by the same shared helper the web uses, so both show the same numbers ([stats definitions](stats.md)).
 - **Line chart:**
-  - X = date, Y = fixed 1–10 axis.
+  - X = date, with abbreviated weekday above month/day on each visible tick, Y = fixed 1–10 axis. Ticks are spaced to fit the chart width.
   - Missing days, and days that only have a note, are gaps, not zeros.
   - Press and drag shows the date and value.
   - Long ranges switch to weekly or monthly averages, following the [shared rules](stats.md).
 - **Counts chart:** a toggle switches to a bar chart showing how many days each value (1–10) was recorded in the range.
+- **Average by weekday:** a separate bar chart shows Monday–Sunday averages for the selected range, using only recorded values. Missing weekdays show no bar and an em dash; the text summary includes each average and its logged-day count. Labels follow font scaling, and the chart scrolls horizontally when enlarged text needs more width. Calculations follow the [shared stats definitions](stats.md).
 - **List (value-wise):**
   - One row per day in the range, newest first, showing the date and its value ("—" if none).
   - `✎` marks days with a note, with a one-line preview of the note.

@@ -8,6 +8,7 @@ import {
   summary,
   todayUTC,
   valueCounts,
+  weekdayAverages,
   type SeriesPoint,
   type StreakRun,
 } from '@down-up/shared';
@@ -101,6 +102,7 @@ export async function loadDashboardData(id: string, from: string, to: string) {
       points,
       stats: summary(history, from, to),
       counts: valueCounts(history, from, to),
+      weekdays: weekdayAverages(history, from, to),
       firstDate: meta?.firstDate ?? null,
       streakRuns: meta?.streakRuns ?? [],
       rows: page.slice(0, 50).map(serialize),

@@ -41,7 +41,10 @@ const theme = {};
 vi.mock('./theme', () => ({ useTheme: () => theme }));
 vi.mock('./retro', () => ({ PixelText: 'PixelText' }));
 vi.mock('./components', () => ({ Action: 'Action', Row: 'Row' }));
-vi.mock('./history-chart', () => ({ HistoryChart: () => null }));
+vi.mock('./history-chart', () => ({
+  HistoryChart: () => null,
+  WeekdayChart: () => null,
+}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let renderer: ReactTestRenderer;
 beforeEach(async () => {

@@ -31,6 +31,31 @@ export function calendarDate(value: string): Date {
   return parseISO(value);
 }
 
+export const WEEKDAY_LABELS = [
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+] as const;
+
+// Monday-first index, calculated from a local calendar day rather than UTC.
+export function weekdayIndex(date: string): number {
+  return (calendarDate(date).getDay() + 6) % 7;
+}
+
+export function chartDateLabel(date: string): {
+  weekday: string;
+  date: string;
+} {
+  return {
+    weekday: WEEKDAY_LABELS[weekdayIndex(date)]!,
+    date: date.slice(5).replace('-', '/'),
+  };
+}
+
 export function addDays(date: string, count: number): string {
   return localDate(shiftDays(calendarDate(date), count));
 }

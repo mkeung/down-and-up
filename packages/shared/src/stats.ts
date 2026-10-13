@@ -5,11 +5,41 @@ import {
   eachDay,
   isoWeekStart,
   localDate,
+  weekdayIndex,
+  WEEKDAY_LABELS,
 } from './dates';
 import type { Entry } from './schemas';
 
 export type StatEntry = Pick<Entry, 'date' | 'value'>;
 export type ChartPoint = { date: string; value: number | null; count: number };
+export type WeekdayAverage = {
+  weekday: string;
+  average: number | null;
+  count: number;
+};
+
+export function weekdayAverages(
+  entries: readonly StatEntry[],
+  from: string,
+  to: string,
+): WeekdayAverage[] {
+  const buckets = WEEKDAY_LABELS.map((weekday) => ({
+    weekday,
+    sum: 0,
+    count: 0,
+  }));
+  for (const row of entries) {
+    if (row.date < from || row.date > to || row.value === null) continue;
+    const bucket = buckets[weekdayIndex(row.date)]!;
+    bucket.sum += row.value;
+    bucket.count++;
+  }
+  return buckets.map(({ weekday, sum, count }) => ({
+    weekday,
+    average: count ? sum / count : null,
+    count,
+  }));
+}
 
 export function summary(
   entries: readonly StatEntry[],

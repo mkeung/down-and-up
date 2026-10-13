@@ -55,6 +55,7 @@ export default async function DashboardPage({
       points={data.points}
       stats={data.stats}
       counts={data.counts}
+      weekdays={data.weekdays}
       firstDate={data.firstDate}
       streakRuns={data.streakRuns}
       from={from}
