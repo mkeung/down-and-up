@@ -12,6 +12,15 @@ await sharp('OfficialAssets/10-cerberus-retro-pixel-icon.png')
   .png()
   .toFile('apps/mobile/assets/icon.png');
 
+// Adaptive icons avoid the launcher's extra padding around legacy icons.
+// Keep the portrait inside Android's masked viewport and extend its backdrop.
+await sharp('OfficialAssets/10-cerberus-retro-pixel-icon.png')
+  .flatten({ background: '#f4f3ec' })
+  .resize(720, 720, { kernel: 'nearest' })
+  .extend({ top: 152, bottom: 152, left: 152, right: 152, extendWith: 'copy' })
+  .png()
+  .toFile('apps/mobile/assets/android-icon-foreground.png');
+
 // A native vector circle keeps the splash backdrop flat and its edge clean.
 const splashCircle = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><circle cx="512" cy="512" r="480" fill="#b7d7bd"/></svg>',

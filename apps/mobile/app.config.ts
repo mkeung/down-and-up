@@ -22,6 +22,10 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'app.downandup.tracker',
+    adaptiveIcon: {
+      foregroundImage: './assets/android-icon-foreground.png',
+      backgroundColor: '#f4f3ec',
+    },
     allowBackup: false,
     blockedPermissions: ['android.permission.RECORD_AUDIO'],
   },

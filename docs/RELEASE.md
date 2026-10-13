@@ -1,5 +1,7 @@
 # Release checks
 
+Build and installation instructions, including the current Android signing-key location, are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Infrastructure
 
 - Choose the staging and production Vercel projects, Postgres host, R2 buckets, and Upstash databases. Keep environments separate.

@@ -78,6 +78,8 @@ The recording flows in `tests/mobile/deferred` (`audio.yaml`, `playback.yaml`) a
 
 ## Deployment
 
+See [the deployment guide](docs/DEPLOYMENT.md) for Android APK builds, USB installation, and the local signing-key location.
+
 Set the Vercel project root to `apps/web`; use the workspace install command and the web build script. `apps/web/vercel.json` declares two daily jobs, staggered by twelve hours, compatible with Vercel Hobby. Both drain audio deletions; the second also sweeps orphans. Both require `CRON_SECRET`. Vercel invokes cron jobs on production deployments only. For preview staging, run the protected routes manually to verify cleanup. Apply the tracked migrations before starting traffic, connect the private R2 bucket and Upstash database, and set environment variables separately for staging and production. Migrations prefer `DATABASE_URL_UNPOOLED` when provided.
 
 After connecting all staging services, run `DOWN_UP_STAGING_URL=<preview-url> vercel env run -- pnpm test:staging` from the linked repository. This checks real registration, field sync, sessions, reminders, and audio upload/download using a temporary profile, then deletes the profile and queues its recording for cleanup. It keeps credentials and the generated ID out of output.

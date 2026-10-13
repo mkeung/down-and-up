@@ -46,6 +46,7 @@ This folder is the source of truth for features, data model, sync protocol, and 
 ### Other docs
 
 - [Decisions made](decisions.md): the running decision log.
+- [`DEPLOYMENT.md`](DEPLOYMENT.md): Android build/install steps, local signing-key location, and backend deployment references.
 - [`RELEASE.md`](RELEASE.md): device, infrastructure, and store release checklist.
 - [`IMPLEMENTATION.md`](IMPLEMENTATION.md): what was delivered and how it was verified.
 

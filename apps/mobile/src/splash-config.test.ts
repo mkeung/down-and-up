@@ -7,9 +7,20 @@ it('uses the official launcher icon on both native platforms', () => {
   expect(config.icon).toBe('./assets/icon.png');
   expect(config.ios?.icon ?? config.icon).toBe(config.icon);
   expect(config.android?.icon ?? config.icon).toBe(config.icon);
-  expect(config.android?.adaptiveIcon).toBeUndefined();
 
   const png = readFileSync(new URL('../assets/icon.png', import.meta.url));
+  expect(png.readUInt32BE(16)).toBe(1024);
+  expect(png.readUInt32BE(20)).toBe(1024);
+});
+
+it('uses a dedicated adaptive foreground for a larger Android launcher portrait', () => {
+  expect(config.android?.adaptiveIcon).toEqual({
+    foregroundImage: './assets/android-icon-foreground.png',
+    backgroundColor: '#f4f3ec',
+  });
+  const png = readFileSync(
+    new URL('../assets/android-icon-foreground.png', import.meta.url),
+  );
   expect(png.readUInt32BE(16)).toBe(1024);
   expect(png.readUInt32BE(20)).toBe(1024);
 });
