@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const source = 'OfficialAssets/Animations/01e';
 const destination = 'apps/mobile/assets/cerberus';
+const frameSize = 256;
 const require = createRequire(
   realpathSync(
     new URL('../apps/web/node_modules/next/package.json', import.meta.url),
@@ -33,10 +34,14 @@ assert.deepEqual(
 );
 assert.equal(manifest.width, 512);
 assert.equal(manifest.height, 512);
+assert.equal(reactions.width, manifest.width);
+assert.equal(reactions.height, manifest.height);
 const check = process.argv.includes('--check');
 if (!check) await mkdir(destination, { recursive: true });
 const timings = {};
 const hitMasks = {};
+let originalBytes = 0;
+let mobileBytes = 0;
 for (const animation of [
   ...ids.map((id) => manifest.animations.find((entry) => entry.id === id)),
   ...reactions.animations,
@@ -83,10 +88,26 @@ for (const animation of [
       animation.sheet,
     ),
   );
+  const metadata = await sharp(sheet).metadata();
+  assert.equal(metadata.width, manifest.width * 4);
+  assert.equal(metadata.height, manifest.height * 2);
+  assert(metadata.hasAlpha, `${id}: sheet must have alpha`);
+  // Keep the 4x2 grid and full cell margins so playback, source-coordinate
+  // mouth anchors, and conservative alpha hit masks retain their geometry.
+  const optimized = await sharp(sheet)
+    .resize(frameSize * 4, frameSize * 2, { kernel: 'nearest' })
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
+    .toBuffer();
+  assert(
+    optimized.length < sheet.length / 2,
+    `${id}: insufficient size saving`,
+  );
+  originalBytes += sheet.length;
+  mobileBytes += optimized.length;
   const output = path.join(destination, `${id}.png`);
   if (check)
-    assert.deepEqual(await readFile(output), sheet, `${id}: stale sheet`);
-  else await writeFile(output, sheet);
+    assert.deepEqual(await readFile(output), optimized, `${id}: stale sheet`);
+  else await writeFile(output, optimized);
 }
 const output = path.join(destination, 'timings.json');
 if (check)
@@ -97,5 +118,7 @@ if (check)
   assert.deepEqual(JSON.parse(await readFile(masksOutput, 'utf8')), hitMasks);
 else await writeFile(masksOutput, JSON.stringify(hitMasks, null, 2) + '\n');
 console.log(
-  `Cerberus mobile sheets and timing ${check ? 'verified' : 'prepared'}`,
+  `Cerberus mobile sheets (${frameSize}px frames), timing and hit masks ${check ? 'verified' : 'prepared'}: ` +
+    `${(originalBytes / 1024 / 1024).toFixed(2)} MiB → ${(mobileBytes / 1024 / 1024).toFixed(2)} MiB ` +
+    `(${((1 - mobileBytes / originalBytes) * 100).toFixed(1)}% smaller)`,
 );

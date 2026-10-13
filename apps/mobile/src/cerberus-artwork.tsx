@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { router } from 'expo-router';
 import {
   AccessibilityInfo,
   Animated,
@@ -77,7 +78,9 @@ export function prefetchCerberusSheets() {
       .map(([, source]) => source),
   );
 }
-// Empty rows below the visible artwork in each 512px frame sequence.
+// Geometry stays in the original 512px coordinate space; bundled frames are
+// 256px and stretch to the same viewport with their full cell margins intact.
+// Empty rows below the visible artwork in each original frame sequence.
 const bottomPadding = {
   walking: 84,
   'sitting-idle': 71,
@@ -140,6 +143,8 @@ export const CerberusArtwork = memo(function CerberusArtwork({
     timer?: ReturnType<typeof setTimeout>;
     savedFrame?: number;
   } | null>(null);
+  const tap = useRef<{ origin: Point; startedAt: number } | null>(null);
+  const animalTaps = useRef<number[]>([]);
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [active, setActive] = useState(AppState.currentState === 'active');
   const [keyboardVisible, setKeyboardVisible] = useState(() =>
@@ -173,6 +178,7 @@ export const CerberusArtwork = memo(function CerberusArtwork({
   );
 
   const endHold = useCallback(() => {
+    tap.current = null;
     const current = hold.current;
     hold.current = null;
     clearTimeout(current?.timer);
@@ -206,15 +212,23 @@ export const CerberusArtwork = memo(function CerberusArtwork({
     return { x: event.nativeEvent.locationX, y: event.nativeEvent.locationY };
   }
 
-  function canHold(event: GestureResponderEvent) {
+  function canInteract(event: GestureResponderEvent) {
     const point = pointFrom(event);
     return (
       interactive &&
       !hold.current &&
+      !tap.current &&
       (event.nativeEvent.touches?.length ?? 1) === 1 &&
-      withinArea(point, width, areaHeight) &&
-      !hitsSprite(
-        point,
+      withinArea(point, width, areaHeight)
+    );
+  }
+
+  function grantHold(event: GestureResponderEvent) {
+    if (!canInteract(event)) return;
+    const finger = pointFrom(event);
+    if (
+      hitsSprite(
+        finger,
         spriteOrigin(
           width,
           areaHeight,
@@ -227,12 +241,10 @@ export const CerberusArtwork = memo(function CerberusArtwork({
         displayPose.facingRight,
         hitMasks[displayPose.animation][frame]!,
       )
-    );
-  }
-
-  function grantHold(event: GestureResponderEvent) {
-    if (!canHold(event)) return;
-    const finger = pointFrom(event);
+    ) {
+      tap.current = { origin: finger, startedAt: Date.now() };
+      return;
+    }
     hold.current = {
       origin: finger,
       finger,
@@ -241,6 +253,19 @@ export const CerberusArtwork = memo(function CerberusArtwork({
   }
 
   function moveHold(event: GestureResponderEvent) {
+    if (tap.current) {
+      const finger = pointFrom(event);
+      if (
+        !withinArea(finger, width, areaHeight) ||
+        (event.nativeEvent.touches?.length ?? 1) > 1 ||
+        Math.hypot(
+          finger.x - tap.current.origin.x,
+          finger.y - tap.current.origin.y,
+        ) > HOLD_SLOP
+      )
+        tap.current = null;
+      return;
+    }
     const current = hold.current;
     if (!current) return;
     const finger = pointFrom(event);
@@ -262,6 +287,27 @@ export const CerberusArtwork = memo(function CerberusArtwork({
       const center = width / 2 + (position.current - 0.5) * travel;
       setTug({ finger, facingRight: finger.x > center });
     }
+  }
+
+  function openHistory() {
+    if (!interactive) return;
+    animalTaps.current = [];
+    endHold();
+    router.navigate('/history');
+  }
+
+  function releaseHold(event: GestureResponderEvent) {
+    // Check the release too: native responders need not deliver a final move.
+    if (tap.current) moveHold(event);
+    const now = Date.now();
+    if (tap.current && now - tap.current.startedAt < HOLD_DELAY) {
+      animalTaps.current = animalTaps.current.filter(
+        (time) => now - time < 5000,
+      );
+      animalTaps.current.push(now);
+      if (animalTaps.current.length === 7) openHistory();
+    }
+    endHold();
   }
 
   function toggleRope() {
@@ -296,6 +342,10 @@ export const CerberusArtwork = memo(function CerberusArtwork({
     request.sequence,
     endHold,
   ]);
+
+  useEffect(() => {
+    animalTaps.current = [];
+  }, [visible, active, keyboardVisible, width, size]);
 
   useEffect(
     () => () => {
@@ -481,15 +531,20 @@ export const CerberusArtwork = memo(function CerberusArtwork({
       accessibilityState={{ disabled: !interactive, selected: !!tug }}
       accessibilityActions={[
         { name: 'toggleRope', label: tug ? 'Release rope' : 'Hold rope' },
+        { name: 'openHistory', label: 'Open History' },
       ]}
       onAccessibilityTap={toggleRope}
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'toggleRope') toggleRope();
+        if (event.nativeEvent.actionName === 'openHistory') openHistory();
       }}
-      onStartShouldSetResponder={canHold}
+      onStartShouldSetResponder={canInteract}
       onResponderGrant={grantHold}
+      onResponderStart={(event) => {
+        if ((event.nativeEvent.touches?.length ?? 1) !== 1) endHold();
+      }}
       onResponderMove={moveHold}
-      onResponderRelease={endHold}
+      onResponderRelease={releaseHold}
       onResponderTerminate={endHold}
       onResponderTerminationRequest={() => true}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}

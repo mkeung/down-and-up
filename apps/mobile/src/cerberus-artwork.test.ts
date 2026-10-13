@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   setValue: vi.fn(),
   interpolate: vi.fn(),
   prefetch: vi.fn(),
+  navigate: vi.fn(),
   deferStop: false,
   stopCallbacks: [] as ((value: number) => void)[],
   positionChanged: null as ((event: { value: number }) => void) | null,
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => ({
     finish?: (result: { finished: boolean }) => void;
   }[],
 }));
+vi.mock('expo-router', () => ({ router: { navigate: mocks.navigate } }));
 vi.mock('./sounds', () => ({
   cueAnimationSounds: (animation: string) => {
     mocks.cues.push(animation);
@@ -631,9 +633,9 @@ it('tracks finger moves and mirrors both the animal and its rope endpoint when t
   expect(sprite().props.style.transform).toEqual([{ scaleX: -1 }]);
 });
 
-it('ignores taps, drags before the hold threshold, multiple fingers, and touches on the visible animal', async () => {
+it('ignores empty-space taps, drags before the hold threshold, and multiple fingers', async () => {
   await mount();
-  expect(area().props.onStartShouldSetResponder(touch(180, 120))).toBe(false);
+  expect(area().props.onStartShouldSetResponder(touch(180, 120))).toBe(true);
   expect(area().props.onStartShouldSetResponder(touch(8, 60, 2))).toBe(false);
   expect(area().props.onStartShouldSetResponder(touch(-1, 60))).toBe(false);
   await act(async () => area().props.onResponderGrant(touch()));
@@ -646,6 +648,123 @@ it('ignores taps, drags before the hold threshold, multiple fingers, and touches
   await advance(HOLD_DELAY);
   expect(ropes()).toHaveLength(0);
   expect(image().props.source).toBe(1);
+});
+
+async function tapAnimal(count = 1) {
+  for (let index = 0; index < count; index++) {
+    await act(async () => {
+      area().props.onResponderGrant(touch(180, 120));
+      area().props.onResponderRelease(touch(180, 120, 0));
+    });
+  }
+}
+
+it('opens History on the seventh animal tap in less than five seconds and clears the completed sequence', async () => {
+  mocks.reduceMotion = true;
+  await mount();
+  await tapAnimal();
+  await advance(4999);
+  await tapAnimal(5);
+  expect(mocks.navigate).not.toHaveBeenCalled();
+  await tapAnimal();
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/history');
+  expect(ropes()).toHaveLength(0);
+  await tapAnimal(6);
+  expect(mocks.navigate).toHaveBeenCalledTimes(1);
+  await tapAnimal();
+  expect(mocks.navigate).toHaveBeenCalledTimes(2);
+});
+
+it('excludes taps exactly five seconds old while keeping later taps in the rolling window', async () => {
+  mocks.reduceMotion = true;
+  await mount();
+  await tapAnimal();
+  await advance(1000);
+  await tapAnimal();
+  await advance(4000);
+  await tapAnimal(5);
+  expect(mocks.navigate).not.toHaveBeenCalled();
+  await tapAnimal();
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/history');
+});
+
+it.each([
+  'empty',
+  'hold',
+  'drag',
+  'release-drag',
+  'multi',
+  'multi-start',
+  'terminate',
+])('does not count %s gestures as animal taps', async (gesture) => {
+  mocks.reduceMotion = true;
+  await mount();
+  await tapAnimal(6);
+  await act(async () =>
+    area().props.onResponderGrant(
+      gesture === 'empty' ? touch() : touch(180, 120),
+    ),
+  );
+  if (gesture === 'hold') await advance(HOLD_DELAY);
+  await act(async () => {
+    if (gesture === 'drag') area().props.onResponderMove(touch(200, 120));
+    if (gesture === 'multi') area().props.onResponderMove(touch(180, 120, 2));
+    if (gesture === 'multi-start')
+      area().props.onResponderStart(touch(180, 120, 2));
+    if (gesture === 'terminate') area().props.onResponderTerminate();
+    else
+      area().props.onResponderRelease(
+        gesture === 'release-drag' ? touch(200, 120) : touch(180, 120),
+      );
+  });
+  expect(mocks.navigate).not.toHaveBeenCalled();
+  await tapAnimal();
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/history');
+});
+
+it.each(['hidden', 'background', 'keyboard'])(
+  'resets the animal tap sequence when %s',
+  async (reason) => {
+    mocks.reduceMotion = true;
+    await mount();
+    await tapAnimal(6);
+    await act(async () => {
+      if (reason === 'hidden') renderer.update(artwork({ visible: false }));
+      if (reason === 'background') mocks.appChanged!('background');
+      if (reason === 'keyboard') mocks.keyboard.get('keyboardDidShow')!();
+    });
+    await act(async () => {
+      if (reason === 'hidden') renderer.update(artwork());
+      if (reason === 'background') mocks.appChanged!('active');
+      if (reason === 'keyboard') mocks.keyboard.get('keyboardDidHide')!();
+    });
+    await tapAnimal();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    await tapAnimal(6);
+    expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/history');
+  },
+);
+
+it('offers an accessible Open History action and ignores it while inactive', async () => {
+  await mount();
+  expect(area().props.accessibilityActions).toContainEqual({
+    name: 'openHistory',
+    label: 'Open History',
+  });
+  await act(async () => mocks.appChanged!('background'));
+  await act(async () =>
+    area().props.onAccessibilityAction({
+      nativeEvent: { actionName: 'openHistory' },
+    }),
+  );
+  expect(mocks.navigate).not.toHaveBeenCalled();
+  await act(async () => mocks.appChanged!('active'));
+  await act(async () =>
+    area().props.onAccessibilityAction({
+      nativeEvent: { actionName: 'openHistory' },
+    }),
+  );
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith('/history');
 });
 
 it.each([
