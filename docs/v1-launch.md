@@ -4,6 +4,8 @@
 
 ## Done
 
+- Portrait-only mobile orientation on iOS and Android, including tablets. Rotation checks remain in [`RELEASE.md`](RELEASE.md).
+
 - Performance review fixes: bounded sync/database work, faster shared chart calculations, range-scoped history reads, lazy mobile calendar rows, and nonblocking local startup. See [implementation review](completed/implementation-review.md#performance-and-responsiveness). Real-device responsiveness during restore remains a release check.
 
 - App icon, splash screen, dark mode, and store listing draft.

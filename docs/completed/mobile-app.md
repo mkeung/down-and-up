@@ -7,6 +7,8 @@
 
 ## Screens: Rate (the main screen) and Pawsitive
 
+The mobile app is portrait-only on iOS and Android, including tablets. iPad requires full-screen presentation and explicitly restricts its supported orientations to portrait, including when refreshing an existing native project. Native configuration changes require prebuild and a rebuilt app; restarting Metro does not apply them.
+
 All custom buttons share a short press/release animation: a 2pt dip and dimming while pressed, returning on release or cancellation. This includes date and Settings actions, keypad keys, tabs, theme swatches, History controls, and the note Submit accessory. Selection indicators remain visible and actions run immediately. Disabled buttons do not animate. Reduce Motion uses immediate opacity feedback without movement, also used until the accessibility preference loads or if it cannot be read.
 
 The bottom tab bar has two tabs. **Rate** holds the keypad and **Pawsitive** holds the note. Both show the same day selector, and they share one selected day: changing the day on either tab changes it on both. A green circle checkmark appears on Rate when that day has a saved value and on Pawsitive when it has a nonempty saved note, including on inactive tabs. These indicators read local SQLite and update after saves and sync; removing a note removes its checkmark. A day still loading shows no checkmarks from the previous day. Accessibility hints describe the saved content independently of tab selection.
@@ -40,7 +42,7 @@ Tap the date label to open the calendar. On iOS it opens a dismissible overlay w
 
 ### Number buttons
 
-- **Phone keypad layout:** a 3-column grid with `1 2 3` / `4 5 6` / `7 8 9` and **`10` alone in the bottom row, centered**, where the 0 key sits on a phone keypad. The same layout is used in every orientation and on tablets, with the grid centered and its width capped on large screens.
+- **Phone keypad layout:** a 3-column grid with `1 2 3` / `4 5 6` / `7 8 9` and **`10` alone in the bottom row, centered**, where the 0 key sits on a phone keypad. The same portrait layout is used on phones and tablets, with the grid centered and its width capped on large screens.
 - Keys retain at least 64×64pt targets with compact vertical padding and identical neutral art. On Rate, all four rows stay together below a shared Rate/Pawsitive header. Keys 1–9 scroll inside a clipped upper-row area only when necessary, and 10 stays centered underneath with a 12pt gap and its full target visible. All keys share selection and immediate-save behavior.
 - **The selected button stays highlighted:** filled neutral background, bold border, and a green circle checkmark at the bottom-right rim, so the state doesn't depend on color alone. The same green badge is used for every number and means only that content exists for the day; it does not indicate the numeric value or cloud sync status.
 - **Tapping another number updates the day's value:** the highlight moves and the day's single entry is overwritten. The highlight moves as soon as the key is tapped, before the write finishes; if the write fails, it returns to the stored value. The Rate tab's check mark follows the same value.

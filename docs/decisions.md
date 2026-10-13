@@ -2,6 +2,8 @@
 
 A running log. Add new decisions here in the same change that makes them, and link the plan that carries the detail.
 
+- **Portrait-only mobile app:** at the user's request, restrict iOS and Android to portrait on phones and tablets. Keep iPad support, require full-screen presentation, and override its supported orientations so existing native projects cannot retain landscape support after prebuild. See [mobile app](completed/mobile-app.md) and [release checks](RELEASE.md).
+
 - **Keep foreground work bounded:** bulk-merge server sync under the existing profile lock; apply mobile responses in short, 50-date transactions with the cursor committed only after the page completes. Publish entry and sync-metadata changes separately, read only the visible History range, and render local data before notification/audio housekeeping. Web charts fetch the chosen range plus six preceding days, with separate earliest-date and compact streak metadata. Shared chart buckets advance by week/month and rolling averages use a seven-day sliding window. See [implementation review](completed/implementation-review.md), [sync](completed/sync.md), and [web](completed/web.md).
 
 - **Local sound controls:** add one master Mute toggle and 0–100% volume slider for all button and animal effects. Save `{ muted, volume }` together in local SQLite under `ui_sound`, retain it through ID changes, and never sync it. Mute preserves volume, silences active clips, and cancels pending cues. Wait for saved preferences before playback; unreadable data starts muted. The default preserves the existing mix at 100%. See [mobile app](completed/mobile-app.md#sound-controls) and [visual direction](visual-direction.md).

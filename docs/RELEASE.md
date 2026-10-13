@@ -16,7 +16,7 @@
 ## Both platforms
 
 - Cold launch offline. Choose phone-only storage and verify zero requests with user data. Log 3, then 8, then 8 again; only the first two taps change SQLite timestamps.
-- Confirm 64pt minimum keys, a centered 10, selected accessibility state, VoiceOver/TalkBack labels, large fonts, landscape/tablet layout, and light/dark mode.
+- Confirm 64pt minimum keys, a centered 10, selected accessibility state, VoiceOver/TalkBack labels, large fonts, portrait phone/tablet layout, and light/dark mode. Rotate iOS and Android devices on every screen and confirm the app remains in portrait, including on iPad.
 - Confirm today's forward arrow is disabled. Pick a date years back, including a date before 1900; those dates should show the local-only notice. Test midnight rollover, timezone changes, and DST.
 - Add, blur, clear, and rapidly change dates while editing a note. Kill/restart after saving and confirm durable history.
 - Confirm Pawsitive has no Record control and no recording playback, the app never asks for microphone access, and the merged Android manifest has no `RECORD_AUDIO` permission.

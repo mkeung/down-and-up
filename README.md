@@ -41,6 +41,8 @@ For mobile sync, copy `apps/mobile/.env.example` to `apps/mobile/.env.local` and
 
 Build the mobile app with a development build for notification and audio testing. Expo Go does not replace native acceptance testing. Bundle identifiers in `app.config.ts` should be confirmed before creating store records.
 
+The mobile app is portrait-only on phones and tablets. After changing native configuration such as orientation, run `pnpm --filter @down-up/mobile exec expo prebuild --no-clean --no-install --platform all`, then rebuild and reinstall the app; restarting Metro alone does not apply the change.
+
 After changing launcher or splash artwork, regenerate the bundled assets and refresh existing native projects before rebuilding and reinstalling the app:
 
 ```sh

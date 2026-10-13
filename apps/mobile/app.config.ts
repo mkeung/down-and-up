@@ -5,13 +5,19 @@ const config: ExpoConfig = {
   scheme: 'down-up',
   version: '1.0.0',
   icon: './assets/icon.png',
-  orientation: 'default',
+  orientation: 'portrait',
   userInterfaceStyle: 'automatic',
   ios: {
     supportsTablet: true,
+    requireFullScreen: true,
     bundleIdentifier: 'app.downandup.tracker',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      // Override the landscape orientations retained by existing iPad projects.
+      'UISupportedInterfaceOrientations~ipad': [
+        'UIInterfaceOrientationPortrait',
+        'UIInterfaceOrientationPortraitUpsideDown',
+      ],
     },
   },
   android: {
