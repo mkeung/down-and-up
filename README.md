@@ -41,6 +41,15 @@ For mobile sync, copy `apps/mobile/.env.example` to `apps/mobile/.env.local` and
 
 Build the mobile app with a development build for notification and audio testing. Expo Go does not replace native acceptance testing. Bundle identifiers in `app.config.ts` should be confirmed before creating store records.
 
+After changing launcher or splash artwork, regenerate the bundled assets and refresh existing native projects before rebuilding and reinstalling the app:
+
+```sh
+node scripts/icons.mjs
+pnpm --filter @down-up/mobile exec expo prebuild --no-clean --no-install --platform all
+```
+
+The launcher uses the official Cerberus icon (asset 10); the splash uses the happy portrait (asset 11) inside a mint circle. The ignored `ios/` and `android/` folders can retain older artwork until prebuild runs; restarting Metro alone does not update installed icons.
+
 ## Storage and sync
 
 - Calendar days are local `YYYY-MM-DD` strings. Dates before 1900 are supported locally and are excluded from server sync.

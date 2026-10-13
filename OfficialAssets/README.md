@@ -4,6 +4,7 @@
 - [01e reaction set](Animations/01e/reactions/index.html): ten reactions from carefree at 1 to most stressed at 10, with a keypad review preview. Assets only; mobile playback is unchanged. [Reaction notes](Animations/01e/reactions/README.md) cover the mapping and formats.
 
 - [10 — app icon](10-cerberus-retro-pixel-icon.png): the official icon master. `scripts/icons.mjs` prepares `apps/mobile/assets/icon.png` from it.
+- [11 — happy splash portrait](11-cerberus-happy-transparent.png): a transparent, cheerful version of icon 10. `scripts/icons.mjs` places it inside a flat mint circle and prepares `apps/mobile/assets/splash.png`. The native splash centers the emblem at 192pt/dp on ivory (light) or dark green (dark). The launcher icon continues to use master 10. [Creation prompts](11-cerberus-happy-prompt.md).
 - [01e — retro-pixel character](01e-cerberus-retro-pixel-character.png): the full-body version of 01c in the same chunky style as icon 10.
 - [01f — transparent character](01f-cerberus-retro-pixel-transparent.png): the background-extracted version of 01e, used by both mobile tabs. The original opaque artwork is preserved. `scripts/icons.mjs` preserves alpha when preparing `apps/mobile/assets/cerberus.png`.
 

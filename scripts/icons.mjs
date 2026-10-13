@@ -12,6 +12,21 @@ await sharp('OfficialAssets/10-cerberus-retro-pixel-icon.png')
   .png()
   .toFile('apps/mobile/assets/icon.png');
 
+// A native vector circle keeps the splash backdrop flat and its edge clean.
+const splashCircle = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><circle cx="512" cy="512" r="480" fill="#b7d7bd"/></svg>',
+);
+const happyPortrait = await sharp(
+  'OfficialAssets/11-cerberus-happy-transparent.png',
+)
+  .resize(832, 832, { kernel: 'nearest' })
+  .png()
+  .toBuffer();
+await sharp(splashCircle)
+  .composite([{ input: happyPortrait, left: 96, top: 96 }])
+  .png()
+  .toFile('apps/mobile/assets/splash.png');
+
 // Preserve the cutout alpha for the roaming character on both main tabs.
 await sharp('OfficialAssets/01f-cerberus-retro-pixel-transparent.png')
   .resize(384, 384, { kernel: 'nearest' })
