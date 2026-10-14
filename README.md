@@ -1,6 +1,8 @@
 # Down & Up
 
-A discreet daily 1–10 record. The Expo app saves values and notes in SQLite and works offline. Voice recording is built but turned off until Phase 6 (`RECORDING_ENABLED` in `packages/shared`). The Next.js app provides the sync API and a read-only dashboard. Access uses a device-generated ID; there are no accounts or authentication SDKs.
+<p align="center"><img src="OfficialAssets/11-cerberus-happy-transparent.png" width="180" alt="Happy Cerberus icon"></p>
+
+A discreet daily 1–10 record. The Expo app saves values and notes in SQLite and works offline. Voice recording is built but turned off until Phase 6 (`RECORDING_ENABLED` in `packages/shared`). The Next.js app provides the sync API, a dashboard for viewing history, and daily reminder settings. Access uses a device-generated ID; there are no accounts or authentication SDKs.
 
 [`docs/README.md`](docs/README.md) indexes the plans that define the product and protocol: active plans in `docs/`, completed ones in `docs/completed/`. The [implementation review](docs/completed/implementation-review.md) records the changes required to make the original plan consistent.
 
@@ -8,7 +10,7 @@ A discreet daily 1–10 record. The Expo app saves values and notes in SQLite an
 
 - Node.js 24 and pnpm 12.9.1.
 - For native development: Xcode / CocoaPods on macOS or Android Studio and a configured emulator.
-- For integration tests: PostgreSQL (`initdb`, `postgres`) and Redis (`redis-server`, `redis-cli`) on PATH. These tests create isolated temporary instances containing synthetic data, then remove them.
+- For integration tests: PostgreSQL (`initdb`, `postgres`, `psql`) on PATH. These tests create isolated temporary instances containing synthetic data, then remove them.
 - For web E2E: Chrome, or an installed Playwright Chromium with `PLAYWRIGHT_CHANNEL=''`.
 
 ## Commands
@@ -21,7 +23,7 @@ pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm test                 # unit tests; database integration suite is skipped here
-pnpm test:integration     # real Postgres and Redis, isolated temporary instances
+pnpm test:integration     # real Postgres, isolated temporary instance
 pnpm test:web             # temporary services, Next.js, and Playwright; no hosted credentials needed
 pnpm build                # production web build, safe without environment secrets
 pnpm --filter @down-up/mobile export   # iOS and Android JavaScript bundles
@@ -31,13 +33,15 @@ pnpm db:generate          # generate Drizzle migrations after schema changes
 pnpm db:migrate           # apply migrations to the configured DATABASE_URL
 ```
 
-The unit tests use Node's built-in SQLite. Integration tests exercise the real Postgres locks and cursor behavior. Web tests use real local Redis through an Upstash REST adapter and an in-process S3 fixture. The S3 fixture exercises uploads, HEAD validation, downloads, copies, and deletions; live Cloudflare signature enforcement still needs staging verification.
+The unit tests use Node's built-in SQLite. Integration tests exercise the real Postgres locks and cursor behavior. Web tests use shared Postgres rate-limit counters and an in-process S3 fixture. The S3 fixture exercises uploads, HEAD validation, downloads, copies, and deletions; live Cloudflare signature enforcement still needs staging verification.
 
 ## Configuration
 
-Copy `apps/web/.env.example` to `apps/web/.env.local`, and fill in a Postgres connection string, Upstash REST credentials, R2 bucket credentials and endpoint, a random session-signing secret of at least 32 characters, a cron secret, `APP_ORIGIN`, and a privacy contact. Keep secrets out of source control. Use TLS for hosted database connections and HTTPS for the public origin. Give the R2 key access only to the private application bucket; disable public bucket access.
+Copy `apps/web/.env.example` to `apps/web/.env.local`, and fill in a Postgres connection string, a random session-signing secret of at least 32 characters, a cron secret, `APP_ORIGIN`, and a privacy contact. Keep secrets out of source control. Use TLS for hosted database connections and HTTPS for the public origin.
 
-For mobile sync, copy `apps/mobile/.env.example` to `apps/mobile/.env.local` and set `EXPO_PUBLIC_API_URL` to the public server origin. This value is public configuration, not a credential. It must be HTTPS outside development. Without a server origin, the app remains fully usable locally and explains that the server is not configured.
+R2 credentials, endpoint, and bucket are needed for audio operations and the orphan-sweep cron. Value/note sync and the dashboard work without them while recording is deferred. Before verifying audio or its cleanup, configure a private R2 bucket and give the R2 key access only to that bucket.
+
+For mobile sync, copy `apps/mobile/.env.example` to `apps/mobile/.env.local` and set `EXPO_PUBLIC_API_URL` to the public server origin. This value is public configuration, not a credential. It must be HTTPS outside development. Internal and production EAS build profiles already use `https://down-and-up.vercel.app`; local Metro development reads `apps/mobile/.env.local`. Without a server origin, the app remains fully usable locally and explains that the server is not configured.
 
 Build the mobile app with a development build for notification and audio testing. Expo Go does not replace native acceptance testing. Bundle identifiers in `app.config.ts` should be confirmed before creating store records.
 
@@ -72,7 +76,7 @@ Maestro flows are in `tests/mobile`. Install [Maestro](https://docs.maestro.dev/
 maestro test tests/mobile/local.yaml
 ```
 
-Run the additional two-phone, reinstall, identity transition, notification, and audio interruption checks in `docs/RELEASE.md` on both platforms. The background-task trigger is optional in the plan; foreground, connectivity, local edits, and manual sync are the supported triggers in this implementation.
+Run the additional two-phone, reinstall, identity transition, and notification checks in `docs/RELEASE.md` on both platforms. Audio interruption checks belong to the deferred recording release. The background-task trigger is optional in the plan; foreground, connectivity, local edits, and manual sync are the supported triggers in this implementation.
 
 The recording flows in `tests/mobile/deferred` (`audio.yaml`, `playback.yaml`) apply once recording is turned on. `playback.yaml` checks playback and deletion when a recording is already cached. Simulator capture requires a working host audio input; a silent `.m4a` fixture can be used to test playback separately. Audio preparation and playback are bounded and cancelled when leaving the screen, so delayed operations cannot start recording or playback in the background.
 
@@ -80,10 +84,10 @@ The recording flows in `tests/mobile/deferred` (`audio.yaml`, `playback.yaml`) a
 
 See [the deployment guide](docs/DEPLOYMENT.md) for Android APK builds, USB installation, and the local signing-key location.
 
-Set the Vercel project root to `apps/web`; use the workspace install command and the web build script. `apps/web/vercel.json` declares two daily jobs, staggered by twelve hours, compatible with Vercel Hobby. Both drain audio deletions; the second also sweeps orphans. Both require `CRON_SECRET`. Vercel invokes cron jobs on production deployments only. For preview staging, run the protected routes manually to verify cleanup. Apply the tracked migrations before starting traffic, connect the private R2 bucket and Upstash database, and set environment variables separately for staging and production. Migrations prefer `DATABASE_URL_UNPOOLED` when provided.
+Set the Vercel project root to `apps/web`; use the workspace install command and the web build script. `apps/web/vercel.json` declares two daily jobs, staggered by twelve hours, compatible with Vercel Hobby. Both drain audio deletions; the second also sweeps orphans. Both require `CRON_SECRET`. Vercel invokes cron jobs on production deployments only. For preview staging, run the protected routes manually to verify cleanup. Apply the tracked migrations before starting traffic and set environment variables separately for staging and production. Connect the private R2 bucket before verifying audio and its cleanup. Migrations prefer `DATABASE_URL_UNPOOLED` when provided.
 
-After connecting all staging services, run `DOWN_UP_STAGING_URL=<preview-url> vercel env run -- pnpm test:staging` from the linked repository. This checks real registration, field sync, sessions, reminders, and audio upload/download using a temporary profile, then deletes the profile and queues its recording for cleanup. It keeps credentials and the generated ID out of output.
+After connecting all staging services, run `DOWN_UP_STAGING_URL=<preview-url> vercel env run -- pnpm test:staging` from the linked repository. This checks real registration, field sync, sessions, reminders, and audio upload/download using a temporary profile, then deletes the profile and queues its recording for cleanup. It keeps credentials and the generated ID out of output. For the public value/note-only deployment, use `DOWN_UP_STAGING_URL=https://down-and-up.vercel.app pnpm test:staging --skip-audio`; no protection token is needed. Omit `--skip-audio` when verifying the R2 release gates.
 
-Monitor `du:security:lookup-alert` in Redis for the global guessing threshold. No outbound alert integration is configured. Self-hosting behind another proxy requires adapting the trusted IP-header boundary; the deployed implementation trusts Vercel's overwritten forwarding header and treats development traffic as one local IP.
+Monitor the unexpired `du:security:lookup-alert` row in Postgres's `rate_limit_counters` table for the global guessing threshold. No outbound alert integration is configured. Self-hosting behind another proxy requires adapting the trusted IP-header boundary; the deployed implementation trusts Vercel's overwritten forwarding header and treats development traffic as one local IP.
 
 Release gates and store copy are in `docs/RELEASE.md`. Deployment, provider configuration, store submission, and physical-device testing are separate from a passing local build.
